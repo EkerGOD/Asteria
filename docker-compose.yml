@@ -1,0 +1,22 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: asteria-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${ASTERIA_POSTGRES_USER:-asteria}
+      POSTGRES_PASSWORD: ${ASTERIA_POSTGRES_PASSWORD:-asteria}
+      POSTGRES_DB: ${ASTERIA_POSTGRES_DB:-asteria}
+    ports:
+      - "${ASTERIA_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - asteria_postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ASTERIA_POSTGRES_USER:-asteria} -d ${ASTERIA_POSTGRES_DB:-asteria}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  asteria_postgres_data:
