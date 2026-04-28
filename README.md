@@ -124,6 +124,8 @@ Asteria/
 
 在 scaffold 完成前，不应假设这些命令都可运行。
 
+完整开发期 smoke test 路径见 `docs/DEVELOPMENT_SMOKE_TEST.md`，覆盖 database、API health、Provider settings、knowledge embedding、semantic retrieval、RAG answer 和手动 frontend wiring 检查。
+
 ## 数据库
 
 MVP schema 至少包含：
