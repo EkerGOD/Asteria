@@ -190,3 +190,5 @@ Retry behavior 是后续增强项；当前 MVP 4.2 adapter 只负责 timeout 和
 - API 仍然是业务和 AI 层。
 - Database 仍然在 API 后面。
 - Provider 调用仍然在 API abstraction 后面。
+
+未来 packaging assumptions、数据库策略、secrets storage、auto-update 和 release 风险集中记录在 `docs/PACKAGING_NOTES.md`，不属于当前 MVP 开发期运行方式。

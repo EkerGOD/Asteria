@@ -83,11 +83,8 @@ Tauri 负责：
 
 未决打包问题：
 
-- PostgreSQL 是 bundled、user-managed，还是替换为其他本地存储策略。
-- Provider secrets 如何结合 OS keychain 加密。
-- 应用升级时 migrations 如何运行。
-- 后台 indexing 如何启动和监控。
-- auto-update 如何设计。
+- PostgreSQL、Provider secrets、migrations、sidecar lifecycle、background indexing、auto-update、logs 和 signing/notarization 的具体方案仍未确定。
+- 未来打包假设和风险集中记录在 `docs/PACKAGING_NOTES.md`，不要在 MVP implementation 中提前实现。
 
 这些问题应在 MVP 证明 desktop-first 架构后再处理。
 
