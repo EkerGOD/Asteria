@@ -4,7 +4,9 @@
       "Bash(python3 -c \"import json; f=open\\('D:/Documents/Personal-Knowledge-Base/1_Project/Asteria/.claude/settings.json'\\); d=json.load\\(f\\); print\\('Valid JSON'\\); print\\(json.dumps\\(d, indent=2, ensure_ascii=False\\)\\)\")",
       "Bash(python -c \"import json; f=open\\('D:/Documents/Personal-Knowledge-Base/1_Project/Asteria/.claude/settings.json'\\); d=json.load\\(f\\); print\\('Valid JSON'\\)\")",
       "Bash(python -m pytest -v)",
-      "Bash(python -m pytest tests/test_knowledge_api.py tests/test_tags_api.py -v)",
+      "Bash(python -m pytest tests/test_conversations_api.py -v)",
+      "Bash(python -m pytest tests/test_conversations_api.py::test_conversations_can_be_filtered_by_project tests/test_conversations_api.py::test_conversation_can_have_metadata -v --tb=long)",
+      "Bash(python -m pytest tests/test_conversations_api.py::test_conversation_can_have_metadata -v --tb=short)",
       "Bash(python -m pytest tests/ -v)"
     ]
   }

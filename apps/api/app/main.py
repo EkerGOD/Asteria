@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.conversations import router as conversations_router
 from app.api.routes.health import router as health_router
 from app.api.routes.knowledge import router as knowledge_router
 from app.api.routes.projects import router as projects_router
@@ -31,6 +32,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(projects_router)
     app.include_router(knowledge_router)
     app.include_router(tags_router)
+    app.include_router(conversations_router)
     return app
 
 
