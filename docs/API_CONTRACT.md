@@ -26,6 +26,22 @@ GET /api/knowledge-units
 GET /api/knowledge-units/{id}
 PUT /api/knowledge-units/{id}
 DELETE /api/knowledge-units/{id}
+POST /api/knowledge-units/{id}/embeddings/refresh
+
+Embedding refresh responses return a summary and never expose embedding vectors:
+
+```json
+{
+  "knowledge_unit_id": "uuid",
+  "provider_id": "uuid",
+  "embedding_model": "text-embedding-model",
+  "embedding_dimension": 1536,
+  "chunk_count": 1,
+  "created_count": 1,
+  "reused_count": 0,
+  "deleted_count": 0
+}
+```
 
 ## Provider API
 

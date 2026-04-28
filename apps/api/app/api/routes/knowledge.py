@@ -3,12 +3,18 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.ai import ProviderAdapterError, ProviderTimeoutError
 from app.db.session import get_db_session
 from app.schemas.knowledge import (
     AttachTagRequest,
+    KnowledgeEmbeddingRefreshResponse,
     KnowledgeUnitCreate,
     KnowledgeUnitResponse,
     KnowledgeUnitUpdate,
+)
+from app.services.embeddings import (
+    ActiveProviderNotConfiguredError,
+    refresh_knowledge_embeddings,
 )
 from app.services.knowledge import (
     KnowledgeNotFoundError,
@@ -37,6 +43,10 @@ def create_knowledge_endpoint(
         )
     except KnowledgeProjectNotFoundError as exc:
         raise _knowledge_project_not_found() from exc
+    except ProviderTimeoutError as exc:
+        raise _embedding_provider_timeout() from exc
+    except ProviderAdapterError as exc:
+        raise _embedding_provider_error() from exc
 
 
 @router.get("", response_model=list[KnowledgeUnitResponse])
@@ -84,6 +94,10 @@ def update_knowledge_endpoint(
         raise _knowledge_not_found() from exc
     except KnowledgeProjectNotFoundError as exc:
         raise _knowledge_project_not_found() from exc
+    except ProviderTimeoutError as exc:
+        raise _embedding_provider_timeout() from exc
+    except ProviderAdapterError as exc:
+        raise _embedding_provider_error() from exc
 
 
 @router.delete("/{knowledge_id}", response_model=KnowledgeUnitResponse)
@@ -97,6 +111,29 @@ def archive_knowledge_endpoint(
         )
     except KnowledgeNotFoundError as exc:
         raise _knowledge_not_found() from exc
+
+
+@router.post(
+    "/{knowledge_id}/embeddings/refresh",
+    response_model=KnowledgeEmbeddingRefreshResponse,
+)
+def refresh_knowledge_embeddings_endpoint(
+    knowledge_id: UUID,
+    session: Session = Depends(get_db_session),
+) -> KnowledgeEmbeddingRefreshResponse:
+    try:
+        knowledge = get_knowledge(session, knowledge_id)
+        return KnowledgeEmbeddingRefreshResponse.model_validate(
+            refresh_knowledge_embeddings(session, knowledge)
+        )
+    except KnowledgeNotFoundError as exc:
+        raise _knowledge_not_found() from exc
+    except ActiveProviderNotConfiguredError as exc:
+        raise _active_provider_not_configured() from exc
+    except ProviderTimeoutError as exc:
+        raise _embedding_provider_timeout() from exc
+    except ProviderAdapterError as exc:
+        raise _embedding_provider_error() from exc
 
 
 @router.post(
@@ -153,4 +190,25 @@ def _tag_not_attached() -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Tag is not attached to this knowledge unit.",
+    )
+
+
+def _active_provider_not_configured() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="Active provider is not configured.",
+    )
+
+
+def _embedding_provider_timeout() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+        detail="Provider request timed out while generating embeddings.",
+    )
+
+
+def _embedding_provider_error() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        detail="Provider failed while generating embeddings.",
     )

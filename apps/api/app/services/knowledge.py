@@ -7,6 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.models import KnowledgeUnit, KnowledgeUnitTag, Project, Tag
 from app.schemas.knowledge import KnowledgeUnitCreate, KnowledgeUnitUpdate
+from app.services.embeddings import (
+    delete_knowledge_embeddings,
+    refresh_knowledge_embeddings_if_configured,
+)
 
 
 class KnowledgeNotFoundError(Exception):
@@ -45,7 +49,12 @@ def create_knowledge(session: Session, payload: KnowledgeUnitCreate) -> Knowledg
 
     knowledge = KnowledgeUnit(id=uuid4(), **data)
     session.add(knowledge)
-    _commit_knowledge(session, knowledge)
+    try:
+        refresh_knowledge_embeddings_if_configured(session, knowledge)
+        _commit_knowledge(session, knowledge)
+    except Exception:
+        session.rollback()
+        raise
     return knowledge
 
 
@@ -89,6 +98,9 @@ def update_knowledge(
 ) -> KnowledgeUnit:
     knowledge = get_knowledge(session, knowledge_id)
     updates = payload.model_dump(exclude_unset=True)
+    content_changed = (
+        "content" in updates and updates["content"] != knowledge.content
+    )
 
     if "project_id" in updates and updates["project_id"] is not None:
         project = session.get(Project, updates["project_id"])
@@ -107,7 +119,14 @@ def update_knowledge(
     for field_name, value in updates.items():
         setattr(knowledge, field_name, value)
 
-    _commit_knowledge(session, knowledge)
+    try:
+        if content_changed:
+            if refresh_knowledge_embeddings_if_configured(session, knowledge) is None:
+                delete_knowledge_embeddings(session, knowledge.id)
+        _commit_knowledge(session, knowledge)
+    except Exception:
+        session.rollback()
+        raise
     return knowledge
 
 

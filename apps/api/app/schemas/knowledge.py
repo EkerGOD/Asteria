@@ -61,6 +61,19 @@ class AttachTagRequest(BaseModel):
     tag_id: UUID
 
 
+class KnowledgeEmbeddingRefreshResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    knowledge_unit_id: UUID
+    provider_id: UUID
+    embedding_model: str
+    embedding_dimension: int
+    chunk_count: int
+    created_count: int
+    reused_count: int
+    deleted_count: int
+
+
 class KnowledgeUnitResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
