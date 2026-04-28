@@ -18,7 +18,7 @@ Tauri + React UI -> Local FastAPI API -> PostgreSQL + AI Provider Abstraction
 
 项目处于 MVP 早期阶段。
 
-当前仓库重点是确定产品、架构、数据库 schema 和 Codex 协作流程。部分目录可能只是占位，不能假设前端、后端或 Docker Compose 已经完整可运行。
+当前仓库重点是确定产品、架构、数据库 schema 和 AI coding assistant 协作流程。部分目录可能只是占位，不能假设前端、后端或 Docker Compose 已经完整可运行。
 
 后续开发应按 `docs/MVP_TASKS.md` 中的小任务逐步推进。
 
@@ -90,13 +90,14 @@ Asteria/
 
 ## 关键文档
 
-- `AGENTS.md`：仓库级 Codex/代理工作规则。
+- `AGENTS.md`：仓库级 AI coding assistant 工作规则。
+- `CLAUDE.md`：仓库级 Claude Code 协作规则（Claude Code 启动时自动加载）。
 - `docs/PRD.md`：产品定位、目标用户、MVP 范围、页面和验收标准。
 - `docs/ARCHITECTURE.md`：desktop-first 架构和职责边界。
 - `docs/DATABASE_SCHEMA.md`：MVP 数据库 schema。
 - `docs/MVP_TASKS.md`：分 Phase 的小任务清单。
 - `docs/DESKTOP_APP.md`：Tauri 与 FastAPI 本地协作方式。
-- `docs/CODEX_WORKFLOW.md`：如何与 Codex 协作开发。
+- `docs/AI_WORKFLOW.md`：如何与 AI coding assistant 协作开发。
 - `docs/API_CONTRACT.md`：API contract 草案或接口约定。
 
 ## 开发方式
@@ -109,7 +110,7 @@ Asteria/
 4. 运行对应测试命令。
 5. 完成后列出修改文件和测试结果。
 
-推荐 Codex prompt 格式见 `docs/CODEX_WORKFLOW.md`。
+推荐 prompt 格式见 `docs/AI_WORKFLOW.md`。
 
 ## 开发期运行模型
 
@@ -157,4 +158,4 @@ Asteria / 星识 使用 OpenAI-compatible Provider abstraction。
 - 测试是否通过。
 - 哪些内容应拆到后续任务。
 
-详细规则见 `AGENTS.md` 和 `docs/CODEX_WORKFLOW.md`。
+详细规则见 `AGENTS.md`、`CLAUDE.md` 和 `docs/AI_WORKFLOW.md`。

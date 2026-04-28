@@ -2,7 +2,7 @@
 
 ## 任务规则
 
-每个任务都应该足够小，适合一次 Codex session 和一个小提交完成。
+每个任务都应该足够小，适合一次开发 session 和一个小提交完成。
 
 每个实现任务都必须包含：
 
@@ -11,7 +11,7 @@
 - Acceptance Criteria
 - Test Command
 
-Codex 每次执行任务时必须：
+AI coding assistant 每次执行任务时必须：
 
 - 先阅读相关 docs。
 - 只处理任务范围内的内容。
@@ -25,7 +25,7 @@ Codex 每次执行任务时必须：
 
 Scope:
 
-- 检查 `docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/DATABASE_SCHEMA.md`、`docs/DESKTOP_APP.md`、`docs/CODEX_WORKFLOW.md`。
+- 检查 `docs/PRD.md`、`docs/ARCHITECTURE.md`、`docs/DATABASE_SCHEMA.md`、`docs/DESKTOP_APP.md`、`docs/AI_WORKFLOW.md`。
 - 修正任何暗示 Asteria / 星识 是 Web-first 的表述。
 - 统一核心术语。
 

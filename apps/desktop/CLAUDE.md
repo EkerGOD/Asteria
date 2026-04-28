@@ -1,6 +1,6 @@
-# apps/desktop Agent Instructions
+# apps/desktop Claude Code Instructions
 
-本文档是 Asteria / 星识 桌面端目录的代理协作规则。修改 `apps/desktop` 前，先阅读仓库根目录 `AGENTS.md`，再按任务范围阅读相关 docs。
+本文档是 Asteria / 星识 桌面端目录的 Claude Code 协作规则。修改 `apps/desktop` 前，先阅读仓库根目录 `CLAUDE.md`，再按任务范围阅读相关 docs。
 
 `apps/desktop` 是 Asteria / 星识 的 Tauri + React 桌面客户端。它是产品表面和用户交互层，但不是业务、数据库或 AI Provider 的权威层。
 
@@ -12,7 +12,7 @@
 - 前后端边界：`docs/ARCHITECTURE.md`。
 - Tauri 与本地 FastAPI 协作：`docs/DESKTOP_APP.md`。
 - API 调用约定：`docs/API_CONTRACT.md`。
-- 任务拆分和验收标准：`docs/MVP_TASKS.md`、`docs/AI_WORKFLOW.md`。
+- 任务拆分和验收标准：`docs/MVP_TASKS.md`。
 
 如果文档之间出现冲突，优先保持：
 

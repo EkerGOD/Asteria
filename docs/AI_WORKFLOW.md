@@ -1,10 +1,10 @@
-# Codex Workflow
+# AI Coding Assistant Workflow
 
 ## 目的
 
-本文档说明如何和 Codex 协作开发 Asteria / 星识。
+本文档说明如何与 AI coding assistant（如 Claude Code、Codex 等）协作开发 Asteria / 星识。
 
-Asteria / 星识 应该以小步、可审查、可验证的方式开发。每次 Codex session 只处理一个明确的小任务，完成后说明改了什么、如何测试、还剩什么。
+Asteria / 星识 应该以小步、可审查、可验证的方式开发。每次开发 session 只处理一个明确的小任务，完成后说明改了什么、如何测试、还剩什么。
 
 ## 核心规则
 
@@ -21,7 +21,7 @@ Asteria / 星识 应该以小步、可审查、可验证的方式开发。每次
 
 ## 推荐 Prompt 格式
 
-给 Codex 派发实现任务时，建议使用：
+给 AI coding assistant 派发实现任务时，建议使用：
 
 ```text
 Goal:
@@ -62,9 +62,9 @@ Relevant Docs:
 - docs/MVP_TASKS.md
 ```
 
-## Codex 每次完成后必须输出
+## 每次完成后必须输出
 
-每次任务结束时，Codex 必须列出：
+每次任务结束时，AI coding assistant 必须列出：
 
 - 修改摘要。
 - 修改文件。
@@ -75,7 +75,7 @@ Relevant Docs:
 
 ## 文件修改纪律
 
-Codex 应该：
+AI coding assistant 应该：
 
 - 将改动限制在任务范围内。
 - 避免重写与任务无关的文件。
@@ -85,7 +85,7 @@ Codex 应该：
 
 ## 测试纪律
 
-Codex 应运行与任务最匹配的最小验证命令。
+应运行与任务最匹配的最小验证命令。
 
 推荐命令：
 
@@ -96,11 +96,11 @@ Codex 应运行与任务最匹配的最小验证命令。
 - Desktop lint：`cd apps/desktop && npm run lint`
 - Database startup：`docker compose up -d db`
 
-如果命令因项目尚未 scaffold 而无法运行，Codex 应明确说明原因，不能假装通过。
+如果命令因项目尚未 scaffold 而无法运行，应明确说明原因，不能假装通过。
 
 ## Review Checklist
 
-任务结束前，Codex 应检查：
+任务结束前，应检查：
 
 - 改动符合本次 Scope。
 - 改动没有违反 desktop-first 架构。

@@ -1,6 +1,6 @@
-# Asteria / 星识 Agent Instructions
+# Asteria / 星识 Claude Code Instructions
 
-本文档是 Asteria / 星识 仓库根目录的代理协作规则。任何 AI coding assistant 在修改本仓库前，都应先阅读本文件，再阅读与任务相关的 `docs` 文档和子目录 `AGENTS.md`。Claude Code 用户应阅读根目录 `CLAUDE.md`。
+本文档是 Asteria / 星识 仓库根目录的 Claude Code 协作规则。Claude Code 在修改本仓库前会自动加载本文件，请同时按需阅读与任务相关的 `docs` 文档和子目录 `CLAUDE.md`。
 
 ## 项目定位
 
@@ -29,9 +29,8 @@ Tauri + React UI -> Local FastAPI API -> PostgreSQL + AI Provider Abstraction
 - `docs/PRD.md`：产品定位、目标用户、MVP 范围、用户流程、页面和验收标准。
 - `docs/ARCHITECTURE.md`：desktop-first 架构、前后端边界、RAG 流程、AI Provider 抽象。
 - `docs/DATABASE_SCHEMA.md`：MVP 数据库表、字段、关系、索引和约束。
-- `docs/MVP_TASKS.md`：适合一次开发 session 完成的小任务拆分。
+- `docs/MVP_TASKS.md`：适合一次 Claude Code session 完成的小任务拆分。
 - `docs/DESKTOP_APP.md`：Tauri 和 FastAPI 本地服务协作方式。
-- `docs/AI_WORKFLOW.md`：如何与 AI coding assistant 协作、如何报告修改和测试。
 - `docs/API_CONTRACT.md`：API contract 草案或接口约定。
 
 如果文档之间出现冲突，优先保持以下原则：
@@ -51,8 +50,8 @@ Tauri + React UI -> Local FastAPI API -> PostgreSQL + AI Provider Abstraction
 
 子目录职责：
 
-- `apps/desktop`：Tauri 桌面壳和 React 前端。遵守 `apps/desktop/AGENTS.md`。
-- `apps/api`：FastAPI 后端、数据库访问、RAG 和 AI Provider 抽象。遵守 `apps/api/AGENTS.md`。
+- `apps/desktop`：Tauri 桌面壳和 React 前端。遵守 `apps/desktop/CLAUDE.md`。
+- `apps/api`：FastAPI 后端、数据库访问、RAG 和 AI Provider 抽象。遵守 `apps/api/CLAUDE.md`。
 - `packages/api-client`：未来共享 API client 或类型。
 - `packages/shared`：未来共享类型、常量或工具。
 - `infra`：Docker Compose、PostgreSQL、pgvector 等开发基础设施。
@@ -84,7 +83,7 @@ Tauri + React UI -> Local FastAPI API -> PostgreSQL + AI Provider Abstraction
 
 优先选择 `docs/MVP_TASKS.md` 中的任务。不要把 scaffold、schema、backend endpoint、frontend UI、RAG logic 混在一个任务里。
 
-完成后必须报告：
+使用 `TaskCreate` 工具创建任务列表来追踪进度。完成后必须报告：
 
 - 修改摘要。
 - 修改文件。
@@ -108,7 +107,7 @@ Tauri + React UI -> Local FastAPI API -> PostgreSQL + AI Provider Abstraction
 
 根据任务范围选择最小有效验证：
 
-- Docs only: `git diff -- docs AGENTS.md README.md`
+- Docs only: `git diff -- docs AGENTS.md CLAUDE.md README.md`
 - API tests: `cd apps/api && pytest`
 - API migration check: `cd apps/api && alembic current`
 - Desktop typecheck: `cd apps/desktop && npm run typecheck`

@@ -1,6 +1,6 @@
-# apps/api Agent Instructions
+# apps/api Claude Code Instructions
 
-本文档是 Asteria / 星识 后端目录的代理协作规则。修改 `apps/api` 前，先阅读仓库根目录 `AGENTS.md`，再按任务范围阅读相关 docs。
+本文档是 Asteria / 星识 后端目录的 Claude Code 协作规则。修改 `apps/api` 前，先阅读仓库根目录 `CLAUDE.md`，再按任务范围阅读相关 docs。
 
 `apps/api` 是 Asteria / 星识 的本地 FastAPI 服务层，也是数据库访问、业务规则、AI Provider 调用、embedding、retrieval 和 RAG orchestration 的唯一权威层。
 
@@ -12,7 +12,7 @@
 - 数据库模型或 migration：`docs/DATABASE_SCHEMA.md`。
 - API route、request/response 约定：`docs/API_CONTRACT.md`。
 - Provider、embedding、retrieval、RAG：`docs/ARCHITECTURE.md`、`docs/PRD.md`。
-- 任务拆分和验收标准：`docs/MVP_TASKS.md`、`docs/AI_WORKFLOW.md`。
+- 任务拆分和验收标准：`docs/MVP_TASKS.md`。
 
 如果文档之间出现冲突，优先保持：
 
