@@ -3,9 +3,9 @@
     "allow": [
       "Bash(python3 -c \"import json; f=open\\('D:/Documents/Personal-Knowledge-Base/1_Project/Asteria/.claude/settings.json'\\); d=json.load\\(f\\); print\\('Valid JSON'\\); print\\(json.dumps\\(d, indent=2, ensure_ascii=False\\)\\)\")",
       "Bash(python -c \"import json; f=open\\('D:/Documents/Personal-Knowledge-Base/1_Project/Asteria/.claude/settings.json'\\); d=json.load\\(f\\); print\\('Valid JSON'\\)\")",
-      "Bash(git add *)",
-      "Bash(git commit -m ' *)",
-      "Bash(git commit --amend -m ' *)"
+      "Bash(python -m pytest -v)",
+      "Bash(python -m pytest tests/test_knowledge_api.py tests/test_tags_api.py -v)",
+      "Bash(python -m pytest tests/ -v)"
     ]
   }
 }

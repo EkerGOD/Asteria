@@ -3,12 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-
-def _normalize_optional_text(value: str | None) -> str | None:
-    if value is None:
-        return None
-    stripped = value.strip()
-    return stripped or None
+from app.schemas.common import normalize_optional_text
 
 
 class ProjectCreate(BaseModel):
@@ -28,7 +23,7 @@ class ProjectCreate(BaseModel):
     @field_validator("description", "color")
     @classmethod
     def normalize_optional_text(cls, value: str | None) -> str | None:
-        return _normalize_optional_text(value)
+        return normalize_optional_text(value)
 
 
 class ProjectUpdate(BaseModel):
@@ -50,7 +45,7 @@ class ProjectUpdate(BaseModel):
     @field_validator("description", "color")
     @classmethod
     def normalize_optional_text(cls, value: str | None) -> str | None:
-        return _normalize_optional_text(value)
+        return normalize_optional_text(value)
 
 
 class ProjectResponse(BaseModel):
