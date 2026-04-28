@@ -133,6 +133,8 @@ sequenceDiagram
 
 Asteria / 星识 使用 OpenAI-compatible Provider abstraction，避免 Provider 细节泄漏到 UI。
 
+`apps/api/app/ai` 拥有 Provider adapter interface、OpenAI-compatible adapter 和标准化 Provider errors。业务 service 只依赖这个后端抽象，不直接拼接 Provider-specific payload。
+
 后端抽象需要覆盖：
 
 - Chat completion。
@@ -151,10 +153,19 @@ Provider adapter 需要规范化：
 - Embedding model name。
 - Embedding dimension。
 - Request timeout。
-- Retry behavior。
 - 返回给 UI 的错误信息。
 
-MVP 可以只实现一个 OpenAI-compatible HTTP adapter。后续新增 Provider 时，必须接在同一后端接口之后，不改变前端调用方式。
+MVP 实现一个 OpenAI-compatible HTTP adapter：
+
+- Chat completion 调用 `chat/completions`。
+- Embedding creation 调用 `embeddings`。
+- Provider health check 调用 `models`。
+
+Provider adapter 将 auth、timeout、connection、HTTP status 和 malformed response failures 标准化为后端错误。Provider 原始错误和 Provider-specific request/response payload 不应透传给 UI。
+
+Retry behavior 是后续增强项；当前 MVP 4.2 adapter 只负责 timeout 和错误标准化。
+
+后续新增 Provider 时，必须接在同一后端接口之后，不改变前端调用方式。
 
 ## 开发期运行方式
 

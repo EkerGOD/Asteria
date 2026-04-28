@@ -27,6 +27,31 @@ GET /api/knowledge-units/{id}
 PUT /api/knowledge-units/{id}
 DELETE /api/knowledge-units/{id}
 
+## Provider API
+
+POST /api/providers
+GET /api/providers
+GET /api/providers/{id}
+PUT /api/providers/{id}
+DELETE /api/providers/{id}
+POST /api/providers/{id}/activate
+POST /api/providers/{id}/health-check
+
+Provider responses expose `has_api_key` and must not expose raw `api_key` or `api_key_ciphertext`.
+
+Health check responses return:
+
+```json
+{
+  "provider_id": "uuid",
+  "status": "ok | error",
+  "message": "Provider is reachable.",
+  "latency_ms": 123
+}
+```
+
+Only one provider can be active at a time. Activating one provider deactivates any previously active provider.
+
 ## Search API
 
 POST /api/search/keyword
