@@ -120,3 +120,60 @@ Semantic search responses return provider/model metadata and source references:
 ## RAG API
 
 POST /api/rag/answer
+
+RAG answer requests save the user message, retrieve relevant chunks through the
+active provider, and generate an assistant message. If `project_id` is omitted,
+retrieval inherits the conversation project. If `project_id` is explicitly
+`null`, retrieval searches across all projects.
+
+```json
+{
+  "conversation_id": "uuid",
+  "content": "What did I write about pgvector?",
+  "project_id": null,
+  "tag_slugs": ["database"],
+  "top_k": 5,
+  "min_score": 0.0
+}
+```
+
+RAG answer responses return the persisted user and assistant messages plus the
+source references used for grounding:
+
+```json
+{
+  "user_message": {
+    "id": "uuid",
+    "conversation_id": "uuid",
+    "provider_id": null,
+    "role": "user",
+    "content": "What did I write about pgvector?",
+    "model": null,
+    "token_count": null,
+    "retrieval_metadata": {},
+    "created_at": "2026-04-28T00:00:00Z"
+  },
+  "assistant_message": {
+    "id": "uuid",
+    "conversation_id": "uuid",
+    "provider_id": "uuid",
+    "role": "assistant",
+    "content": "Grounded answer text.",
+    "model": "chat-model",
+    "token_count": 123,
+    "retrieval_metadata": {
+      "sources": []
+    },
+    "created_at": "2026-04-28T00:00:00Z"
+  },
+  "sources": [],
+  "provider_id": "uuid",
+  "chat_model": "chat-model",
+  "embedding_model": "text-embedding-model",
+  "embedding_dimension": 1536
+}
+```
+
+Provider failures return standardized API errors and do not expose raw
+Provider-specific payloads. The saved user message is preserved when retrieval
+or answer generation fails; no assistant message is saved for failed attempts.
