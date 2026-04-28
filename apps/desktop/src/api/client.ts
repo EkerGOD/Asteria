@@ -1,5 +1,11 @@
 import { API_BASE_URL } from "./config";
-import type { HealthResponse } from "./types";
+import type {
+  HealthResponse,
+  Provider,
+  ProviderCreateRequest,
+  ProviderHealthResponse,
+  ProviderUpdateRequest
+} from "./types";
 
 export class ApiClientError extends Error {
   readonly status?: number;
@@ -23,9 +29,40 @@ function readErrorDetail(body: unknown): string | null {
     if (typeof detail === "string") {
       return detail;
     }
+
+    if (Array.isArray(detail)) {
+      return detail
+        .map((item) => {
+          if (typeof item === "object" && item !== null && "msg" in item) {
+            const message = (item as { msg: unknown }).msg;
+            return typeof message === "string" ? message : null;
+          }
+
+          return null;
+        })
+        .filter((message): message is string => Boolean(message))
+        .join(" ");
+    }
   }
 
   return null;
+}
+
+function requestJsonBody<TResponse>(
+  path: string,
+  method: "POST" | "PUT",
+  body?: unknown,
+  init?: RequestInit
+): Promise<TResponse> {
+  return requestJson<TResponse>(path, {
+    ...init,
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...init?.headers
+    },
+    body: JSON.stringify(body ?? {})
+  });
 }
 
 async function requestJson<TResponse>(path: string, init?: RequestInit): Promise<TResponse> {
@@ -70,4 +107,33 @@ async function requestJson<TResponse>(path: string, init?: RequestInit): Promise
 
 export function getHealth(init?: RequestInit): Promise<HealthResponse> {
   return requestJson<HealthResponse>("/health", init);
+}
+
+export function listProviders(init?: RequestInit): Promise<Provider[]> {
+  return requestJson<Provider[]>("/api/providers", init);
+}
+
+export function createProvider(payload: ProviderCreateRequest, init?: RequestInit): Promise<Provider> {
+  return requestJsonBody<Provider>("/api/providers", "POST", payload, init);
+}
+
+export function updateProvider(
+  providerId: string,
+  payload: ProviderUpdateRequest,
+  init?: RequestInit
+): Promise<Provider> {
+  return requestJsonBody<Provider>(`/api/providers/${providerId}`, "PUT", payload, init);
+}
+
+export function activateProvider(providerId: string, init?: RequestInit): Promise<Provider> {
+  return requestJsonBody<Provider>(`/api/providers/${providerId}/activate`, "POST", undefined, init);
+}
+
+export function checkProviderHealth(providerId: string, init?: RequestInit): Promise<ProviderHealthResponse> {
+  return requestJsonBody<ProviderHealthResponse>(
+    `/api/providers/${providerId}/health-check`,
+    "POST",
+    undefined,
+    init
+  );
 }
