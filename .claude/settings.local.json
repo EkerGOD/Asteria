@@ -7,6 +7,11 @@
       "Bash(python -m pytest tests/test_conversations_api.py -v)",
       "Bash(python -m pytest tests/test_conversations_api.py::test_conversations_can_be_filtered_by_project tests/test_conversations_api.py::test_conversation_can_have_metadata -v --tb=long)",
       "Bash(python -m pytest tests/test_conversations_api.py::test_conversation_can_have_metadata -v --tb=short)",
+      "Bash(cd /d \"D:\\\\Documents\\\\Personal-Knowledge-Base\\\\1_Project\\\\Asteria\\\\apps\\\\api\")",
+      "Bash(python -m pytest tests/test_providers_api.py -v)",
+      "Bash(python -m pytest tests/test_providers_api.py::test_providers_can_be_created_and_listed -v --tb=short)",
+      "Bash(python -m pytest tests/test_providers_api.py -v --tb=line)",
+      "Bash(python -m pytest -v --tb=line)",
       "Bash(python -m pytest tests/ -v)"
     ]
   }

@@ -5,6 +5,7 @@ from app.api.routes.conversations import router as conversations_router
 from app.api.routes.health import router as health_router
 from app.api.routes.knowledge import router as knowledge_router
 from app.api.routes.projects import router as projects_router
+from app.api.routes.providers import router as providers_router
 from app.api.routes.tags import router as tags_router
 from app.core.config import Settings, get_settings
 
@@ -33,6 +34,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(knowledge_router)
     app.include_router(tags_router)
     app.include_router(conversations_router)
+    app.include_router(providers_router)
     return app
 
 
