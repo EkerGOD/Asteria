@@ -2,7 +2,6 @@ from collections.abc import Iterator
 from unittest.mock import patch
 from uuid import uuid4
 
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
@@ -10,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 import app.models
+from app.ai import ProviderConnectionError, ProviderHTTPStatusError, ProviderTimeoutError
 from app.core.config import Settings
 from app.db.base import Base
 from app.db.session import build_session_factory, get_db_session
@@ -295,9 +295,7 @@ def test_health_check_returns_success_for_reachable_provider(provider_client: Te
     )
     provider_id = create_response.json()["id"]
 
-    mock_response = httpx.Response(status_code=200, json={"data": []})
-
-    with patch("app.services.providers.httpx.get", return_value=mock_response):
+    with patch("app.services.providers.OpenAICompatibleProviderAdapter.check_health"):
         response = provider_client.post(f"/api/providers/{provider_id}/health-check")
 
     assert response.status_code == 200
@@ -319,8 +317,8 @@ def test_health_check_returns_error_for_unreachable_provider(provider_client: Te
     provider_id = create_response.json()["id"]
 
     with patch(
-        "app.services.providers.httpx.get",
-        side_effect=httpx.ConnectError("Connection refused"),
+        "app.services.providers.OpenAICompatibleProviderAdapter.check_health",
+        side_effect=ProviderConnectionError,
     ):
         response = provider_client.post(f"/api/providers/{provider_id}/health-check")
 
@@ -342,8 +340,8 @@ def test_health_check_handles_timeout(provider_client: TestClient):
     provider_id = create_response.json()["id"]
 
     with patch(
-        "app.services.providers.httpx.get",
-        side_effect=httpx.TimeoutException("timed out"),
+        "app.services.providers.OpenAICompatibleProviderAdapter.check_health",
+        side_effect=ProviderTimeoutError,
     ):
         response = provider_client.post(f"/api/providers/{provider_id}/health-check")
 
@@ -364,9 +362,10 @@ def test_health_check_handles_error_status(provider_client: TestClient):
     )
     provider_id = create_response.json()["id"]
 
-    mock_response = httpx.Response(status_code=500, json={"error": "Internal"})
-
-    with patch("app.services.providers.httpx.get", return_value=mock_response):
+    with patch(
+        "app.services.providers.OpenAICompatibleProviderAdapter.check_health",
+        side_effect=ProviderHTTPStatusError(status_code=500),
+    ):
         response = provider_client.post(f"/api/providers/{provider_id}/health-check")
 
     assert response.status_code == 200

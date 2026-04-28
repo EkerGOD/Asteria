@@ -3,11 +3,18 @@ from __future__ import annotations
 import time
 from uuid import UUID, uuid4
 
-import httpx
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.ai import (
+    OpenAICompatibleProviderAdapter,
+    ProviderAdapterError,
+    ProviderAuthError,
+    ProviderConnectionError,
+    ProviderHTTPStatusError,
+    ProviderTimeoutError,
+)
 from app.models import AIProvider
 from app.schemas.provider import ProviderCreate, ProviderHealthResponse, ProviderUpdate
 
@@ -94,43 +101,53 @@ def health_check_provider(
     provider_id: UUID,
 ) -> ProviderHealthResponse:
     provider = get_provider(session, provider_id)
-
-    headers: dict[str, str] = {}
-    if provider.api_key_ciphertext:
-        headers["Authorization"] = f"Bearer {provider.api_key_ciphertext}"
+    adapter = OpenAICompatibleProviderAdapter.from_provider(provider)
 
     start = time.monotonic()
     try:
-        response = httpx.get(
-            f"{provider.base_url.rstrip('/')}/models",
-            headers=headers,
-            timeout=min(provider.timeout_seconds, 30),
-        )
+        adapter.check_health()
         latency_ms = round((time.monotonic() - start) * 1000)
-        if response.is_success:
-            return ProviderHealthResponse(
-                provider_id=provider.id,
-                status="ok",
-                message="Provider is reachable.",
-                latency_ms=latency_ms,
-            )
         return ProviderHealthResponse(
             provider_id=provider.id,
-            status="error",
-            message=f"Provider returned HTTP {response.status_code}.",
+            status="ok",
+            message="Provider is reachable.",
             latency_ms=latency_ms,
         )
-    except httpx.TimeoutException:
+    except ProviderTimeoutError:
         return ProviderHealthResponse(
             provider_id=provider.id,
             status="error",
             message="Provider request timed out.",
         )
-    except httpx.ConnectError:
+    except ProviderConnectionError:
         return ProviderHealthResponse(
             provider_id=provider.id,
             status="error",
             message="Could not connect to provider.",
+        )
+    except ProviderAuthError:
+        return ProviderHealthResponse(
+            provider_id=provider.id,
+            status="error",
+            message="Provider authentication failed.",
+        )
+    except ProviderHTTPStatusError as exc:
+        status_code = exc.status_code
+        message = (
+            f"Provider returned HTTP {status_code}."
+            if status_code is not None
+            else "Provider returned an error status."
+        )
+        return ProviderHealthResponse(
+            provider_id=provider.id,
+            status="error",
+            message=message,
+        )
+    except ProviderAdapterError:
+        return ProviderHealthResponse(
+            provider_id=provider.id,
+            status="error",
+            message="Provider health check failed.",
         )
 
 
