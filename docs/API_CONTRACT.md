@@ -1,5 +1,13 @@
 # API Contract
 
+## Project API
+
+POST /api/projects
+GET /api/projects
+GET /api/projects/{id}
+PUT /api/projects/{id}
+DELETE /api/projects/{id}
+
 ## Conversation API
 
 POST /api/conversations
