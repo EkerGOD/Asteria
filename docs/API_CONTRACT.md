@@ -73,6 +73,50 @@ Only one provider can be active at a time. Activating one provider deactivates a
 POST /api/search/keyword
 POST /api/search/semantic
 
+Semantic search requests generate a query embedding through the active provider, apply optional filters, and return ranked chunks without exposing raw vectors:
+
+```json
+{
+  "query": "What did I write about pgvector?",
+  "project_id": null,
+  "tag_slugs": ["database"],
+  "top_k": 5,
+  "min_score": 0.0
+}
+```
+
+Semantic search responses return provider/model metadata and source references:
+
+```json
+{
+  "provider_id": "uuid",
+  "embedding_model": "text-embedding-model",
+  "embedding_dimension": 1536,
+  "results": [
+    {
+      "embedding_id": "uuid",
+      "knowledge_unit_id": "uuid",
+      "chunk_index": 0,
+      "chunk_text": "Relevant chunk text.",
+      "score": 0.87,
+      "source": {
+        "id": "uuid",
+        "project_id": null,
+        "title": "Knowledge title",
+        "source_type": "manual",
+        "source_uri": null,
+        "status": "active",
+        "metadata": {},
+        "created_at": "2026-04-28T00:00:00Z",
+        "updated_at": "2026-04-28T00:00:00Z",
+        "archived_at": null,
+        "tags": []
+      }
+    }
+  ]
+}
+```
+
 ## RAG API
 
 POST /api/rag/answer
