@@ -1,10 +1,25 @@
 import { API_BASE_URL } from "./config";
 import type {
+  Conversation,
+  ConversationCreateRequest,
   HealthResponse,
+  KnowledgeEmbeddingRefreshResponse,
+  KnowledgeUnit,
+  KnowledgeUnitCreateRequest,
+  KnowledgeUnitUpdateRequest,
+  Message,
+  MessageCreateRequest,
   Provider,
   ProviderCreateRequest,
   ProviderHealthResponse,
-  ProviderUpdateRequest
+  ProviderUpdateRequest,
+  Project,
+  ProjectCreateRequest,
+  ProjectUpdateRequest,
+  RAGAnswerRequest,
+  RAGAnswerResponse,
+  Tag,
+  TagCreateRequest
 } from "./types";
 
 export class ApiClientError extends Error {
@@ -20,6 +35,30 @@ export class ApiClientError extends Error {
 function buildApiUrl(path: string): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${API_BASE_URL}${normalizedPath}`;
+}
+
+function buildQueryString(params: Record<string, string | number | boolean | string[] | null | undefined>): string {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === "") {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (item) {
+          searchParams.append(key, item);
+        }
+      });
+      return;
+    }
+
+    searchParams.set(key, String(value));
+  });
+
+  const queryString = searchParams.toString();
+  return queryString ? `?${queryString}` : "";
 }
 
 function readErrorDetail(body: unknown): string | null {
@@ -50,18 +89,25 @@ function readErrorDetail(body: unknown): string | null {
 
 function requestJsonBody<TResponse>(
   path: string,
-  method: "POST" | "PUT",
+  method: "POST" | "PUT" | "DELETE",
   body?: unknown,
   init?: RequestInit
 ): Promise<TResponse> {
-  return requestJson<TResponse>(path, {
+  const nextInit: RequestInit = {
     ...init,
     method,
     headers: {
       "Content-Type": "application/json",
       ...init?.headers
-    },
-    body: JSON.stringify(body ?? {})
+    }
+  };
+
+  if (body !== undefined) {
+    nextInit.body = JSON.stringify(body);
+  }
+
+  return requestJson<TResponse>(path, {
+    ...nextInit
   });
 }
 
@@ -136,4 +182,144 @@ export function checkProviderHealth(providerId: string, init?: RequestInit): Pro
     undefined,
     init
   );
+}
+
+export function listProjects(init?: RequestInit): Promise<Project[]> {
+  return requestJson<Project[]>("/api/projects", init);
+}
+
+export function createProject(payload: ProjectCreateRequest, init?: RequestInit): Promise<Project> {
+  return requestJsonBody<Project>("/api/projects", "POST", payload, init);
+}
+
+export function updateProject(
+  projectId: string,
+  payload: ProjectUpdateRequest,
+  init?: RequestInit
+): Promise<Project> {
+  return requestJsonBody<Project>(`/api/projects/${projectId}`, "PUT", payload, init);
+}
+
+export function archiveProject(projectId: string, init?: RequestInit): Promise<Project> {
+  return requestJsonBody<Project>(`/api/projects/${projectId}`, "DELETE", undefined, init);
+}
+
+export function listTags(init?: RequestInit): Promise<Tag[]> {
+  return requestJson<Tag[]>("/api/tags", init);
+}
+
+export function createTag(payload: TagCreateRequest, init?: RequestInit): Promise<Tag> {
+  return requestJsonBody<Tag>("/api/tags", "POST", payload, init);
+}
+
+export function listKnowledgeUnits(
+  params: {
+    project_id?: string | null;
+    tag_slugs?: string[];
+    include_archived?: boolean;
+  } = {},
+  init?: RequestInit
+): Promise<KnowledgeUnit[]> {
+  return requestJson<KnowledgeUnit[]>(
+    `/api/knowledge-units${buildQueryString({
+      project_id: params.project_id,
+      tag_slugs: params.tag_slugs,
+      include_archived: params.include_archived
+    })}`,
+    init
+  );
+}
+
+export function createKnowledgeUnit(
+  payload: KnowledgeUnitCreateRequest,
+  init?: RequestInit
+): Promise<KnowledgeUnit> {
+  return requestJsonBody<KnowledgeUnit>("/api/knowledge-units", "POST", payload, init);
+}
+
+export function updateKnowledgeUnit(
+  knowledgeId: string,
+  payload: KnowledgeUnitUpdateRequest,
+  init?: RequestInit
+): Promise<KnowledgeUnit> {
+  return requestJsonBody<KnowledgeUnit>(`/api/knowledge-units/${knowledgeId}`, "PUT", payload, init);
+}
+
+export function archiveKnowledgeUnit(knowledgeId: string, init?: RequestInit): Promise<KnowledgeUnit> {
+  return requestJsonBody<KnowledgeUnit>(`/api/knowledge-units/${knowledgeId}`, "DELETE", undefined, init);
+}
+
+export function refreshKnowledgeEmbeddings(
+  knowledgeId: string,
+  init?: RequestInit
+): Promise<KnowledgeEmbeddingRefreshResponse> {
+  return requestJsonBody<KnowledgeEmbeddingRefreshResponse>(
+    `/api/knowledge-units/${knowledgeId}/embeddings/refresh`,
+    "POST",
+    undefined,
+    init
+  );
+}
+
+export function attachKnowledgeTag(
+  knowledgeId: string,
+  tagId: string,
+  init?: RequestInit
+): Promise<KnowledgeUnit> {
+  return requestJsonBody<KnowledgeUnit>(`/api/knowledge-units/${knowledgeId}/tags`, "POST", { tag_id: tagId }, init);
+}
+
+export function detachKnowledgeTag(
+  knowledgeId: string,
+  tagId: string,
+  init?: RequestInit
+): Promise<KnowledgeUnit> {
+  return requestJsonBody<KnowledgeUnit>(`/api/knowledge-units/${knowledgeId}/tags/${tagId}`, "DELETE", undefined, init);
+}
+
+export function listConversations(
+  params: {
+    project_id?: string | null;
+    include_archived?: boolean;
+  } = {},
+  init?: RequestInit
+): Promise<Conversation[]> {
+  return requestJson<Conversation[]>(
+    `/api/conversations${buildQueryString({
+      project_id: params.project_id,
+      include_archived: params.include_archived
+    })}`,
+    init
+  );
+}
+
+export function createConversation(
+  payload: ConversationCreateRequest,
+  init?: RequestInit
+): Promise<Conversation> {
+  return requestJsonBody<Conversation>("/api/conversations", "POST", payload, init);
+}
+
+export function getConversation(conversationId: string, init?: RequestInit): Promise<Conversation> {
+  return requestJson<Conversation>(`/api/conversations/${conversationId}`, init);
+}
+
+export function archiveConversation(conversationId: string, init?: RequestInit): Promise<Conversation> {
+  return requestJsonBody<Conversation>(`/api/conversations/${conversationId}`, "DELETE", undefined, init);
+}
+
+export function listMessages(conversationId: string, init?: RequestInit): Promise<Message[]> {
+  return requestJson<Message[]>(`/api/conversations/${conversationId}/messages`, init);
+}
+
+export function appendMessage(
+  conversationId: string,
+  payload: MessageCreateRequest,
+  init?: RequestInit
+): Promise<Message> {
+  return requestJsonBody<Message>(`/api/conversations/${conversationId}/messages`, "POST", payload, init);
+}
+
+export function answerRag(payload: RAGAnswerRequest, init?: RequestInit): Promise<RAGAnswerResponse> {
+  return requestJsonBody<RAGAnswerResponse>("/api/rag/answer", "POST", payload, init);
 }

@@ -1,28 +1,757 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
+import {
+  archiveKnowledgeUnit,
+  attachKnowledgeTag,
+  createKnowledgeUnit,
+  createTag,
+  detachKnowledgeTag,
+  listKnowledgeUnits,
+  listProjects,
+  listTags,
+  refreshKnowledgeEmbeddings,
+  updateKnowledgeUnit
+} from "../api/client";
+import type {
+  KnowledgeEmbeddingRefreshResponse,
+  KnowledgeUnit,
+  KnowledgeUnitCreateRequest,
+  KnowledgeUnitUpdateRequest,
+  Project,
+  Tag
+} from "../api/types";
 import { Metric, Panel } from "../components/Panel";
 
-const knowledgeRows = ["Embedding architecture", "Desktop packaging notes", "RAG answer contract"];
+type LoadStatus = "loading" | "success" | "error";
+
+type KnowledgeFormState = {
+  title: string;
+  content: string;
+  project_id: string;
+  source_uri: string;
+};
+
+type KnowledgeFormErrors = Partial<Record<keyof KnowledgeFormState, string>>;
+
+function emptyForm(): KnowledgeFormState {
+  return {
+    title: "",
+    content: "",
+    project_id: "",
+    source_uri: ""
+  };
+}
+
+function formFromKnowledge(knowledge: KnowledgeUnit): KnowledgeFormState {
+  return {
+    title: knowledge.title,
+    content: knowledge.content,
+    project_id: knowledge.project_id ?? "",
+    source_uri: knowledge.source_uri ?? ""
+  };
+}
+
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Knowledge request failed.";
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+function validateKnowledgeForm(form: KnowledgeFormState): KnowledgeFormErrors {
+  const errors: KnowledgeFormErrors = {};
+
+  if (!form.title.trim()) {
+    errors.title = "Title is required.";
+  }
+
+  if (!form.content.trim()) {
+    errors.content = "Content is required.";
+  }
+
+  return errors;
+}
+
+function buildKnowledgePayload(form: KnowledgeFormState): KnowledgeUnitCreateRequest | KnowledgeUnitUpdateRequest {
+  return {
+    title: form.title.trim(),
+    content: form.content.trim(),
+    project_id: form.project_id || null,
+    source_uri: form.source_uri.trim() || null
+  };
+}
+
+function chooseSelectedKnowledgeId(
+  knowledgeUnits: KnowledgeUnit[],
+  preferredKnowledgeId?: string | null
+): string | null {
+  if (preferredKnowledgeId === null) {
+    return null;
+  }
+
+  if (preferredKnowledgeId !== undefined && knowledgeUnits.some((knowledge) => knowledge.id === preferredKnowledgeId)) {
+    return preferredKnowledgeId;
+  }
+
+  return knowledgeUnits[0]?.id ?? null;
+}
+
+function projectName(projects: Project[], projectId: string | null): string {
+  if (!projectId) {
+    return "No project";
+  }
+
+  return projects.find((project) => project.id === projectId)?.name ?? "Unknown project";
+}
 
 export function KnowledgePage() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [knowledgeUnits, setKnowledgeUnits] = useState<KnowledgeUnit[]>([]);
+  const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [projectFilterId, setProjectFilterId] = useState("");
+  const [tagFilterSlug, setTagFilterSlug] = useState("");
+  const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
+  const [form, setForm] = useState<KnowledgeFormState>(() => emptyForm());
+  const [formErrors, setFormErrors] = useState<KnowledgeFormErrors>({});
+  const [saving, setSaving] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [refreshingEmbeddings, setRefreshingEmbeddings] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [embeddingSummary, setEmbeddingSummary] = useState<KnowledgeEmbeddingRefreshResponse | null>(null);
+  const [newTagName, setNewTagName] = useState("");
+  const [newTagColor, setNewTagColor] = useState("");
+  const [tagToAttach, setTagToAttach] = useState("");
+  const [tagActionBusy, setTagActionBusy] = useState(false);
+
+  const selectedKnowledge = useMemo(
+    () => knowledgeUnits.find((knowledge) => knowledge.id === selectedKnowledgeId) ?? null,
+    [knowledgeUnits, selectedKnowledgeId]
+  );
+
+  const availableTags = useMemo(() => {
+    const attachedTagIds = new Set(selectedKnowledge?.tags.map((tag) => tag.id) ?? []);
+    return tags.filter((tag) => !attachedTagIds.has(tag.id));
+  }, [selectedKnowledge, tags]);
+
+  const loadWorkspace = useCallback(
+    async (preferredKnowledgeId?: string | null, signal?: AbortSignal) => {
+      setLoadStatus("loading");
+      setLoadError(null);
+
+      try {
+        const [loadedProjects, loadedTags, loadedKnowledge] = await Promise.all([
+          listProjects({ signal }),
+          listTags({ signal }),
+          listKnowledgeUnits(
+            {
+              project_id: projectFilterId || null,
+              tag_slugs: tagFilterSlug ? [tagFilterSlug] : []
+            },
+            { signal }
+          )
+        ]);
+        const nextSelectedKnowledgeId = chooseSelectedKnowledgeId(loadedKnowledge, preferredKnowledgeId);
+        const nextSelectedKnowledge =
+          loadedKnowledge.find((knowledge) => knowledge.id === nextSelectedKnowledgeId) ?? null;
+
+        setProjects(loadedProjects);
+        setTags(loadedTags);
+        setKnowledgeUnits(loadedKnowledge);
+        setSelectedKnowledgeId(nextSelectedKnowledgeId);
+        setForm(nextSelectedKnowledge ? formFromKnowledge(nextSelectedKnowledge) : emptyForm());
+        setTagToAttach("");
+        setFormErrors({});
+        setLoadStatus("success");
+      } catch (error) {
+        if (isAbortError(error)) {
+          return;
+        }
+
+        setLoadStatus("error");
+        setLoadError(toErrorMessage(error));
+      }
+    },
+    [projectFilterId, tagFilterSlug]
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadWorkspace(undefined, controller.signal);
+
+    return () => controller.abort();
+  }, [loadWorkspace]);
+
+  function selectKnowledge(knowledge: KnowledgeUnit) {
+    setSelectedKnowledgeId(knowledge.id);
+    setForm(formFromKnowledge(knowledge));
+    setTagToAttach("");
+    setFormErrors({});
+    setActionError(null);
+    setActionMessage(null);
+    setEmbeddingSummary(null);
+  }
+
+  function startNewKnowledge() {
+    setSelectedKnowledgeId(null);
+    setForm(emptyForm());
+    setTagToAttach("");
+    setFormErrors({});
+    setActionError(null);
+    setActionMessage(null);
+    setEmbeddingSummary(null);
+  }
+
+  function updateFormField<K extends keyof KnowledgeFormState>(field: K, value: KnowledgeFormState[K]) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+    setFormErrors((current) => ({
+      ...current,
+      [field]: undefined
+    }));
+    setActionMessage(null);
+  }
+
+  async function saveKnowledge(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setActionError(null);
+    setActionMessage(null);
+    setEmbeddingSummary(null);
+
+    const errors = validateKnowledgeForm(form);
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = buildKnowledgePayload(form);
+      const savedKnowledge = selectedKnowledge
+        ? await updateKnowledgeUnit(selectedKnowledge.id, payload)
+        : await createKnowledgeUnit(payload as KnowledgeUnitCreateRequest);
+
+      setActionMessage(selectedKnowledge ? "Knowledge updated." : "Knowledge created.");
+      await loadWorkspace(savedKnowledge.id);
+    } catch (error) {
+      setActionError(toErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function archiveSelectedKnowledge() {
+    if (!selectedKnowledge) {
+      return;
+    }
+
+    setArchiving(true);
+    setActionError(null);
+    setActionMessage(null);
+    setEmbeddingSummary(null);
+
+    try {
+      await archiveKnowledgeUnit(selectedKnowledge.id);
+      setActionMessage("Knowledge archived.");
+      await loadWorkspace(null);
+    } catch (error) {
+      setActionError(toErrorMessage(error));
+    } finally {
+      setArchiving(false);
+    }
+  }
+
+  async function refreshSelectedEmbeddings() {
+    if (!selectedKnowledge) {
+      return;
+    }
+
+    setRefreshingEmbeddings(true);
+    setActionError(null);
+    setActionMessage(null);
+    setEmbeddingSummary(null);
+
+    try {
+      const summary = await refreshKnowledgeEmbeddings(selectedKnowledge.id);
+      setEmbeddingSummary(summary);
+      setActionMessage("Embeddings refreshed.");
+    } catch (error) {
+      setActionError(toErrorMessage(error));
+    } finally {
+      setRefreshingEmbeddings(false);
+    }
+  }
+
+  async function createNewTag(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const name = newTagName.trim();
+    if (!name) {
+      setActionError("Tag name is required.");
+      return;
+    }
+
+    setTagActionBusy(true);
+    setActionError(null);
+    setActionMessage(null);
+
+    try {
+      const tag = await createTag({
+        name,
+        color: newTagColor.trim() || null
+      });
+      setNewTagName("");
+      setNewTagColor("");
+      setActionMessage(`Tag created: ${tag.name}.`);
+      await loadWorkspace(selectedKnowledgeId);
+    } catch (error) {
+      setActionError(toErrorMessage(error));
+    } finally {
+      setTagActionBusy(false);
+    }
+  }
+
+  async function attachSelectedTag() {
+    if (!selectedKnowledge || !tagToAttach) {
+      return;
+    }
+
+    setTagActionBusy(true);
+    setActionError(null);
+    setActionMessage(null);
+
+    try {
+      const updatedKnowledge = await attachKnowledgeTag(selectedKnowledge.id, tagToAttach);
+      setTagToAttach("");
+      setActionMessage("Tag attached.");
+      await loadWorkspace(updatedKnowledge.id);
+    } catch (error) {
+      setActionError(toErrorMessage(error));
+    } finally {
+      setTagActionBusy(false);
+    }
+  }
+
+  async function detachTag(tagId: string) {
+    if (!selectedKnowledge) {
+      return;
+    }
+
+    setTagActionBusy(true);
+    setActionError(null);
+    setActionMessage(null);
+
+    try {
+      const updatedKnowledge = await detachKnowledgeTag(selectedKnowledge.id, tagId);
+      setActionMessage("Tag detached.");
+      await loadWorkspace(updatedKnowledge.id);
+    } catch (error) {
+      setActionError(toErrorMessage(error));
+    } finally {
+      setTagActionBusy(false);
+    }
+  }
+
   return (
     <div className="grid gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
-      <Panel title="Filters">
-        <div className="space-y-3">
-          <Metric label="Project" value="All" />
-          <Metric label="Tags" value="None" />
-          <Metric label="Search" value="Empty" />
-        </div>
-      </Panel>
+      <div className="space-y-4">
+        <Panel title="Filters">
+          <div className="space-y-3">
+            <SelectField
+              id="knowledge-project-filter"
+              label="Project"
+              value={projectFilterId}
+              onChange={setProjectFilterId}
+            >
+              <option value="">All projects</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </SelectField>
 
-      <Panel title="Knowledge Units">
-        <div className="grid gap-3 md:grid-cols-3">
-          {knowledgeRows.map((row) => (
-            <div key={row} className="rounded-lg border border-stone-200 bg-white p-4">
-              <p className="text-sm font-semibold">{row}</p>
-              <p className="mt-3 text-xs text-stone-600">Draft</p>
+            <SelectField
+              id="knowledge-tag-filter"
+              label="Tag"
+              value={tagFilterSlug}
+              onChange={setTagFilterSlug}
+            >
+              <option value="">All tags</option>
+              {tags.map((tag) => (
+                <option key={tag.id} value={tag.slug}>
+                  {tag.name}
+                </option>
+              ))}
+            </SelectField>
+
+            <button
+              type="button"
+              className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:border-pine hover:text-pine disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => void loadWorkspace(selectedKnowledgeId)}
+              disabled={loadStatus === "loading"}
+            >
+              {loadStatus === "loading" ? "Loading..." : "Refresh"}
+            </button>
+          </div>
+        </Panel>
+
+        <Panel title="Knowledge Units">
+          {loadStatus === "error" && loadError ? <ErrorBox message={loadError} /> : null}
+
+          {loadStatus === "success" && knowledgeUnits.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 px-4 py-6 text-sm text-stone-600">
+              No knowledge units match these filters.
             </div>
-          ))}
-        </div>
-      </Panel>
+          ) : null}
+
+          <div className="space-y-3">
+            {knowledgeUnits.map((knowledge) => (
+              <button
+                key={knowledge.id}
+                type="button"
+                className={[
+                  "w-full rounded-lg border bg-white p-3 text-left transition",
+                  knowledge.id === selectedKnowledgeId ? "border-pine shadow-sm" : "border-stone-200"
+                ].join(" ")}
+                onClick={() => selectKnowledge(knowledge)}
+              >
+                <p className="truncate text-sm font-semibold">{knowledge.title}</p>
+                <p className="mt-1 text-xs text-stone-600">{projectName(projects, knowledge.project_id)}</p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {knowledge.tags.length === 0 ? (
+                    <span className="rounded-full bg-stone-100 px-2 py-1 text-xs text-stone-600">No tags</span>
+                  ) : (
+                    knowledge.tags.map((tag) => (
+                      <span key={tag.id} className="rounded-full bg-pine/10 px-2 py-1 text-xs text-pine">
+                        {tag.name}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
+      <div className="space-y-4">
+        <Panel title={selectedKnowledge ? "Edit Knowledge" : "New Knowledge"}>
+          <div className="mb-4 flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              className="rounded-lg bg-pine px-3 py-2 text-sm font-semibold text-white transition hover:bg-pine/90"
+              onClick={startNewKnowledge}
+            >
+              New
+            </button>
+          </div>
+
+          <form className="space-y-4" onSubmit={saveKnowledge}>
+            <TextField
+              id="knowledge-title"
+              label="Title"
+              value={form.title}
+              error={formErrors.title}
+              required
+              onChange={(value) => updateFormField("title", value)}
+            />
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <SelectField
+                id="knowledge-project"
+                label="Project"
+                value={form.project_id}
+                onChange={(value) => updateFormField("project_id", value)}
+              >
+                <option value="">No project</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </SelectField>
+
+              <TextField
+                id="knowledge-source-uri"
+                label="Source URI"
+                value={form.source_uri}
+                placeholder="Optional"
+                onChange={(value) => updateFormField("source_uri", value)}
+              />
+            </div>
+
+            <TextAreaField
+              id="knowledge-content"
+              label="Content"
+              value={form.content}
+              error={formErrors.content}
+              required
+              onChange={(value) => updateFormField("content", value)}
+            />
+
+            {actionError ? <ErrorBox message={actionError} /> : null}
+            {actionMessage ? (
+              <div className="rounded-lg border border-pine/20 bg-pine/10 px-4 py-3 text-sm text-pine">
+                {actionMessage}
+              </div>
+            ) : null}
+            {embeddingSummary ? <EmbeddingSummary summary={embeddingSummary} /> : null}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="submit"
+                className="rounded-lg bg-pine px-4 py-2 text-sm font-semibold text-white transition hover:bg-pine/90 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={saving}
+              >
+                {saving ? "Saving..." : selectedKnowledge ? "Save Knowledge" : "Create Knowledge"}
+              </button>
+
+              {selectedKnowledge ? (
+                <>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:border-pine hover:text-pine disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={() => void refreshSelectedEmbeddings()}
+                    disabled={refreshingEmbeddings}
+                  >
+                    {refreshingEmbeddings ? "Refreshing..." : "Refresh Embeddings"}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={() => void archiveSelectedKnowledge()}
+                    disabled={archiving}
+                  >
+                    {archiving ? "Archiving..." : "Archive Knowledge"}
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </form>
+        </Panel>
+
+        <Panel title="Tags">
+          <form className="mb-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_8rem_auto]" onSubmit={createNewTag}>
+            <TextField
+              id="new-tag-name"
+              label="New tag"
+              value={newTagName}
+              required
+              onChange={setNewTagName}
+            />
+            <TextField id="new-tag-color" label="Color" value={newTagColor} onChange={setNewTagColor} />
+            <div className="flex items-end">
+              <button
+                type="submit"
+                className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:border-pine hover:text-pine disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={tagActionBusy}
+              >
+                Create
+              </button>
+            </div>
+          </form>
+
+          {selectedKnowledge ? (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {selectedKnowledge.tags.length === 0 ? (
+                  <span className="text-sm text-stone-600">No tags attached.</span>
+                ) : (
+                  selectedKnowledge.tags.map((tag) => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      className="rounded-full border border-pine/20 bg-pine/10 px-3 py-1 text-xs font-semibold text-pine transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => void detachTag(tag.id)}
+                      disabled={tagActionBusy}
+                    >
+                      {tag.name} x
+                    </button>
+                  ))
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <select
+                  className={inputClassName()}
+                  value={tagToAttach}
+                  onChange={(event) => setTagToAttach(event.target.value)}
+                  disabled={availableTags.length === 0}
+                >
+                  <option value="">Select tag to attach</option>
+                  {availableTags.map((tag) => (
+                    <option key={tag.id} value={tag.id}>
+                      {tag.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:border-pine hover:text-pine disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => void attachSelectedTag()}
+                  disabled={!tagToAttach || tagActionBusy}
+                >
+                  Attach Tag
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-stone-600">Select a knowledge unit to manage tags.</p>
+          )}
+        </Panel>
+
+        <Panel title="Overview">
+          <div className="grid gap-3 md:grid-cols-3">
+            <Metric label="Visible knowledge" value={String(knowledgeUnits.length)} />
+            <Metric label="Projects" value={String(projects.length)} />
+            <Metric label="Tags" value={String(tags.length)} />
+          </div>
+        </Panel>
+      </div>
     </div>
   );
+}
+
+function EmbeddingSummary({ summary }: { summary: KnowledgeEmbeddingRefreshResponse }) {
+  return (
+    <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
+      <div className="grid gap-3 text-sm md:grid-cols-4">
+        <Metric label="Chunks" value={String(summary.chunk_count)} />
+        <Metric label="Created" value={String(summary.created_count)} />
+        <Metric label="Reused" value={String(summary.reused_count)} />
+        <Metric label="Deleted" value={String(summary.deleted_count)} />
+      </div>
+    </div>
+  );
+}
+
+function ErrorBox({ message }: { message: string }) {
+  return (
+    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+      {message}
+    </div>
+  );
+}
+
+function TextField({
+  id,
+  label,
+  value,
+  error,
+  required,
+  placeholder,
+  onChange
+}: {
+  id: string;
+  label: string;
+  value: string;
+  error?: string;
+  required?: boolean;
+  placeholder?: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="text-sm font-medium text-stone-700">
+        {label}
+      </label>
+      <input
+        id={id}
+        type="text"
+        className={inputClassName(error)}
+        value={value}
+        placeholder={placeholder}
+        required={required}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      <FieldError error={error} />
+    </div>
+  );
+}
+
+function TextAreaField({
+  id,
+  label,
+  value,
+  error,
+  required,
+  onChange
+}: {
+  id: string;
+  label: string;
+  value: string;
+  error?: string;
+  required?: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="text-sm font-medium text-stone-700">
+        {label}
+      </label>
+      <textarea
+        id={id}
+        className={`${inputClassName(error)} min-h-52 resize-y`}
+        value={value}
+        required={required}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      <FieldError error={error} />
+    </div>
+  );
+}
+
+function SelectField({
+  id,
+  label,
+  value,
+  children,
+  onChange
+}: {
+  id: string;
+  label: string;
+  value: string;
+  children: ReactNode;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="text-sm font-medium text-stone-700">
+        {label}
+      </label>
+      <select
+        id={id}
+        className={inputClassName()}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {children}
+      </select>
+    </div>
+  );
+}
+
+function FieldError({ error }: { error?: string }) {
+  if (!error) {
+    return null;
+  }
+
+  return <p className="mt-1 text-xs font-medium text-red-700">{error}</p>;
+}
+
+function inputClassName(error?: string): string {
+  return [
+    "mt-1 w-full rounded-lg border bg-white px-3 py-2 text-sm text-ink outline-none transition",
+    "focus:border-pine focus:ring-2 focus:ring-pine/20",
+    error ? "border-red-300" : "border-stone-300"
+  ].join(" ");
 }
