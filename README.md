@@ -19,7 +19,7 @@ Tauri + React UI -> Local FastAPI API -> PostgreSQL + AI Provider Abstraction
 MVP 核心骨架已完成：
 
 - FastAPI 后端：8 个路由模块，9 个 SQLAlchemy 模型，完整的 AI Provider 抽象，RAG 编排，语义检索。
-- React 桌面 UI：5 个页面（Chat、Knowledge、Projects、Settings、Diagnostics），类型化 API 客户端。
+- React 桌面 UI：Obsidian 风格多区域 AppShell 布局（竖向工具栏 + 文件浏览器 + AI-native Editor + 右侧多功能面板 + 状态栏），类型化 API 客户端。
 - PostgreSQL + pgvector：MVP 数据库 schema，Alembic 迁移，15 个后端测试文件。
 - Docker Compose 开发数据库可一键启动，`scripts/dev-smoke-test.py` 可验证全链路。
 
@@ -173,9 +173,9 @@ npm run tauri:dev
 
 ### 首次验证
 
-1. 打开桌面 UI，进入 **Diagnostics** 页面。
-2. 确认 Local API 显示 `http://127.0.0.1:8000` 且状态为 healthy。
-3. 在 **Settings** 页面配置一个 AI Provider（需要 OpenAI-compatible endpoint）。
+1. 打开桌面 UI，点击左下角 ⚙️ 设置按钮，打开 Settings。
+2. 在 Diagnostics Tab 确认 Local API 状态为 healthy。
+3. 在 Providers Tab 配置一个 AI Provider（需要 OpenAI-compatible endpoint）。
 
 更深层验证（含 RAG 全链路），参考 `docs/DEVELOPMENT_SMOKE_TEST.md`。
 

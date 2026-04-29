@@ -72,7 +72,7 @@
 ## UI 和交互规则
 
 - 修改任何 `apps/desktop` 页面、组件或样式前，必须阅读并遵守 `docs/UI_INTERACTION_GUIDELINES.md`。
-- MVP 页面范围来自 `docs/PRD.md`：Chat、Knowledge、Knowledge Detail、Projects、Settings、Diagnostics。
+- MVP 布局范围来自 `docs/PRD.md`：AppShell 多区域布局（竖向工具栏 + 文件浏览器 + Editor + 右侧多功能面板 + 状态栏）、Chat/Knowledge/Outline/Graph 视图、Settings Overlay（Providers、Diagnostics）。
 - 不创建 marketing page、pricing page、login page 或 team admin page。
 - UI 应服务知识工作台：清晰、密度适中、适合反复使用，而不是 SaaS 营销落地页。
 - 表单必须有基础 required-field 校验、提交中状态和错误展示。

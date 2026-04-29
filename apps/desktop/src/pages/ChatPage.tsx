@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
   answerRag,
@@ -12,9 +12,9 @@ import type { Conversation, Message, Project, RAGAnswerResponse, SemanticSearchR
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBox, SelectField, TextField } from "../components/FormFields";
-import { inputClassName } from "../lib/style";
 import { Metric, Panel } from "../components/Panel";
 import { isAbortError, toErrorMessage, type LoadStatus } from "../lib/errors";
+import { inputClassName } from "../lib/style";
 
 type ConversationFormState = {
   title: string;
@@ -115,6 +115,8 @@ export function ChatPage() {
   const [archivingConversation, setArchivingConversation] = useState(false);
   const [conversationToArchive, setConversationToArchive] = useState<Conversation | null>(null);
   const [projectFilterId, setProjectFilterId] = useState("");
+  const [expandedSourcesMsgId, setExpandedSourcesMsgId] = useState<string | null>(null);
+  const threadEndRef = useRef<HTMLDivElement>(null);
 
   const selectedConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === selectedConversationId) ?? null,
@@ -170,6 +172,7 @@ export function ChatPage() {
       const loadedMessages = await listMessages(conversationId, { signal });
       setMessages(loadedMessages);
       setLatestRag(null);
+      setExpandedSourcesMsgId(null);
       setMessageStatus("success");
     } catch (error) {
       if (isAbortError(error)) {
@@ -225,6 +228,12 @@ export function ChatPage() {
 
     return () => controller.abort();
   }, [loadConversationList]);
+
+  useEffect(() => {
+    if (threadEndRef.current) {
+      threadEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   async function selectConversation(conversation: Conversation) {
     setSelectedConversationId(conversation.id);
@@ -288,9 +297,23 @@ export function ChatPage() {
       setActionMessage("RAG answer generated.");
       void loadConversationList(selectedConversation.id);
     } catch (error) {
-      setActionError(toErrorMessage(error));
       if (selectedConversationId) {
-        void loadMessageThread(selectedConversationId);
+        const previousMessageCount = messages.length;
+        await loadMessageThread(selectedConversationId);
+
+        setMessages((current) => {
+          const lastUser = [...current].reverse().find((m) => m.role === "user");
+          if (lastUser && lastUser.content === content && current.length > previousMessageCount) {
+            setComposer("");
+            setActionError(`Answer generation failed: ${toErrorMessage(error)}. Your question was saved.`);
+            return current;
+          }
+
+          setActionError(toErrorMessage(error));
+          return current;
+        });
+      } else {
+        setActionError(toErrorMessage(error));
       }
     } finally {
       setSending(false);
@@ -317,6 +340,13 @@ export function ChatPage() {
       setConversationToArchive(null);
     }
   }
+
+  const listItemClass = (isSelected: boolean) =>
+    [
+      "rounded-lg border bg-white transition",
+      isSelected ? "border-pine shadow-sm" : "border-stone-200 hover:border-pine/40 hover:bg-stone-50",
+      "focus-within:outline focus-within:outline-2 focus-within:outline-offset-[2px] focus-within:outline-pine/50"
+    ].join(" ");
 
   return (
     <div className="grid gap-4 xl:grid-cols-[16rem_minmax(0,1fr)_18rem]">
@@ -359,14 +389,11 @@ export function ChatPage() {
             {conversations.map((conversation) => (
               <div
                 key={conversation.id}
-                className={[
-                  "rounded-lg border bg-white transition",
-                  conversation.id === selectedConversationId ? "border-pine shadow-sm" : "border-stone-200"
-                ].join(" ")}
+                className={listItemClass(conversation.id === selectedConversationId)}
               >
                 <button
                   type="button"
-                  className="w-full p-3 text-left"
+                  className="w-full cursor-pointer rounded-lg p-3 text-left focus:outline-none"
                   onClick={() => void selectConversation(conversation)}
                 >
                   <p className="truncate text-sm font-semibold">{conversation.title}</p>
@@ -458,8 +485,18 @@ export function ChatPage() {
 
           <div className="space-y-4">
             {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+              <MessageBubble
+                key={message.id}
+                message={message}
+                isSourcesExpanded={expandedSourcesMsgId === message.id}
+                onToggleSources={() =>
+                  setExpandedSourcesMsgId((current) =>
+                    current === message.id ? null : message.id
+                  )
+                }
+              />
             ))}
+            <div ref={threadEndRef} />
           </div>
         </Panel>
 
@@ -512,7 +549,7 @@ export function ChatPage() {
           </div>
         </Panel>
 
-        <Panel title="Source References">
+        <Panel title="Latest Sources">
           {contextSources.length > 0 ? (
             <div className="space-y-3">
               {contextSources.map((source, index) => (
@@ -522,7 +559,7 @@ export function ChatPage() {
           ) : (
             <EmptyState
               title={selectedConversation ? "No source references for the latest answer." : "Select a conversation to view sources."}
-              detail="Source references will appear here when the assistant answer is grounded in your knowledge base."
+              detail="Sources appear here and inline under each assistant answer."
             />
           )}
         </Panel>
@@ -540,7 +577,15 @@ export function ChatPage() {
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({
+  message,
+  isSourcesExpanded,
+  onToggleSources
+}: {
+  message: Message;
+  isSourcesExpanded: boolean;
+  onToggleSources: () => void;
+}) {
   const roleClass =
     message.role === "assistant"
       ? "border-pine/20 bg-pine/10"
@@ -548,22 +593,37 @@ function MessageBubble({ message }: { message: Message }) {
         ? "border-denim/20 bg-denim/10"
         : "border-stone-200 bg-white";
 
-  const sourceCount = parseMessageSources(message).length;
+  const sources = parseMessageSources(message);
 
   return (
     <article className={`rounded-lg border p-4 ${roleClass}`}>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <p className="text-xs font-semibold uppercase text-stone-600">{message.role}</p>
-          {message.role === "assistant" && sourceCount > 0 ? (
-            <span className="rounded-full bg-pine/15 px-2 py-0.5 text-xs font-semibold text-pine">
-              {sourceCount} {sourceCount === 1 ? "source" : "sources"}
-            </span>
+          {message.role === "assistant" && sources.length > 0 ? (
+            <button
+              type="button"
+              className="rounded-full bg-pine/15 px-2 py-0.5 text-xs font-semibold text-pine transition hover:bg-pine/25"
+              onClick={onToggleSources}
+            >
+              {sources.length} {sources.length === 1 ? "source" : "sources"}
+            </button>
           ) : null}
         </div>
         <p className="text-xs text-stone-500">{new Date(message.created_at).toLocaleString()}</p>
       </div>
       <p className="whitespace-pre-wrap text-sm text-ink">{message.content}</p>
+
+      {message.role === "assistant" && sources.length > 0 && isSourcesExpanded ? (
+        <div className="mt-4 space-y-3 border-t border-pine/10 pt-4">
+          {sources.map((source, index) => (
+            <SourceReferenceCard
+              key={`${message.id}-${source.label}-${index}`}
+              source={source}
+            />
+          ))}
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -584,4 +644,3 @@ function SourceReferenceCard({ source }: { source: SourceDisplay }) {
     </div>
   );
 }
-
