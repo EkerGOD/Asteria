@@ -62,7 +62,7 @@ function App() {
           </header>
 
           <section className="flex-1 overflow-auto px-8 py-6">
-            <SectionContent sectionId={activeSectionId} />
+            <SectionContent sectionId={activeSectionId} onNavigate={setActiveSectionId} />
           </section>
         </main>
       </div>
@@ -70,7 +70,7 @@ function App() {
   );
 }
 
-function SectionContent({ sectionId }: { sectionId: SectionId }) {
+function SectionContent({ sectionId, onNavigate }: { sectionId: SectionId; onNavigate: (id: SectionId) => void }) {
   switch (sectionId) {
     case "chat":
       return <ChatPage />;
@@ -81,7 +81,7 @@ function SectionContent({ sectionId }: { sectionId: SectionId }) {
     case "settings":
       return <SettingsPage />;
     case "diagnostics":
-      return <DiagnosticsPage />;
+      return <DiagnosticsPage onNavigateToSettings={() => onNavigate("settings")} />;
   }
 }
 

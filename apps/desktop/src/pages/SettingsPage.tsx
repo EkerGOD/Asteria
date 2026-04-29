@@ -5,6 +5,7 @@ import {
   activateProvider,
   checkProviderHealth,
   createProvider,
+  deleteProvider,
   listProviders,
   updateProvider
 } from "../api/client";
@@ -132,6 +133,8 @@ export function SettingsPage() {
   const [checkingProviderId, setCheckingProviderId] = useState<string | null>(null);
   const [healthResults, setHealthResults] = useState<Record<string, ProviderHealthResponse>>({});
   const [showClearKeyConfirm, setShowClearKeyConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingProvider, setDeletingProvider] = useState(false);
 
   const selectedProvider = useMemo(
     () => providers.find((provider) => provider.id === selectedProviderId) ?? null,
@@ -259,6 +262,27 @@ export function SettingsPage() {
       setActionError(toErrorMessage(error));
     } finally {
       setCheckingProviderId(null);
+    }
+  }
+
+  async function deleteSelectedProvider() {
+    if (!selectedProvider) {
+      return;
+    }
+
+    setDeletingProvider(true);
+    setActionError(null);
+    setSubmitMessage(null);
+
+    try {
+      await deleteProvider(selectedProvider.id);
+      setSubmitMessage("Provider deleted.");
+      await loadProviderList(null);
+    } catch (error) {
+      setActionError(toErrorMessage(error));
+    } finally {
+      setDeletingProvider(false);
+      setShowDeleteConfirm(false);
     }
   }
 
@@ -442,6 +466,17 @@ export function SettingsPage() {
                   {checkingProviderId === selectedProvider.id ? "Checking..." : "Health Check"}
                 </button>
               ) : null}
+
+              {selectedProvider ? (
+                <button
+                  type="button"
+                  className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={deletingProvider}
+                >
+                  {deletingProvider ? "Deleting..." : "Delete Provider"}
+                </button>
+              ) : null}
             </div>
           </form>
         </Panel>
@@ -465,6 +500,15 @@ export function SettingsPage() {
           updateFormField("clear_api_key", true);
         }}
         onCancel={() => setShowClearKeyConfirm(false)}
+      />
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete Provider"
+        message={`Permanently delete "${selectedProvider?.name ?? "this provider"}"? This action cannot be undone.`}
+        confirmLabel="Delete Provider"
+        onConfirm={() => void deleteSelectedProvider()}
+        onCancel={() => setShowDeleteConfirm(false)}
       />
     </div>
   );

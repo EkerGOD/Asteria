@@ -14,7 +14,7 @@ type ProviderStatusState =
   | { status: "success"; providerName: string; isActive: boolean; health: ProviderHealthResponse | null }
   | { status: "error"; message: string };
 
-export function DiagnosticsPage() {
+export function DiagnosticsPage({ onNavigateToSettings }: { onNavigateToSettings?: () => void }) {
   const apiHealth = useApiHealth();
   const [providerStatus, setProviderStatus] = useState<ProviderStatusState>({ status: "idle" });
 
@@ -177,7 +177,12 @@ export function DiagnosticsPage() {
         <div className="mt-4">
           <EmptyState
             title="No active provider configured."
-            detail="Go to Settings to configure and activate an OpenAI-compatible provider."
+            detail="Configure and activate an OpenAI-compatible provider to enable chat and embeddings."
+            action={
+              onNavigateToSettings
+                ? { label: "Go to Settings", onClick: onNavigateToSettings }
+                : undefined
+            }
           />
         </div>
       ) : null}

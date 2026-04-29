@@ -16,11 +16,14 @@ Tauri + React UI -> Local FastAPI API -> PostgreSQL + AI Provider Abstraction
 
 ## 当前状态
 
-项目处于 MVP 早期阶段。
+MVP 核心骨架已完成：
 
-当前仓库重点是确定产品、架构、数据库 schema 和 AI coding assistant 协作流程。部分目录可能只是占位，不能假设前端、后端或 Docker Compose 已经完整可运行。
+- FastAPI 后端：8 个路由模块，9 个 SQLAlchemy 模型，完整的 AI Provider 抽象，RAG 编排，语义检索。
+- React 桌面 UI：5 个页面（Chat、Knowledge、Projects、Settings、Diagnostics），类型化 API 客户端。
+- PostgreSQL + pgvector：MVP 数据库 schema，Alembic 迁移，15 个后端测试文件。
+- Docker Compose 开发数据库可一键启动，`scripts/dev-smoke-test.py` 可验证全链路。
 
-后续开发应按 `docs/MVP_TASKS.md` 中的小任务逐步推进。
+后续开发按 `docs/MVP_TASKS.md` 中的小任务逐步推进。
 
 ## 技术栈
 
@@ -112,19 +115,69 @@ Asteria/
 
 推荐 prompt 格式见 `docs/AI_WORKFLOW.md`。
 
-## 开发期运行模型
+## 快速启动
 
-完整 scaffold 完成后，开发期目标运行方式是：
+### 前置条件
 
-1. Docker Compose 启动 PostgreSQL + pgvector。
-2. `apps/api` 使用 Alembic 初始化数据库。
-3. FastAPI 通过 `uvicorn` 运行本地 API。
-4. `apps/desktop` 通过 Vite 提供 React dev server。
-5. Tauri 打开桌面窗口并连接本地 API。
+- Docker（带 Compose 支持）
+- Python 3.11 或更新版本
+- Node.js（仅桌面端需要）
 
-在 scaffold 完成前，不应假设这些命令都可运行。
+### 第 1 步：启动数据库
 
-完整开发期 smoke test 路径见 `docs/DEVELOPMENT_SMOKE_TEST.md`，覆盖 database、API health、Provider settings、knowledge embedding、semantic retrieval、RAG answer 和手动 frontend wiring 检查。
+从仓库根目录运行：
+
+```bash
+docker compose up -d db
+```
+
+这会在 `127.0.0.1:5432` 启动 PostgreSQL + pgvector。数据通过 Docker volume 持久化。
+
+### 第 2 步：启动 API
+
+```bash
+cd apps/api
+
+# 安装依赖
+python -m pip install -e ".[dev]"
+
+# 生成 secret key（用于加密 Provider API key）
+# PowerShell:
+$env:ASTERIA_API_SECRET_KEY = python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# 或写入 .env 文件重复使用：
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+
+# 应用数据库迁移
+alembic upgrade head
+
+# 启动 API 服务
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+API 启动后，`GET http://127.0.0.1:8000/health` 返回 `{"status": "healthy"}`。
+
+### 第 3 步：启动桌面（可选）
+
+```bash
+cd apps/desktop
+npm install
+
+# 纯浏览器开发模式
+npm run dev
+
+# 或 Tauri 桌面窗口模式
+npm run tauri:dev
+```
+
+浏览器模式打开 `http://127.0.0.1:1420`；Tauri 模式打开原生桌面窗口。两者都调用同一本地 API。
+
+### 首次验证
+
+1. 打开桌面 UI，进入 **Diagnostics** 页面。
+2. 确认 Local API 显示 `http://127.0.0.1:8000` 且状态为 healthy。
+3. 在 **Settings** 页面配置一个 AI Provider（需要 OpenAI-compatible endpoint）。
+
+更深层验证（含 RAG 全链路），参考 `docs/DEVELOPMENT_SMOKE_TEST.md`。
 
 ## 数据库
 

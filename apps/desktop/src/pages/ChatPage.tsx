@@ -114,6 +114,7 @@ export function ChatPage() {
   const [latestRag, setLatestRag] = useState<RAGAnswerResponse | null>(null);
   const [archivingConversation, setArchivingConversation] = useState(false);
   const [conversationToArchive, setConversationToArchive] = useState<Conversation | null>(null);
+  const [projectFilterId, setProjectFilterId] = useState("");
 
   const selectedConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === selectedConversationId) ?? null,
@@ -188,7 +189,7 @@ export function ChatPage() {
       try {
         const [loadedProjects, loadedConversations] = await Promise.all([
           listProjects({ signal }),
-          listConversations({}, { signal })
+          listConversations({ project_id: projectFilterId || null }, { signal })
         ]);
         const nextConversationId =
           preferredConversationId && loadedConversations.some((conversation) => conversation.id === preferredConversationId)
@@ -215,7 +216,7 @@ export function ChatPage() {
         setLoadError(toErrorMessage(error));
       }
     },
-    [loadMessageThread]
+    [loadMessageThread, projectFilterId]
   );
 
   useEffect(() => {
@@ -330,6 +331,22 @@ export function ChatPage() {
             >
               {loadStatus === "loading" ? "Loading..." : "Refresh"}
             </button>
+          </div>
+
+          <div className="mb-4">
+            <SelectField
+              id="conversation-project-filter"
+              label="Project"
+              value={projectFilterId}
+              onChange={(value) => setProjectFilterId(value)}
+            >
+              <option value="">All projects</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </SelectField>
           </div>
 
           {loadStatus === "error" && loadError ? <ErrorBox message={loadError} /> : null}
@@ -451,8 +468,17 @@ export function ChatPage() {
             <textarea
               className={`${inputClassName()} min-h-28 resize-y`}
               value={composer}
-              placeholder="Ask a question grounded in your knowledge base."
+              placeholder="Ask a question grounded in your knowledge base. Ctrl+Enter to send."
               onChange={(event) => setComposer(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                  event.preventDefault();
+                  if (!sending && selectedConversation && composer.trim()) {
+                    const form = event.currentTarget.form;
+                    if (form) form.requestSubmit();
+                  }
+                }
+              }}
               disabled={!selectedConversation || sending}
             />
             {!selectedConversation ? (

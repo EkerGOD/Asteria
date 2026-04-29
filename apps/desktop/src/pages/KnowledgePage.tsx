@@ -689,6 +689,11 @@ export function KnowledgePage() {
 function EmbeddingSummary({ summary }: { summary: KnowledgeEmbeddingRefreshResponse }) {
   return (
     <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
+      <div className="mb-3 grid gap-3 text-sm md:grid-cols-3">
+        <Metric label="Model" value={summary.embedding_model} />
+        <Metric label="Dimension" value={String(summary.embedding_dimension)} />
+        <Metric label="Provider" value={summary.provider_id} />
+      </div>
       <div className="grid gap-3 text-sm md:grid-cols-4">
         <Metric label="Chunks" value={String(summary.chunk_count)} />
         <Metric label="Created" value={String(summary.created_count)} />

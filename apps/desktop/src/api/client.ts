@@ -175,6 +175,10 @@ export function activateProvider(providerId: string, init?: RequestInit): Promis
   return requestJsonBody<Provider>(`/api/providers/${providerId}/activate`, "POST", undefined, init);
 }
 
+export function deleteProvider(providerId: string, init?: RequestInit): Promise<Provider> {
+  return requestJsonBody<Provider>(`/api/providers/${providerId}`, "DELETE", undefined, init);
+}
+
 export function checkProviderHealth(providerId: string, init?: RequestInit): Promise<ProviderHealthResponse> {
   return requestJsonBody<ProviderHealthResponse>(
     `/api/providers/${providerId}/health-check`,
