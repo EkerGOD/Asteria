@@ -220,7 +220,7 @@ Layout Rules:
 
 - Chat 视图分为上下两区：上半为消息流 + 底部输入框，下半为 History / Project Manager。
 - 上半占据主要高度，消息流可滚动，输入框固定在消息区底部。
-- 下半为固定高度（约 160px）的 History / Project 管理器，仅在 Chat 视图显示。
+- 下半默认高度约 160px，可通过分隔线拖拽调整（最小 80px，最大面板 60%），仅在 Chat 视图显示。
 - Composer 在未选择 conversation 时禁用。
 
 Must Not:
@@ -255,7 +255,7 @@ Required States:
 
 Layout Rules:
 
-- 固定高度约 160px，内部可滚动。
+- 默认高度约 160px，可拖拽调整，内部可滚动。
 - 顶部标题行 "History" + 右侧 "+ New Chat" 按钮。
 - Project 选择器在输入框下方工具栏中。
 
@@ -568,8 +568,8 @@ Components should encode repeated interaction contracts. Do not copy inconsisten
 ### SettingsOverlay: provider configuration / health check / diagnostics flow
 
 1. 打开 Settings（左下角 ⚙️ 或 FileBrowser 底部「管理仓库…」）。
-2. Providers Tab：加载 provider list；无 provider 时显示 EmptyState 和创建表单。
-3. 选择 provider → 表单进入编辑状态，清除 API key 输入。
+2. Providers Tab：加载 provider list；无 provider 时显示 EmptyState。
+3. 点击 provider 卡片选中（高亮），点击卡片 Edit 按钮弹出 Modal 进入编辑状态。点击 New Provider 按钮弹出 Modal 进入创建状态。点击 × / Cancel / Escape 关闭弹窗回到 browse 态。
 4. 保存/激活/health check/删除 操作遵循原有 Settings 状态迁移规则。
 5. Diagnostics Tab：展示本地 API/database/provider 状态，可刷新。
 6. Diagnostics Tab 不承载编辑功能；缺失 Provider 时引导用户切换到 Providers Tab。

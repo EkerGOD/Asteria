@@ -17,6 +17,11 @@ export function ChatView() {
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ y: number; height: number } | null>(null);
+
+  const [historyHeight, setHistoryHeight] = useState(160);
+  const [dragging, setDragging] = useState(false);
 
   const fetchConversations = useCallback(async () => {
     abortRef.current?.abort();
@@ -50,6 +55,43 @@ export function ChatView() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
+  // Drag-resize history panel
+  const handleDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      setDragging(true);
+      dragStartRef.current = { y: e.clientY, height: historyHeight };
+    },
+    [historyHeight],
+  );
+
+  useEffect(() => {
+    if (!dragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!dragStartRef.current || !containerRef.current) return;
+      const delta = dragStartRef.current.y - e.clientY;
+      const maxHeight = Math.floor(containerRef.current.clientHeight * 0.6);
+      setHistoryHeight(
+        Math.min(Math.max(dragStartRef.current.height + delta, 80), maxHeight),
+      );
+    };
+
+    const handleMouseUp = () => {
+      setDragging(false);
+      dragStartRef.current = null;
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    document.body.style.userSelect = "none";
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.userSelect = "";
+    };
+  }, [dragging]);
+
   const handleSend = async () => {
     const trimmed = inputValue.trim();
     if (!trimmed) return;
@@ -73,7 +115,7 @@ export function ChatView() {
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" ref={containerRef}>
       {/* Chat messages area */}
       <div className="flex-1 overflow-auto">
         {loading && (
@@ -173,8 +215,15 @@ export function ChatView() {
         </div>
       </div>
 
+      {/* Drag handle */}
+      <div
+        className="shrink-0 cursor-row-resize border-t border-stone-300 bg-stone-50 transition-colors hover:bg-stone-200"
+        style={{ height: 6 }}
+        onMouseDown={handleDragStart}
+      />
+
       {/* History / Project Manager (bottom section) */}
-      <div className="shrink-0 border-t border-stone-300 bg-stone-50" style={{ height: 160 }}>
+      <div className="shrink-0 border-t-0 bg-stone-50" style={{ height: historyHeight }}>
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between px-3 py-1.5">
             <p className="text-xs font-semibold uppercase text-stone-500">History</p>
