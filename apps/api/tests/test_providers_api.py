@@ -1,23 +1,32 @@
 from collections.abc import Iterator
+from contextlib import contextmanager
 from unittest.mock import patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 import app.models
 from app.ai import ProviderConnectionError, ProviderHTTPStatusError, ProviderTimeoutError
 from app.core.config import Settings
+from app.core.secrets import FERNET_V1_PREFIX, decrypt_provider_api_key
 from app.db.base import Base
 from app.db.session import build_session_factory, get_db_session
 from app.main import create_app
+from app.models import AIProvider
 
 
 @pytest.fixture
 def provider_client(settings: Settings) -> Iterator[TestClient]:
+    with _provider_test_client(settings) as client:
+        yield client
+
+
+@contextmanager
+def _provider_test_client(settings: Settings) -> Iterator[TestClient]:
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -32,6 +41,7 @@ def provider_client(settings: Settings) -> Iterator[TestClient]:
     Base.metadata.create_all(engine)
     session_factory = build_session_factory(engine)
     app = create_app(settings)
+    app.state.test_session_factory = session_factory
 
     def override_db_session() -> Iterator[Session]:
         with session_factory() as session:
@@ -78,6 +88,84 @@ def test_providers_can_be_created_and_listed(provider_client: TestClient):
 
     assert response.status_code == 200
     assert [p["name"] for p in response.json()] == ["Local LLM"]
+
+
+def test_provider_api_key_is_encrypted_at_rest(provider_client: TestClient, settings: Settings):
+    response = provider_client.post(
+        "/api/providers",
+        json={
+            "name": "Encrypted",
+            "base_url": "http://localhost:11434/v1",
+            "api_key": "sk-encrypted-key",
+            "chat_model": "chat-model",
+            "embedding_model": "embedding-model",
+        },
+    )
+
+    assert response.status_code == 201
+    provider_id = response.json()["id"]
+    ciphertext = _provider_api_key_ciphertext(provider_client, provider_id)
+
+    assert ciphertext is not None
+    assert ciphertext != "sk-encrypted-key"
+    assert ciphertext.startswith(FERNET_V1_PREFIX)
+    assert decrypt_provider_api_key(ciphertext, settings) == "sk-encrypted-key"
+    assert "api_key" not in response.json()
+    assert "api_key_ciphertext" not in response.json()
+
+
+@pytest.mark.parametrize(
+    ("secret_key", "expected_detail"),
+    [
+        (None, "Provider secret encryption is not configured."),
+        ("not-a-fernet-key", "Provider secret encryption key is invalid."),
+    ],
+)
+def test_provider_with_api_key_requires_valid_secret_key(
+    secret_key: str | None,
+    expected_detail: str,
+):
+    settings = Settings(
+        environment="test",
+        database_url="sqlite+pysqlite:///:memory:",
+        secret_key=secret_key,
+    )
+    with _provider_test_client(settings) as client:
+        response = client.post(
+            "/api/providers",
+            json={
+                "name": "Missing Secret",
+                "base_url": "http://localhost:11434/v1",
+                "api_key": "sk-never-store-me",
+                "chat_model": "chat-model",
+                "embedding_model": "embedding-model",
+            },
+        )
+
+        assert response.status_code == 500
+        assert response.json() == {"detail": expected_detail}
+        assert client.get("/api/providers").json() == []
+
+
+def test_provider_without_api_key_does_not_require_secret_key():
+    settings = Settings(
+        environment="test",
+        database_url="sqlite+pysqlite:///:memory:",
+        secret_key=None,
+    )
+    with _provider_test_client(settings) as client:
+        response = client.post(
+            "/api/providers",
+            json={
+                "name": "Local No Key",
+                "base_url": "http://localhost:11434/v1",
+                "chat_model": "chat-model",
+                "embedding_model": "embedding-model",
+            },
+        )
+
+        assert response.status_code == 201
+        assert response.json()["has_api_key"] is False
 
 
 def test_provider_fields_are_validated(provider_client: TestClient):
@@ -142,7 +230,7 @@ def test_provider_names_must_be_unique_case_insensitively(provider_client: TestC
     }
 
 
-def test_provider_can_be_retrieved_and_updated(provider_client: TestClient):
+def test_provider_can_be_retrieved_and_updated(provider_client: TestClient, settings: Settings):
     create_response = provider_client.post(
         "/api/providers",
         json={
@@ -181,6 +269,21 @@ def test_provider_can_be_retrieved_and_updated(provider_client: TestClient):
     assert updated["timeout_seconds"] == 120
     assert updated["is_active"] is True
     assert updated["has_api_key"] is True
+    assert decrypt_provider_api_key(
+        _provider_api_key_ciphertext(provider_client, provider_id),
+        settings,
+    ) == "original-key"
+
+    response = provider_client.put(
+        f"/api/providers/{provider_id}",
+        json={"api_key": "replacement-key"},
+    )
+
+    assert response.status_code == 200
+    replacement_ciphertext = _provider_api_key_ciphertext(provider_client, provider_id)
+    assert replacement_ciphertext is not None
+    assert replacement_ciphertext != "replacement-key"
+    assert decrypt_provider_api_key(replacement_ciphertext, settings) == "replacement-key"
 
     response = provider_client.put(
         f"/api/providers/{provider_id}",
@@ -189,6 +292,7 @@ def test_provider_can_be_retrieved_and_updated(provider_client: TestClient):
 
     assert response.status_code == 200
     assert response.json()["has_api_key"] is False
+    assert _provider_api_key_ciphertext(provider_client, provider_id) is None
 
 
 def test_provider_can_be_deleted(provider_client: TestClient):
@@ -412,3 +516,11 @@ def test_default_values_are_applied(provider_client: TestClient):
     assert created["provider_type"] == "openai_compatible"
     assert created["embedding_dimension"] == 1536
     assert created["metadata"] == {}
+
+
+def _provider_api_key_ciphertext(client: TestClient, provider_id: str) -> str | None:
+    session_factory = client.app.state.test_session_factory
+    with session_factory() as session:
+        return session.scalar(
+            select(AIProvider.api_key_ciphertext).where(AIProvider.id == UUID(provider_id))
+        )

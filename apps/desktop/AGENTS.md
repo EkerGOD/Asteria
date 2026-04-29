@@ -12,6 +12,7 @@
 - 前后端边界：`docs/ARCHITECTURE.md`。
 - Tauri 与本地 FastAPI 协作：`docs/DESKTOP_APP.md`。
 - API 调用约定：`docs/API_CONTRACT.md`。
+- UI 和交互生成规范：`docs/UI_INTERACTION_GUIDELINES.md`。
 - 任务拆分和验收标准：`docs/MVP_TASKS.md`、`docs/AI_WORKFLOW.md`。
 
 如果文档之间出现冲突，优先保持：
@@ -70,12 +71,17 @@
 
 ## UI 和交互规则
 
+- 修改任何 `apps/desktop` 页面、组件或样式前，必须阅读并遵守 `docs/UI_INTERACTION_GUIDELINES.md`。
 - MVP 页面范围来自 `docs/PRD.md`：Chat、Knowledge、Knowledge Detail、Projects、Settings、Diagnostics。
 - 不创建 marketing page、pricing page、login page 或 team admin page。
 - UI 应服务知识工作台：清晰、密度适中、适合反复使用，而不是 SaaS 营销落地页。
 - 表单必须有基础 required-field 校验、提交中状态和错误展示。
 - API 请求必须处理 loading、error、empty 和 retry/refresh 场景。
+- 对象页面必须显式表达 empty、loading、error、selected、creating、editing、saving、archiving 和 success feedback 等状态语义。
+- 主动作应固定在详情区或编辑区；列表区只承担选择、筛选、刷新和新建入口。
+- archive/delete/clear key 等危险动作必须有明确防误触设计。
 - Chat UI 只发送用户输入和筛选条件；assistant answer 和 source references 由后端返回后渲染。
+- RAG source references 应靠近对应 assistant answer 展示，Provider/model/embedding 信息作为上下文状态呈现。
 - Settings UI 只管理后端 Provider 配置；health check 调用后端 endpoint。
 - Diagnostics UI 展示本地 API、数据库、Provider 等状态，不自行探测数据库或 Provider。
 

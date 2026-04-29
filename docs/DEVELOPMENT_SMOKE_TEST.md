@@ -35,11 +35,12 @@ Run from `apps/api`:
 ```powershell
 cd apps/api
 python -m pip install -e ".[dev]"
+$env:ASTERIA_API_SECRET_KEY = python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 alembic upgrade head
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Keep this terminal running. The smoke runner expects the API at `http://127.0.0.1:8000` unless `--api-base-url` is passed.
+Keep this terminal running. The smoke runner expects the API at `http://127.0.0.1:8000` unless `--api-base-url` is passed. The secret key is required because the smoke path saves a temporary Provider API key and the backend encrypts it before storing it.
 
 ## Terminal 3: Start The Fake Provider
 

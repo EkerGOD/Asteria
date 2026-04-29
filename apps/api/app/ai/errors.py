@@ -23,6 +23,10 @@ class ProviderConnectionError(ProviderAdapterError):
     default_message = "Could not connect to provider."
 
 
+class ProviderConfigurationError(ProviderAdapterError):
+    default_message = "Provider configuration is invalid."
+
+
 class ProviderHTTPStatusError(ProviderAdapterError):
     default_message = "Provider returned an error status."
 

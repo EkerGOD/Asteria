@@ -2,6 +2,7 @@ from functools import lru_cache
 from typing import Literal
 
 from pydantic import AliasChoices, Field
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -44,6 +45,10 @@ class Settings(BaseSettings):
     database_url: str = Field(
         default="postgresql+psycopg://asteria:asteria@127.0.0.1:5432/asteria",
         validation_alias=AliasChoices("ASTERIA_API_DATABASE_URL", "DATABASE_URL"),
+    )
+    secret_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ASTERIA_API_SECRET_KEY", "SECRET_KEY"),
     )
     cors_origins: str = Field(
         default=DEFAULT_CORS_ORIGINS,

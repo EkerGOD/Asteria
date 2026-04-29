@@ -296,7 +296,7 @@ ai_providers 存储后端拥有的 OpenAI-compatible Provider 配置。
 | `name` | `text` | 是 | 用户可见 Provider 名称 |
 | `provider_type` | `text` | 是 | MVP 值：`openai_compatible` |
 | `base_url` | `text` | 是 | Provider API base URL |
-| `api_key_ciphertext` | `text` | 否 | 加密后的 API key；无 key 的本地 Provider 可为空 |
+| `api_key_ciphertext` | `text` | 否 | 使用后端 secret key 加密后的 API key；无 key 的本地 Provider 可为空 |
 | `chat_model` | `text` | 是 | 默认 chat model |
 | `embedding_model` | `text` | 是 | 默认 embedding model |
 | `embedding_dimension` | `integer` | 是 | 默认 embedding dimension，MVP 默认 `1536` |

@@ -1,6 +1,7 @@
 from app.ai.errors import (
     ProviderAdapterError,
     ProviderAuthError,
+    ProviderConfigurationError,
     ProviderConnectionError,
     ProviderHTTPStatusError,
     ProviderMalformedResponseError,
@@ -29,6 +30,7 @@ __all__ = [
     "ProviderAdapterError",
     "ProviderAuthError",
     "ProviderConfig",
+    "ProviderConfigurationError",
     "ProviderConnectionError",
     "ProviderHTTPStatusError",
     "ProviderMalformedResponseError",

@@ -95,7 +95,7 @@ MVP 本地服务应满足：
 - 绑定 `127.0.0.1`，不要监听公开网络接口。
 - CORS 只允许已知本地开发 origin。
 - 不记录 Provider API keys。
-- Provider secrets 应加密存储，或在可用时使用系统 secret store。
+- Provider secrets 在 MVP 开发期使用 `ASTERIA_API_SECRET_KEY` 加密后存储；未来打包期应迁移到系统 secret store 或等价方案。
 - 所有 Provider 调用都留在 FastAPI 后端。
 
 ## 架构不变量

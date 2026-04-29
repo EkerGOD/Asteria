@@ -27,7 +27,7 @@ Tauri + React UI -> Local FastAPI API -> PostgreSQL + AI Provider Abstraction
 
 - Database strategy: PostgreSQL + pgvector 是 bundled、user-managed，还是在未来切换为其他本地存储策略。
 - Database lifecycle: 打包后如何初始化数据库、运行 Alembic migrations、处理升级失败、备份和恢复。
-- Provider secrets: Provider API keys 需要 future OS keychain 或 secret-store 设计；生产打包前不应依赖明文数据库字段作为最终方案。
+- Provider secrets: MVP 开发期使用 `ASTERIA_API_SECRET_KEY` 加密数据库中的 Provider API keys；生产打包前仍需要 future OS keychain 或 secret-store 设计。
 - API sidecar lifecycle: Tauri 如何发现空闲端口、启动 FastAPI、检测健康状态、重启失败进程，以及在退出应用时清理子进程。
 - Auto-update: Tauri auto-update、API sidecar、数据库 migrations 和 schema compatibility 需要一起设计。
 - Background work: embedding refresh、future indexing、provider health checks 和 long-running jobs 应如何在打包应用里调度和展示状态。

@@ -15,7 +15,12 @@ from app.ai import (
     ProviderMalformedResponseError,
     ProviderTimeoutError,
 )
+from app.core.config import Settings
+from app.core.secrets import encrypt_provider_api_key
 from app.ai.types import ProviderConfig, ProviderMessageRole
+from app.models import AIProvider
+
+TEST_SECRET_KEY = "OIOH6EK_-XuDoimnmJdKbBllrq4EmKDlqBqktQeqpjw="
 
 
 def test_chat_completion_message_roles_are_mvp_only():
@@ -69,6 +74,53 @@ def test_chat_completion_success_sends_openai_compatible_payload():
             {"role": "system", "content": "Be concise."},
             {"role": "user", "content": "Say hello."},
         ],
+    }
+
+
+def test_from_provider_decrypts_api_key_for_authorization_header():
+    settings = Settings(environment="test", secret_key=TEST_SECRET_KEY)
+    provider = AIProvider(
+        name="Encrypted",
+        base_url="https://provider.example/v1/",
+        api_key_ciphertext=encrypt_provider_api_key("raw-provider-key", settings),
+        chat_model="chat-model",
+        embedding_model="embedding-model",
+        timeout_seconds=15,
+    )
+    adapter = OpenAICompatibleProviderAdapter.from_provider(provider, settings)
+
+    with patch(
+        "app.ai.openai_compatible.httpx.request",
+        return_value=httpx.Response(status_code=200, json={"data": []}),
+    ) as request:
+        adapter.check_health()
+
+    assert request.call_args.kwargs["headers"] == {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer raw-provider-key",
+    }
+
+
+def test_from_provider_accepts_legacy_plaintext_api_key():
+    provider = AIProvider(
+        name="Legacy",
+        base_url="https://provider.example/v1/",
+        api_key_ciphertext="legacy-plaintext-key",
+        chat_model="chat-model",
+        embedding_model="embedding-model",
+        timeout_seconds=15,
+    )
+    adapter = OpenAICompatibleProviderAdapter.from_provider(provider)
+
+    with patch(
+        "app.ai.openai_compatible.httpx.request",
+        return_value=httpx.Response(status_code=200, json={"data": []}),
+    ) as request:
+        adapter.check_health()
+
+    assert request.call_args.kwargs["headers"] == {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer legacy-plaintext-key",
     }
 
 

@@ -15,6 +15,8 @@ from app.ai import (
     ProviderHTTPStatusError,
     ProviderTimeoutError,
 )
+from app.core.config import Settings
+from app.core.secrets import encrypt_provider_api_key
 from app.models import AIProvider
 from app.schemas.provider import ProviderCreate, ProviderHealthResponse, ProviderUpdate
 
@@ -29,13 +31,18 @@ class ProviderNameConflictError(Exception):
     """Raised when a provider name would no longer be unique."""
 
 
-def create_provider(session: Session, payload: ProviderCreate) -> AIProvider:
+def create_provider(
+    session: Session,
+    payload: ProviderCreate,
+    settings: Settings,
+) -> AIProvider:
     _ensure_name_available(session, payload.name)
 
     data = payload.model_dump()
     api_key = data.pop("api_key", None)
+    encrypted_api_key = encrypt_provider_api_key(api_key, settings)
 
-    provider = AIProvider(id=uuid4(), api_key_ciphertext=api_key, **data)
+    provider = AIProvider(id=uuid4(), api_key_ciphertext=encrypted_api_key, **data)
     if provider.is_active:
         _deactivate_all_providers(session)
 
@@ -60,10 +67,16 @@ def update_provider(
     session: Session,
     provider_id: UUID,
     payload: ProviderUpdate,
+    settings: Settings,
 ) -> AIProvider:
     provider = get_provider(session, provider_id)
     updates = payload.model_dump(exclude_unset=True)
     api_key = updates.pop("api_key", _UNSET)
+    encrypted_api_key = (
+        encrypt_provider_api_key(api_key, settings)
+        if api_key is not _UNSET
+        else _UNSET
+    )
 
     if "name" in updates:
         _ensure_name_available(session, updates["name"], exclude_id=provider.id)
@@ -74,8 +87,8 @@ def update_provider(
     for field_name, value in updates.items():
         setattr(provider, field_name, value)
 
-    if api_key is not _UNSET:
-        provider.api_key_ciphertext = api_key
+    if encrypted_api_key is not _UNSET:
+        provider.api_key_ciphertext = encrypted_api_key
 
     _commit_provider(session, provider)
     return provider
@@ -99,12 +112,13 @@ def activate_provider(session: Session, provider_id: UUID) -> AIProvider:
 def health_check_provider(
     session: Session,
     provider_id: UUID,
+    settings: Settings,
 ) -> ProviderHealthResponse:
     provider = get_provider(session, provider_id)
-    adapter = OpenAICompatibleProviderAdapter.from_provider(provider)
 
     start = time.monotonic()
     try:
+        adapter = OpenAICompatibleProviderAdapter.from_provider(provider, settings)
         adapter.check_health()
         latency_ms = round((time.monotonic() - start) * 1000)
         return ProviderHealthResponse(

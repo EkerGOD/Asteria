@@ -407,6 +407,8 @@ cd apps/api && pytest
 
 ## Phase 5: Desktop UI
 
+Phase 5 的所有 UI 任务必须遵守 `docs/UI_INTERACTION_GUIDELINES.md`。完成后应在最终回复中说明改动符合的页面原型、状态模型和动作规则。
+
 ### Task 5.1: Connect Desktop App to Local API
 
 Scope:

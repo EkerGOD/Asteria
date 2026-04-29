@@ -4,12 +4,15 @@ from fastapi.testclient import TestClient
 from app.core.config import Settings
 from app.main import create_app
 
+TEST_SECRET_KEY = "OIOH6EK_-XuDoimnmJdKbBllrq4EmKDlqBqktQeqpjw="
+
 
 @pytest.fixture
 def settings() -> Settings:
     return Settings(
         environment="test",
         database_url="postgresql+psycopg://test:test@127.0.0.1:5432/asteria_test",
+        secret_key=TEST_SECRET_KEY,
     )
 
 

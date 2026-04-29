@@ -7,6 +7,7 @@ import httpx
 
 from app.ai.errors import (
     ProviderAuthError,
+    ProviderConfigurationError,
     ProviderConnectionError,
     ProviderHTTPStatusError,
     ProviderMalformedResponseError,
@@ -20,6 +21,12 @@ from app.ai.types import (
     ProviderConfig,
     TokenUsage,
 )
+from app.core.config import Settings
+from app.core.secrets import (
+    SecretConfigurationError,
+    SecretDecryptionError,
+    decrypt_provider_api_key,
+)
 from app.models import AIProvider
 
 
@@ -28,11 +35,20 @@ class OpenAICompatibleProviderAdapter:
         self.config = config
 
     @classmethod
-    def from_provider(cls, provider: AIProvider) -> OpenAICompatibleProviderAdapter:
+    def from_provider(
+        cls,
+        provider: AIProvider,
+        settings: Settings | None = None,
+    ) -> OpenAICompatibleProviderAdapter:
+        try:
+            api_key = decrypt_provider_api_key(provider.api_key_ciphertext, settings)
+        except (SecretConfigurationError, SecretDecryptionError) as exc:
+            raise ProviderConfigurationError("Provider API key could not be read.") from exc
+
         return cls(
             ProviderConfig(
                 base_url=provider.base_url,
-                api_key=provider.api_key_ciphertext,
+                api_key=api_key,
                 chat_model=provider.chat_model,
                 embedding_model=provider.embedding_model,
                 embedding_dimension=provider.embedding_dimension,
