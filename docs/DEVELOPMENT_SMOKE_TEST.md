@@ -87,7 +87,7 @@ To inspect created resources in the desktop UI, run without `--cleanup` only whe
 
 Manual steps are intentionally separate from the automated API runner.
 
-### Diagnostics
+### Diagnostics Tab
 
 Run from `apps/desktop`:
 
@@ -102,19 +102,21 @@ Open `http://127.0.0.1:1420` or run `npm run tauri:dev`.
 
 Manual acceptance:
 
-- Go to Diagnostics.
+- Click the ⚙️ gear icon in the bottom-left vertical toolbar to open Settings.
+- Switch to the **Diagnostics** tab in the left sidebar.
 - Confirm the Local API base URL is `http://127.0.0.1:8000`.
 - Confirm Local API is online.
 - Confirm Database URL shows configured.
 - Click Refresh and confirm the status remains healthy.
 
-### Settings
+### Providers Tab
 
 Keep the fake provider and API running.
 
 Manual acceptance:
 
-- Go to Settings.
+- Click the ⚙️ gear icon to open Settings.
+- Switch to the **Providers** tab.
 - Confirm provider loading does not show an API error.
 - Create a temporary provider with:
   - Base URL: `http://127.0.0.1:18080/v1`
@@ -125,7 +127,7 @@ Manual acceptance:
 - Save the provider.
 - Run Health Check and confirm it reports reachable.
 
-The current Task 6.1 frontend scope stops here. Projects, Knowledge, and Chat desktop pages are still expected to expose any remaining frontend wiring gaps as follow-up work rather than being implemented by this smoke-test task.
+The current frontend scope stops here. The RightPanel Chat, Knowledge, Outline, and Graph views use placeholder content and still expect API wiring as follow-up work rather than being implemented by this smoke-test task.
 
 ## Troubleshooting
 

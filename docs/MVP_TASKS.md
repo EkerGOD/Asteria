@@ -566,3 +566,95 @@ Test Command:
 ```bash
 git diff -- docs
 ```
+
+## Phase 7: Roadmap v0.8.3 — UI 修复与图标修正
+
+Phase 7 的所有 UI 任务必须遵守 `docs/UI_INTERACTION_GUIDELINES.md`。v0.8.3 约束：不新增页面或组件、不修改后端 API、不引入新依赖。
+
+三个任务无相互依赖，可并行执行；8.3.1 和 8.3.2 均修改 `VerticalToolbar.tsx`，建议先后执行避免冲突。
+
+### Task 7.1 (v0.8.3-1): 修复折叠按钮位置与图标
+
+Goal:
+修复左右面板折叠按钮位置和图标错误。
+
+Scope:
+- 将右侧面板折叠/展开按钮从 VerticalToolbar 移到右侧面板边缘。
+- 保留左侧面板切换按钮在 VerticalToolbar，补充左侧面板折叠时的展开按钮。
+- 修正 FileBrowser 切换图标：当前为矩形+顶部横线（上侧面板语义），改为矩形+左侧竖线（左面板语义）。
+- 修正 RightPanel 切换图标：确保箭头/竖线方向与面板折叠方向一致。
+
+Do Not:
+- 不修改 Settings 按钮或其图标。
+- 不移动状态栏位置。
+- 不新增组件文件。
+- 不修改后端 API。
+
+Acceptance Criteria:
+- 左面板折叠/展开按钮位于面板左侧边缘。
+- 右面板折叠/展开按钮位于面板右侧边缘。
+- 左面板按钮图标语义与左面板方向一致（竖线在左）。
+- 右面板按钮图标语义与右面板方向一致（竖线在右）。
+- 折叠状态下展开按钮可见且图标正确。
+- 左右面板可独立折叠/展开。
+
+Test Command:
+
+```bash
+cd apps/desktop && npm run typecheck && npm run lint
+```
+
+### Task 7.2 (v0.8.3-2): 修正设置按钮图标
+
+Goal:
+将 VerticalToolbar 底部设置按钮图标从太阳图标改为齿轮图标。
+
+Scope:
+- 替换 `VerticalToolbar.tsx` 中设置按钮的 SVG path（当前为 circle + rays 太阳图案 → 改为齿轮图案）。
+
+Do Not:
+- 不移动设置按钮位置。
+- 不修改设置按钮的点击行为。
+- 不修改 SettingsOverlay 内部。
+- 不修改其他工具栏按钮。
+
+Acceptance Criteria:
+- 设置按钮显示齿轮图标（⚙️ 语义），不再是太阳图标。
+- 按钮位置、大小和行为不变。
+- 其他工具栏按钮图标不变。
+
+Test Command:
+
+```bash
+cd apps/desktop && npm run typecheck && npm run lint
+```
+
+### Task 7.3 (v0.8.3-3): 将 Tab Bar 移入 Editor 区域
+
+Goal:
+将打开文件的 Tab Bar 从布局顶层移入中央 Editor 区域内，使 Tab 归属 Editor 而非全局。
+
+Scope:
+- 从 `AppShell.tsx` 顶层移除 Tab Bar（当前位于整体布局顶部、main area 上方）。
+- 将 Tab Bar 放入中央 Editor 区域 `<div>` 内部、`{children}` 上方。
+- Tab Bar 随 Editor 区域水平位置自然跟随左右面板折叠/展开变化。
+- Tab Bar 渲染逻辑和交互行为不变。
+
+Do Not:
+- 不修改 Tab Bar 内部渲染逻辑（标签切换、关闭等）。
+- 不修改 StatusBar 位置或内容。
+- 不新增组件文件。
+- 不修改后端 API。
+
+Acceptance Criteria:
+- Tab Bar 显示在中央 Editor 区域顶部，而非应用全局顶部。
+- 无打开文件时 Tab Bar 不显示（Editor 显示 empty workspace）。
+- 左侧面板折叠/展开时，Tab Bar 左边界跟随 Editor 区域变化。
+- 右侧面板折叠/展开时，Tab Bar 右边界跟随 Editor 区域变化。
+- Tab Bar 交互（切换标签、关闭标签）不变。
+
+Test Command:
+
+```bash
+cd apps/desktop && npm run typecheck && npm run lint
+```

@@ -12,14 +12,28 @@ const views: { id: RightPanelView; label: string; title: string }[] = [
 export function RightPanel({
   activeView,
   onViewChange,
+  onCollapse,
 }: {
   activeView: RightPanelView;
   onViewChange: (view: RightPanelView) => void;
+  onCollapse: () => void;
 }) {
   return (
     <div className="flex w-80 shrink-0 flex-col border-l border-stone-300/80 bg-white/80">
       {/* View switcher icons */}
       <div className="flex items-center gap-0.5 border-b border-stone-200 px-2 py-1.5">
+        {/* Collapse button */}
+        <button
+          type="button"
+          className="mr-1 rounded p-0.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+          onClick={onCollapse}
+          aria-label="Collapse right panel"
+          title="Collapse right panel"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M4 2L9 7L4 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
         {views.map((view) => (
           <button
             key={view.id}

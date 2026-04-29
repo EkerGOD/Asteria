@@ -33,6 +33,7 @@ Tauri + React UI -> Local FastAPI API -> PostgreSQL + AI Provider Abstraction
 - `docs/AI_WORKFLOW.md`：如何与 AI coding assistant 协作、如何报告修改和测试。
 - `docs/DESKTOP_APP.md`：Tauri 和 FastAPI 本地服务协作方式。
 - `docs/API_CONTRACT.md`：API contract 草案或接口约定。
+- `docs/ROADMAP.md`：版本规划、主题约束和验收标准。
 
 如果文档之间出现冲突，优先保持以下原则：
 
@@ -71,12 +72,12 @@ Tauri + React UI -> Local FastAPI API -> PostgreSQL + AI Provider Abstraction
 
 ## Desktop UI Work Rules
 
-任何修改 `apps/desktop` 页面、组件、样式、前端状态或前端 API 调用的任务，都必须遵守以下规则：
+任何修改 `apps/desktop` 布局区域、视图、组件、样式、前端状态或前端 API 调用的任务，都必须遵守以下规则：
 
-- 开始前必须阅读 `docs/UI_INTERACTION_GUIDELINES.md`，并结合 `docs/PRD.md`、`docs/DESKTOP_APP.md` 和 `docs/API_CONTRACT.md` 判断页面职责和 API 边界。
-- 开始编码前，必须说明本次任务对应哪个 Page Archetype 或 Page UI Contract。
+- 开始前必须阅读 `docs/UI_INTERACTION_GUIDELINES.md`，并结合 `docs/PRD.md`、`docs/DESKTOP_APP.md` 和 `docs/API_CONTRACT.md` 判断区域/视图职责和 API 边界。
+- 开始编码前，必须说明本次任务对应哪个 Layout Zone 或 Zone/View UI Contract。
 - 开始编码前，必须明确本次涉及哪些 Interaction States，例如 loading、empty、error、selected、creating、editing、saving、archiving、disabled 或 success feedback。
-- 不允许发明新的页面结构，除非任务明确要求先修改 `docs/UI_INTERACTION_GUIDELINES.md`。
+- 不允许发明新的布局区域 (Layout Zone) 或视图结构，除非任务明确要求先修改 `docs/UI_INTERACTION_GUIDELINES.md`。
 - 不允许引入 Web-first、SaaS-first、marketing landing page、login、team admin、cloud sync、plugin marketplace 等语义。
 - 不允许前端直接调用 Provider SDK、Provider endpoint、数据库、SQL、embedding、retrieval、prompt 构造或 RAG orchestration。
 - 前端只能通过本地 FastAPI / typed API client 获取应用数据和 AI 行为。
@@ -90,7 +91,7 @@ UI 任务完成前必须满足：
 - 优先复用现有本地组件、API client、types、Tailwind token 和既有视觉风格。
 - `cd apps/desktop && npm run typecheck` 通过。
 - `cd apps/desktop && npm run lint` 通过。
-- 最终回复必须报告 UI 规范符合性，包括对应的 Page UI Contract、Interaction States、主要动作层级和任何未覆盖的 follow-up。
+- 最终回复必须报告 UI 规范符合性，包括对应的 Zone/View UI Contract、Interaction States、主要动作层级和任何未覆盖的 follow-up。
 
 ## 任务规则
 

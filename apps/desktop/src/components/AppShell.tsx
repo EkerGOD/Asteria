@@ -59,48 +59,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen flex-col bg-surface text-ink">
-      {/* Tab Bar */}
-      {hasTabs && (
-        <div className="flex shrink-0 items-center border-b border-stone-300/80 bg-white/80 px-2" style={{ height: 36 }}>
-          {openTabs.map((tab) => (
-            <div
-              key={tab.id}
-              className={[
-                "flex items-center gap-1.5 rounded-t-md px-3 py-1 text-sm",
-                tab.id === activeTabId
-                  ? "bg-surface text-ink"
-                  : "text-stone-500 hover:text-stone-700"
-              ].join(" ")}
-              style={{ height: 35, marginBottom: -1 }}
-            >
-              <button
-                type="button"
-                className="max-w-[160px] truncate text-left"
-                onClick={() => setActiveTabId(tab.id)}
-              >
-                {tab.fileName}
-              </button>
-              <button
-                type="button"
-                className="ml-1 rounded-sm text-stone-400 hover:text-stone-600"
-                onClick={() => closeTab(tab.id)}
-                aria-label={`Close ${tab.fileName}`}
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Main area */}
       <div className="flex min-h-0 flex-1">
         {/* Vertical Toolbar */}
         <VerticalToolbar
           leftPanelOpen={leftPanelOpen}
-          rightPanelOpen={rightPanelOpen}
           onToggleLeftPanel={toggleLeftPanel}
-          onToggleRightPanel={toggleRightPanel}
           onOpenSettings={() => setSettingsOpen(true)}
         />
 
@@ -112,8 +76,58 @@ export function AppShell({ children }: { children: ReactNode }) {
           />
         )}
 
+        {/* Expand toggle for left panel when collapsed */}
+        {!leftPanelOpen && (
+          <div className="flex w-10 shrink-0 flex-col items-center border-r border-stone-300/80 bg-white/50 pt-2">
+            <button
+              type="button"
+              className="rounded p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+              onClick={() => setLeftPanelOpen(true)}
+              aria-label="Expand file browser"
+              title="Expand file browser"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M11 2L5 8L11 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* Center Editor Area */}
         <div className="flex min-w-0 flex-1 flex-col">
+          {/* Tab Bar */}
+          {hasTabs && (
+            <div className="flex shrink-0 items-center border-b border-stone-300/80 bg-white/80 px-2" style={{ height: 36 }}>
+              {openTabs.map((tab) => (
+                <div
+                  key={tab.id}
+                  className={[
+                    "flex items-center gap-1.5 rounded-t-md px-3 py-1 text-sm",
+                    tab.id === activeTabId
+                      ? "bg-surface text-ink"
+                      : "text-stone-500 hover:text-stone-700"
+                  ].join(" ")}
+                  style={{ height: 35, marginBottom: -1 }}
+                >
+                  <button
+                    type="button"
+                    className="max-w-[160px] truncate text-left"
+                    onClick={() => setActiveTabId(tab.id)}
+                  >
+                    {tab.fileName}
+                  </button>
+                  <button
+                    type="button"
+                    className="ml-1 rounded-sm text-stone-400 hover:text-stone-600"
+                    onClick={() => closeTab(tab.id)}
+                    aria-label={`Close ${tab.fileName}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           {children}
         </div>
 
@@ -122,10 +136,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <RightPanel
             activeView={rightPanelView}
             onViewChange={setRightPanelView}
+            onCollapse={toggleRightPanel}
           />
         )}
 
-        {/* Collapse toggle for right panel when collapsed */}
+        {/* Expand toggle for right panel when collapsed */}
         {!rightPanelOpen && (
           <div className="flex w-10 shrink-0 flex-col items-center border-l border-stone-300/80 bg-white/50 pt-2">
             <button

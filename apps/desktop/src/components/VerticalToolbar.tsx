@@ -1,14 +1,10 @@
 export function VerticalToolbar({
   leftPanelOpen,
-  rightPanelOpen,
   onToggleLeftPanel,
-  onToggleRightPanel,
   onOpenSettings,
 }: {
   leftPanelOpen: boolean;
-  rightPanelOpen: boolean;
   onToggleLeftPanel: () => void;
-  onToggleRightPanel: () => void;
   onOpenSettings: () => void;
 }) {
   return (
@@ -23,19 +19,7 @@ export function VerticalToolbar({
         >
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <rect x="2" y="2" width="14" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M2 6H16" stroke="currentColor" strokeWidth="1.2" />
-          </svg>
-        </ToolbarButton>
-
-        <ToolbarButton
-          active={rightPanelOpen}
-          onClick={onToggleRightPanel}
-          ariaLabel={rightPanelOpen ? "Collapse right panel" : "Expand right panel"}
-          title="Right Panel"
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <rect x="1" y="2" width="16" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M11 2V16" stroke="currentColor" strokeWidth="1.2" />
+            <path d="M6 2V16" stroke="currentColor" strokeWidth="1.2" />
           </svg>
         </ToolbarButton>
 
@@ -65,8 +49,8 @@ export function VerticalToolbar({
           title="Settings"
         >
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M9 1.5V4M9 14V16.5M16.5 9H14M4 9H1.5M14.3 3.7L12.5 5.5M5.5 12.5L3.7 14.3M14.3 14.3L12.5 12.5M5.5 5.5L3.7 3.7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            <path d="M9 1.5L9.5 3.2L11.3 3.5L12 5L13.5 5.8L13.8 7.6L14.8 9L13.8 10.4L13.5 12.2L12 13L11.3 14.5L9.5 14.8L9 16.5L8.5 14.8L6.7 14.5L6 13L4.5 12.2L4.2 10.4L3.2 9L4.2 7.6L4.5 5.8L6 5L6.7 3.5L8.5 3.2L9 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+            <circle cx="9" cy="9" r="1.8" stroke="currentColor" strokeWidth="1" />
           </svg>
         </ToolbarButton>
       </div>
