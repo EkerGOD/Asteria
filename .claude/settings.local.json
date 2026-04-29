@@ -12,7 +12,8 @@
       "Bash(python -m pytest tests/test_providers_api.py::test_providers_can_be_created_and_listed -v --tb=short)",
       "Bash(python -m pytest tests/test_providers_api.py -v --tb=line)",
       "Bash(python -m pytest -v --tb=line)",
-      "Bash(python -m pytest tests/ -v)"
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(npm run *)"
     ]
   }
 }

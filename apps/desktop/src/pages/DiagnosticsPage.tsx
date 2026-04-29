@@ -1,9 +1,69 @@
+import { useCallback, useEffect, useState } from "react";
 import { API_BASE_URL } from "../api/config";
+import { checkProviderHealth, listProviders } from "../api/client";
+import type { ProviderHealthResponse } from "../api/types";
+import { EmptyState } from "../components/EmptyState";
+import { ErrorBox } from "../components/FormFields";
 import { Panel } from "../components/Panel";
 import { useApiHealth } from "../hooks/useApiHealth";
+import { isAbortError, toErrorMessage } from "../lib/errors";
+
+type ProviderStatusState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "success"; providerName: string; isActive: boolean; health: ProviderHealthResponse | null }
+  | { status: "error"; message: string };
 
 export function DiagnosticsPage() {
   const apiHealth = useApiHealth();
+  const [providerStatus, setProviderStatus] = useState<ProviderStatusState>({ status: "idle" });
+
+  const checkProvider = useCallback(async (signal?: AbortSignal) => {
+    setProviderStatus({ status: "loading" });
+
+    try {
+      const providers = await listProviders({ signal });
+      const activeProvider = providers.find((p) => p.is_active);
+
+      if (!activeProvider) {
+        setProviderStatus({
+          status: "success",
+          providerName: "Unset",
+          isActive: false,
+          health: null
+        });
+        return;
+      }
+
+      try {
+        const health = await checkProviderHealth(activeProvider.id);
+        setProviderStatus({ status: "success", providerName: activeProvider.name, isActive: true, health });
+      } catch {
+        setProviderStatus({
+          status: "success",
+          providerName: activeProvider.name,
+          isActive: true,
+          health: { provider_id: activeProvider.id, status: "error", message: "Health check failed.", latency_ms: null }
+        });
+      }
+    } catch (error) {
+      if (isAbortError(error)) return;
+      setProviderStatus({ status: "error", message: toErrorMessage(error) });
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void checkProvider(controller.signal);
+    return () => controller.abort();
+  }, [checkProvider]);
+
+  const refreshAll = useCallback(() => {
+    apiHealth.refresh();
+    void checkProvider();
+  }, [apiHealth, checkProvider]);
+
+  const isChecking = apiHealth.status === "loading" || providerStatus.status === "loading";
 
   const localApiValue =
     apiHealth.status === "success"
@@ -26,6 +86,31 @@ export function DiagnosticsPage() {
         : "error"
       : apiHealth.status;
 
+  const providerValue =
+    providerStatus.status === "loading"
+      ? "Checking"
+      : providerStatus.status === "error"
+        ? "Unavailable"
+        : providerStatus.status === "idle"
+          ? "Not checked"
+          : providerStatus.health?.status === "ok"
+            ? `${providerStatus.providerName} reachable`
+            : providerStatus.isActive
+              ? `${providerStatus.providerName} unreachable`
+              : "No active provider";
+  const providerState: "idle" | "loading" | "success" | "error" =
+    providerStatus.status === "loading"
+      ? "loading"
+      : providerStatus.status === "error"
+        ? "error"
+        : providerStatus.status === "idle"
+          ? "idle"
+          : providerStatus.isActive && providerStatus.health?.status === "ok"
+            ? "success"
+            : providerStatus.isActive
+              ? "error"
+              : "idle";
+
   return (
     <Panel title="Status">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -36,23 +121,20 @@ export function DiagnosticsPage() {
         <button
           type="button"
           className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:border-pine hover:text-pine disabled:cursor-not-allowed disabled:opacity-60"
-          onClick={apiHealth.refresh}
-          disabled={apiHealth.status === "loading"}
+          onClick={refreshAll}
+          disabled={isChecking}
         >
-          {apiHealth.status === "loading" ? "Checking..." : "Refresh"}
+          {isChecking ? "Checking..." : "Refresh"}
         </button>
       </div>
 
-      {apiHealth.status === "error" ? (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {apiHealth.error}
-        </div>
-      ) : null}
+      {apiHealth.status === "error" ? <ErrorBox message={apiHealth.error} /> : null}
+      {providerStatus.status === "error" ? <ErrorBox message={providerStatus.message} /> : null}
 
       <div className="grid gap-3 md:grid-cols-3">
         <StatusCard label="Local API" value={localApiValue} state={apiHealth.status} />
         <StatusCard label="Database URL" value={databaseValue} state={databaseState} />
-        <StatusCard label="Provider" value="Not configured" state="idle" />
+        <StatusCard label="Provider" value={providerValue} state={providerState} />
       </div>
 
       {apiHealth.status === "success" ? (
@@ -70,6 +152,34 @@ export function DiagnosticsPage() {
             <dd className="mt-1 font-semibold">{apiHealth.data.version}</dd>
           </div>
         </dl>
+      ) : null}
+
+      {providerStatus.status === "success" && providerStatus.health ? (
+        <div
+          className={[
+            "mt-4 rounded-lg border px-4 py-3 text-sm",
+            providerStatus.health.status === "ok"
+              ? "border-pine/20 bg-pine/10 text-pine"
+              : "border-red-200 bg-red-50 text-red-800"
+          ].join(" ")}
+        >
+          <p className="font-semibold">
+            {providerStatus.health.status === "ok" ? "Provider Reachable" : "Provider Error"}
+          </p>
+          <p className="mt-1">
+            {providerStatus.health.message}
+            {providerStatus.health.latency_ms !== null ? ` ${providerStatus.health.latency_ms} ms` : ""}
+          </p>
+        </div>
+      ) : null}
+
+      {providerStatus.status === "success" && !providerStatus.isActive ? (
+        <div className="mt-4">
+          <EmptyState
+            title="No active provider configured."
+            detail="Go to Settings to configure and activate an OpenAI-compatible provider."
+          />
+        </div>
       ) : null}
     </Panel>
   );

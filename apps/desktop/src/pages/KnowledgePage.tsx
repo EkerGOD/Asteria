@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent } from "react";
 import {
   archiveKnowledgeUnit,
   attachKnowledgeTag,
@@ -20,23 +20,34 @@ import type {
   Project,
   Tag
 } from "../api/types";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { EmptyState } from "../components/EmptyState";
+import { ErrorBox, SelectField, TextAreaField, TextField } from "../components/FormFields";
+import { inputClassName } from "../lib/style";
 import { Metric, Panel } from "../components/Panel";
-
-type LoadStatus = "loading" | "success" | "error";
+import { isAbortError, toErrorMessage, type LoadStatus } from "../lib/errors";
 
 type KnowledgeFormState = {
   title: string;
   content: string;
-  project_id: string;
-  source_uri: string;
 };
 
 type KnowledgeFormErrors = Partial<Record<keyof KnowledgeFormState, string>>;
 
+type KnowledgeContextState = {
+  project_id: string;
+  source_uri: string;
+};
+
 function emptyForm(): KnowledgeFormState {
   return {
     title: "",
-    content: "",
+    content: ""
+  };
+}
+
+function emptyContext(): KnowledgeContextState {
+  return {
     project_id: "",
     source_uri: ""
   };
@@ -45,22 +56,15 @@ function emptyForm(): KnowledgeFormState {
 function formFromKnowledge(knowledge: KnowledgeUnit): KnowledgeFormState {
   return {
     title: knowledge.title,
-    content: knowledge.content,
-    project_id: knowledge.project_id ?? "",
-    source_uri: knowledge.source_uri ?? ""
+    content: knowledge.content
   };
 }
 
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Knowledge request failed.";
-}
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
+function contextFromKnowledge(knowledge: KnowledgeUnit): KnowledgeContextState {
+  return {
+    project_id: knowledge.project_id ?? "",
+    source_uri: knowledge.source_uri ?? ""
+  };
 }
 
 function validateKnowledgeForm(form: KnowledgeFormState): KnowledgeFormErrors {
@@ -77,12 +81,12 @@ function validateKnowledgeForm(form: KnowledgeFormState): KnowledgeFormErrors {
   return errors;
 }
 
-function buildKnowledgePayload(form: KnowledgeFormState): KnowledgeUnitCreateRequest | KnowledgeUnitUpdateRequest {
+function buildKnowledgePayload(form: KnowledgeFormState, context: KnowledgeContextState): KnowledgeUnitCreateRequest | KnowledgeUnitUpdateRequest {
   return {
     title: form.title.trim(),
     content: form.content.trim(),
-    project_id: form.project_id || null,
-    source_uri: form.source_uri.trim() || null
+    project_id: context.project_id || null,
+    source_uri: context.source_uri.trim() || null
   };
 }
 
@@ -119,6 +123,7 @@ export function KnowledgePage() {
   const [tagFilterSlug, setTagFilterSlug] = useState("");
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
   const [form, setForm] = useState<KnowledgeFormState>(() => emptyForm());
+  const [context, setContext] = useState<KnowledgeContextState>(() => emptyContext());
   const [formErrors, setFormErrors] = useState<KnowledgeFormErrors>({});
   const [saving, setSaving] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -130,11 +135,14 @@ export function KnowledgePage() {
   const [newTagColor, setNewTagColor] = useState("");
   const [tagToAttach, setTagToAttach] = useState("");
   const [tagActionBusy, setTagActionBusy] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
   const selectedKnowledge = useMemo(
     () => knowledgeUnits.find((knowledge) => knowledge.id === selectedKnowledgeId) ?? null,
     [knowledgeUnits, selectedKnowledgeId]
   );
+
+  const hasActiveFilter = projectFilterId !== "" || tagFilterSlug !== "";
 
   const availableTags = useMemo(() => {
     const attachedTagIds = new Set(selectedKnowledge?.tags.map((tag) => tag.id) ?? []);
@@ -167,6 +175,7 @@ export function KnowledgePage() {
         setKnowledgeUnits(loadedKnowledge);
         setSelectedKnowledgeId(nextSelectedKnowledgeId);
         setForm(nextSelectedKnowledge ? formFromKnowledge(nextSelectedKnowledge) : emptyForm());
+        setContext(nextSelectedKnowledge ? contextFromKnowledge(nextSelectedKnowledge) : emptyContext());
         setTagToAttach("");
         setFormErrors({});
         setLoadStatus("success");
@@ -192,6 +201,7 @@ export function KnowledgePage() {
   function selectKnowledge(knowledge: KnowledgeUnit) {
     setSelectedKnowledgeId(knowledge.id);
     setForm(formFromKnowledge(knowledge));
+    setContext(contextFromKnowledge(knowledge));
     setTagToAttach("");
     setFormErrors({});
     setActionError(null);
@@ -202,6 +212,7 @@ export function KnowledgePage() {
   function startNewKnowledge() {
     setSelectedKnowledgeId(null);
     setForm(emptyForm());
+    setContext(emptyContext());
     setTagToAttach("");
     setFormErrors({});
     setActionError(null);
@@ -221,6 +232,14 @@ export function KnowledgePage() {
     setActionMessage(null);
   }
 
+  function updateContextField<K extends keyof KnowledgeContextState>(field: K, value: KnowledgeContextState[K]) {
+    setContext((current) => ({
+      ...current,
+      [field]: value
+    }));
+    setActionMessage(null);
+  }
+
   async function saveKnowledge(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setActionError(null);
@@ -235,7 +254,7 @@ export function KnowledgePage() {
 
     setSaving(true);
     try {
-      const payload = buildKnowledgePayload(form);
+      const payload = buildKnowledgePayload(form, context);
       const savedKnowledge = selectedKnowledge
         ? await updateKnowledgeUnit(selectedKnowledge.id, payload)
         : await createKnowledgeUnit(payload as KnowledgeUnitCreateRequest);
@@ -408,9 +427,17 @@ export function KnowledgePage() {
           {loadStatus === "error" && loadError ? <ErrorBox message={loadError} /> : null}
 
           {loadStatus === "success" && knowledgeUnits.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 px-4 py-6 text-sm text-stone-600">
-              No knowledge units match these filters.
-            </div>
+            hasActiveFilter ? (
+              <EmptyState
+                title="No knowledge units match these filters."
+                detail="Try clearing project or tag filters to see more results."
+              />
+            ) : (
+              <EmptyState
+                title="No knowledge units yet."
+                detail="Create your first knowledge unit to start building your knowledge base."
+              />
+            )
           ) : null}
 
           <div className="space-y-3">
@@ -465,30 +492,6 @@ export function KnowledgePage() {
               onChange={(value) => updateFormField("title", value)}
             />
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <SelectField
-                id="knowledge-project"
-                label="Project"
-                value={form.project_id}
-                onChange={(value) => updateFormField("project_id", value)}
-              >
-                <option value="">No project</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </SelectField>
-
-              <TextField
-                id="knowledge-source-uri"
-                label="Source URI"
-                value={form.source_uri}
-                placeholder="Optional"
-                onChange={(value) => updateFormField("source_uri", value)}
-              />
-            </div>
-
             <TextAreaField
               id="knowledge-content"
               label="Content"
@@ -504,7 +507,6 @@ export function KnowledgePage() {
                 {actionMessage}
               </div>
             ) : null}
-            {embeddingSummary ? <EmbeddingSummary summary={embeddingSummary} /> : null}
 
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -528,7 +530,7 @@ export function KnowledgePage() {
                   <button
                     type="button"
                     className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    onClick={() => void archiveSelectedKnowledge()}
+                    onClick={() => setShowArchiveConfirm(true)}
                     disabled={archiving}
                   >
                     {archiving ? "Archiving..." : "Archive Knowledge"}
@@ -539,16 +541,67 @@ export function KnowledgePage() {
           </form>
         </Panel>
 
+        <Panel title="Context">
+          {selectedKnowledge ? (
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <SelectField
+                  id="knowledge-context-project"
+                  label="Project"
+                  value={context.project_id}
+                  onChange={(value) => updateContextField("project_id", value)}
+                >
+                  <option value="">No project</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </SelectField>
+
+                <TextField
+                  id="knowledge-context-source-uri"
+                  label="Source URI"
+                  value={context.source_uri}
+                  placeholder="Optional"
+                  onChange={(value) => updateContextField("source_uri", value)}
+                />
+              </div>
+
+              {embeddingSummary ? <EmbeddingSummary summary={embeddingSummary} /> : null}
+            </div>
+          ) : (
+            <p className="text-sm text-stone-600">Save the knowledge unit to set context metadata.</p>
+          )}
+        </Panel>
+
         <Panel title="Tags">
           <form className="mb-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_8rem_auto]" onSubmit={createNewTag}>
-            <TextField
-              id="new-tag-name"
-              label="New tag"
-              value={newTagName}
-              required
-              onChange={setNewTagName}
-            />
-            <TextField id="new-tag-color" label="Color" value={newTagColor} onChange={setNewTagColor} />
+            <div>
+              <label htmlFor="new-tag-name" className="text-sm font-medium text-stone-700">
+                New tag
+              </label>
+              <input
+                id="new-tag-name"
+                type="text"
+                className={inputClassName()}
+                value={newTagName}
+                required
+                onChange={(event) => setNewTagName(event.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="new-tag-color" className="text-sm font-medium text-stone-700">
+                Color
+              </label>
+              <input
+                id="new-tag-color"
+                type="text"
+                className={inputClassName()}
+                value={newTagColor}
+                onChange={(event) => setNewTagColor(event.target.value)}
+              />
+            </div>
             <div className="flex items-end">
               <button
                 type="submit"
@@ -617,6 +670,18 @@ export function KnowledgePage() {
           </div>
         </Panel>
       </div>
+
+      <ConfirmDialog
+        open={showArchiveConfirm}
+        title="Archive Knowledge"
+        message={`Archive "${selectedKnowledge?.title ?? "this knowledge unit"}"? It will be hidden from active lists but not permanently deleted.`}
+        confirmLabel="Archive Knowledge"
+        onConfirm={() => {
+          setShowArchiveConfirm(false);
+          void archiveSelectedKnowledge();
+        }}
+        onCancel={() => setShowArchiveConfirm(false)}
+      />
     </div>
   );
 }
@@ -632,126 +697,4 @@ function EmbeddingSummary({ summary }: { summary: KnowledgeEmbeddingRefreshRespo
       </div>
     </div>
   );
-}
-
-function ErrorBox({ message }: { message: string }) {
-  return (
-    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-      {message}
-    </div>
-  );
-}
-
-function TextField({
-  id,
-  label,
-  value,
-  error,
-  required,
-  placeholder,
-  onChange
-}: {
-  id: string;
-  label: string;
-  value: string;
-  error?: string;
-  required?: boolean;
-  placeholder?: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm font-medium text-stone-700">
-        {label}
-      </label>
-      <input
-        id={id}
-        type="text"
-        className={inputClassName(error)}
-        value={value}
-        placeholder={placeholder}
-        required={required}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      <FieldError error={error} />
-    </div>
-  );
-}
-
-function TextAreaField({
-  id,
-  label,
-  value,
-  error,
-  required,
-  onChange
-}: {
-  id: string;
-  label: string;
-  value: string;
-  error?: string;
-  required?: boolean;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm font-medium text-stone-700">
-        {label}
-      </label>
-      <textarea
-        id={id}
-        className={`${inputClassName(error)} min-h-52 resize-y`}
-        value={value}
-        required={required}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      <FieldError error={error} />
-    </div>
-  );
-}
-
-function SelectField({
-  id,
-  label,
-  value,
-  children,
-  onChange
-}: {
-  id: string;
-  label: string;
-  value: string;
-  children: ReactNode;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm font-medium text-stone-700">
-        {label}
-      </label>
-      <select
-        id={id}
-        className={inputClassName()}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {children}
-      </select>
-    </div>
-  );
-}
-
-function FieldError({ error }: { error?: string }) {
-  if (!error) {
-    return null;
-  }
-
-  return <p className="mt-1 text-xs font-medium text-red-700">{error}</p>;
-}
-
-function inputClassName(error?: string): string {
-  return [
-    "mt-1 w-full rounded-lg border bg-white px-3 py-2 text-sm text-ink outline-none transition",
-    "focus:border-pine focus:ring-2 focus:ring-pine/20",
-    error ? "border-red-300" : "border-stone-300"
-  ].join(" ");
 }

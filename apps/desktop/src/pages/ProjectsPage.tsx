@@ -7,9 +7,11 @@ import {
   updateProject
 } from "../api/client";
 import type { Project, ProjectCreateRequest, ProjectUpdateRequest } from "../api/types";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { EmptyState } from "../components/EmptyState";
+import { ErrorBox, TextAreaField, TextField } from "../components/FormFields";
 import { Metric, Panel } from "../components/Panel";
-
-type LoadStatus = "loading" | "success" | "error";
+import { isAbortError, toErrorMessage, type LoadStatus } from "../lib/errors";
 
 type ProjectFormState = {
   name: string;
@@ -36,18 +38,6 @@ function formFromProject(project: Project): ProjectFormState {
     color: project.color ?? "",
     sort_order: String(project.sort_order)
   };
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Project request failed.";
-}
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
 }
 
 function validateForm(form: ProjectFormState): ProjectFormErrors {
@@ -93,6 +83,7 @@ export function ProjectsPage() {
   const [archiving, setArchiving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
   const selectedProject = useMemo(
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
@@ -231,9 +222,7 @@ export function ProjectsPage() {
           {loadStatus === "error" && loadError ? <ErrorBox message={loadError} /> : null}
 
           {loadStatus === "success" && projects.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 px-4 py-6 text-sm text-stone-600">
-              No active projects yet.
-            </div>
+            <EmptyState title="No active projects yet." detail="Create a project to organize conversations and knowledge." />
           ) : null}
 
           <div className="space-y-3">
@@ -320,7 +309,7 @@ export function ProjectsPage() {
                 <button
                   type="button"
                   className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  onClick={() => void archiveSelectedProject()}
+                  onClick={() => setShowArchiveConfirm(true)}
                   disabled={archiving}
                 >
                   {archiving ? "Archiving..." : "Archive Project"}
@@ -338,95 +327,18 @@ export function ProjectsPage() {
           <Metric label="Status" value={loadStatus === "loading" ? "Loading" : "Ready"} />
         </div>
       </Panel>
-    </div>
-  );
-}
 
-function ErrorBox({ message }: { message: string }) {
-  return (
-    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-      {message}
-    </div>
-  );
-}
-
-function TextField({
-  id,
-  label,
-  value,
-  error,
-  required,
-  placeholder,
-  inputMode,
-  onChange
-}: {
-  id: string;
-  label: string;
-  value: string;
-  error?: string;
-  required?: boolean;
-  placeholder?: string;
-  inputMode?: "numeric";
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm font-medium text-stone-700">
-        {label}
-      </label>
-      <input
-        id={id}
-        type="text"
-        inputMode={inputMode}
-        className={inputClassName(error)}
-        value={value}
-        placeholder={placeholder}
-        required={required}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      <FieldError error={error} />
-    </div>
-  );
-}
-
-function TextAreaField({
-  id,
-  label,
-  value,
-  onChange
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm font-medium text-stone-700">
-        {label}
-      </label>
-      <textarea
-        id={id}
-        className={`${inputClassName()} min-h-24 resize-y`}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
+      <ConfirmDialog
+        open={showArchiveConfirm}
+        title="Archive Project"
+        message={`Archive "${selectedProject?.name ?? "this project"}"? It will be hidden from active lists but not permanently deleted.`}
+        confirmLabel="Archive Project"
+        onConfirm={() => {
+          setShowArchiveConfirm(false);
+          void archiveSelectedProject();
+        }}
+        onCancel={() => setShowArchiveConfirm(false)}
       />
     </div>
   );
-}
-
-function FieldError({ error }: { error?: string }) {
-  if (!error) {
-    return null;
-  }
-
-  return <p className="mt-1 text-xs font-medium text-red-700">{error}</p>;
-}
-
-function inputClassName(error?: string): string {
-  return [
-    "mt-1 w-full rounded-lg border bg-white px-3 py-2 text-sm text-ink outline-none transition",
-    "focus:border-pine focus:ring-2 focus:ring-pine/20",
-    error ? "border-red-300" : "border-stone-300"
-  ].join(" ");
 }

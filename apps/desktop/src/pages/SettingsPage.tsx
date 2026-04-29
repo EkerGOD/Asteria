@@ -14,9 +14,11 @@ import type {
   ProviderHealthResponse,
   ProviderUpdateRequest
 } from "../api/types";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { EmptyState } from "../components/EmptyState";
+import { ErrorBox, NumberField, PasswordField, TextField } from "../components/FormFields";
 import { Metric, Panel } from "../components/Panel";
-
-type LoadStatus = "loading" | "success" | "error";
+import { isAbortError, toErrorMessage, type LoadStatus } from "../lib/errors";
 
 type ProviderFormState = {
   name: string;
@@ -57,18 +59,6 @@ function createFormFromProvider(provider: Provider): ProviderFormState {
     is_active: provider.is_active,
     clear_api_key: false
   };
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Provider request failed.";
-}
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
 }
 
 function chooseSelectedProviderId(providers: Provider[], preferredProviderId?: string | null): string | null {
@@ -141,6 +131,7 @@ export function SettingsPage() {
   const [activatingProviderId, setActivatingProviderId] = useState<string | null>(null);
   const [checkingProviderId, setCheckingProviderId] = useState<string | null>(null);
   const [healthResults, setHealthResults] = useState<Record<string, ProviderHealthResponse>>({});
+  const [showClearKeyConfirm, setShowClearKeyConfirm] = useState(false);
 
   const selectedProvider = useMemo(
     () => providers.find((provider) => provider.id === selectedProviderId) ?? null,
@@ -280,7 +271,7 @@ export function SettingsPage() {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <button
               type="button"
-              className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:border-pine hover:text-pine"
+              className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:border-pine hover:text-pine disabled:cursor-not-allowed disabled:opacity-60"
               onClick={() => void loadProviderList(selectedProviderId)}
               disabled={loadStatus === "loading"}
             >
@@ -295,22 +286,11 @@ export function SettingsPage() {
             </button>
           </div>
 
-          {loadStatus === "error" && loadError ? (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              {loadError}
-            </div>
-          ) : null}
-
-          {actionError ? (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              {actionError}
-            </div>
-          ) : null}
+          {loadStatus === "error" && loadError ? <ErrorBox message={loadError} /> : null}
+          {actionError ? <ErrorBox message={actionError} /> : null}
 
           {loadStatus === "success" && providers.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 px-4 py-6 text-sm text-stone-600">
-              No providers yet.
-            </div>
+            <EmptyState title="No providers yet." detail="Create an OpenAI-compatible provider to enable AI features." />
           ) : null}
 
           <div className="space-y-3">
@@ -412,19 +392,20 @@ export function SettingsPage() {
                     className="h-4 w-4 rounded border-stone-300 text-pine focus:ring-pine"
                     checked={form.clear_api_key}
                     disabled={Boolean(form.api_key.trim())}
-                    onChange={(event) => updateFormField("clear_api_key", event.target.checked)}
+                    onChange={(event) => {
+                      if (event.target.checked) {
+                        setShowClearKeyConfirm(true);
+                      } else {
+                        updateFormField("clear_api_key", false);
+                      }
+                    }}
                   />
                   Clear stored key
                 </label>
               ) : null}
             </div>
 
-            {submitError ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-                {submitError}
-              </div>
-            ) : null}
-
+            {submitError ? <ErrorBox message={submitError} /> : null}
             {submitMessage ? (
               <div className="rounded-lg border border-pine/20 bg-pine/10 px-4 py-3 text-sm text-pine">
                 {submitMessage}
@@ -473,6 +454,18 @@ export function SettingsPage() {
           <Metric label="Active provider" value={activeProvider?.name ?? "Unset"} />
         </div>
       </Panel>
+
+      <ConfirmDialog
+        open={showClearKeyConfirm}
+        title="Clear Stored Key"
+        message="This will permanently clear the stored API key for this provider. The key cannot be recovered."
+        confirmLabel="Clear Key"
+        onConfirm={() => {
+          setShowClearKeyConfirm(false);
+          updateFormField("clear_api_key", true);
+        }}
+        onCancel={() => setShowClearKeyConfirm(false)}
+      />
     </div>
   );
 }
@@ -575,123 +568,4 @@ function formatHealthMessage(result: ProviderHealthResponse): string {
   }
 
   return `${result.message} ${result.latency_ms} ms`;
-}
-
-function TextField({
-  id,
-  label,
-  value,
-  error,
-  required,
-  onChange
-}: {
-  id: string;
-  label: string;
-  value: string;
-  error?: string;
-  required?: boolean;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm font-medium text-stone-700">
-        {label}
-      </label>
-      <input
-        id={id}
-        type="text"
-        className={inputClassName(error)}
-        value={value}
-        required={required}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      <FieldError error={error} />
-    </div>
-  );
-}
-
-function PasswordField({
-  id,
-  label,
-  value,
-  placeholder,
-  onChange
-}: {
-  id: string;
-  label: string;
-  value: string;
-  placeholder: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm font-medium text-stone-700">
-        {label}
-      </label>
-      <input
-        id={id}
-        type="password"
-        className={inputClassName()}
-        value={value}
-        placeholder={placeholder}
-        autoComplete="off"
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </div>
-  );
-}
-
-function NumberField({
-  id,
-  label,
-  value,
-  error,
-  min,
-  max,
-  required,
-  onChange
-}: {
-  id: string;
-  label: string;
-  value: string;
-  error?: string;
-  min: number;
-  max: number;
-  required?: boolean;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm font-medium text-stone-700">
-        {label}
-      </label>
-      <input
-        id={id}
-        type="number"
-        className={inputClassName(error)}
-        value={value}
-        min={min}
-        max={max}
-        required={required}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      <FieldError error={error} />
-    </div>
-  );
-}
-
-function FieldError({ error }: { error?: string }) {
-  if (!error) {
-    return null;
-  }
-
-  return <p className="mt-1 text-xs font-medium text-red-700">{error}</p>;
-}
-
-function inputClassName(error?: string): string {
-  return [
-    "mt-1 w-full rounded-lg border bg-white px-3 py-2 text-sm text-ink outline-none transition",
-    "focus:border-pine focus:ring-2 focus:ring-pine/20",
-    error ? "border-red-300" : "border-stone-300"
-  ].join(" ");
 }

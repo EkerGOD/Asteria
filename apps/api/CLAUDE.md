@@ -12,7 +12,7 @@
 - 数据库模型或 migration：`docs/DATABASE_SCHEMA.md`。
 - API route、request/response 约定：`docs/API_CONTRACT.md`。
 - Provider、embedding、retrieval、RAG：`docs/ARCHITECTURE.md`、`docs/PRD.md`。
-- 任务拆分和验收标准：`docs/MVP_TASKS.md`。
+- 任务拆分和验收标准：`docs/MVP_TASKS.md`、`docs/AI_WORKFLOW.md`。
 
 如果文档之间出现冲突，优先保持：
 
