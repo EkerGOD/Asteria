@@ -20,6 +20,45 @@
 
 ---
 
+## v0.10.2 — Provider 架构收口与文件空间调研
+
+Scope：full-stack
+
+状态：planned
+
+约束：
+
+- 不新增 Provider 类型或 AI 能力
+- 不修改 PRD 定义的架构边界
+- 不实际实现本地 embedding 模型加载
+- 文件空间调研仅产出文档，暂不写代码
+
+解决的问题：
+
+1. [Architecture] Provider 的 `is_active` 机制与 model role 职责重叠，应完全由 model role 决定
+2. [UX] ChatView 模型选择器与 Settings Chat Model Role 未实时同步
+3. [Research] 缺少应用数据目录与本地模型存放方案规划
+
+方案：
+
+- 从 Provider 模型、schema、API、UI 中彻底移除 `is_active` 字段
+- Chat 模型选择 100% 由 chat model role 决定，未配置时引导用户去 Settings
+- ChatView 模型切换器与 Settings ModelRolesPage 通过共享状态或事件实现实时同步
+- 产出 Asteria 应用数据目录方案调研报告（config/cache/data 目录、本地模型存放路径、Win/Mac/Linux 路径规范）
+
+验收标准：
+
+- [ ] `is_active` 字段从 Provider 模型、schema、API 和 UI 中完全移除
+- [ ] 未配置 chat model role 时，ChatView 显示明确引导而非 fallback 到旧逻辑
+- [ ] ChatView 模型选择和 Settings Chat Model Role 双向实时同步
+- [ ] 文件空间调研报告产出，覆盖应用数据目录、本地模型路径、跨平台规范
+- [ ] 报告写入 `docs/` 或更新 `docs/ARCHITECTURE.md`
+- [ ] `cd apps/api && pytest` 通过（含 `is_active` 移除后的测试更新）
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
 ## v0.11.0 — 编辑器技术选型、Repository 文件系统与 Vault Manager
 
 Scope：frontend

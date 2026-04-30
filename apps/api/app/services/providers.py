@@ -50,7 +50,7 @@ def create_provider(
         metadata_=metadata,
         **data,
     )
-    _replace_provider_models(provider, model_names)
+    _replace_provider_models(session, provider, model_names)
     if provider.is_active:
         _deactivate_all_providers(session)
 
@@ -108,7 +108,7 @@ def update_provider(
         provider.api_key_ciphertext = encrypted_api_key
 
     if model_names is not _UNSET:
-        _replace_provider_models(provider, model_names)
+        _replace_provider_models(session, provider, model_names)
         if "chat_model" not in updates:
             provider.chat_model = model_names[0]
         if provider.embedding_model is None:
@@ -228,7 +228,17 @@ def _deactivate_all_providers(session: Session) -> None:
     )
 
 
-def _replace_provider_models(provider: AIProvider, model_names: list[str]) -> None:
+def _replace_provider_models(
+    session: Session,
+    provider: AIProvider,
+    model_names: list[str],
+) -> None:
+    existing = list(provider.model_entries)
+    provider.model_entries = []
+    if existing:
+        for entry in existing:
+            session.delete(entry)
+        session.flush()
     provider.model_entries = [
         ProviderModel(id=uuid4(), name=model_name, sort_order=index)
         for index, model_name in enumerate(model_names)
@@ -253,6 +263,11 @@ def _commit_provider(session: Session, provider: AIProvider) -> None:
         session.commit()
     except IntegrityError as exc:
         session.rollback()
-        raise ProviderNameConflictError from exc
+        error_msg = str(exc.orig) if exc.orig is not None else ""
+        if "uq_ai_providers_lower_name" in error_msg:
+            raise ProviderNameConflictError from exc
+        raise ProviderNameConflictError(
+            "A constraint violation occurred while saving the provider."
+        ) from exc
 
     session.refresh(provider)

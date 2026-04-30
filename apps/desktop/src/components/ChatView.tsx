@@ -596,15 +596,15 @@ export function ChatView({
           <div className="flex min-w-0 items-center gap-1.5">
             {/* Model switcher */}
             {availableModels.length > 0 && (
-              <div className="relative" ref={modelDropdownRef}>
+              <div className="relative shrink-0" ref={modelDropdownRef}>
                 <button
                   type="button"
-                  className="inline-flex max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-xs text-stone-500 hover:bg-stone-100 disabled:opacity-50"
+                  className="inline-flex max-w-[120px] items-center gap-1 rounded px-1.5 py-0.5 text-xs text-stone-500 hover:bg-stone-100 disabled:opacity-50"
                   onClick={() => setModelDropdownOpen((v) => !v)}
                   disabled={sending || !activeConversationId}
                   title={activeChatModel || "Select model"}
                 >
-                  <span className="whitespace-nowrap">{activeChatModel || "Model"}</span>
+                  <span className="truncate">{activeChatModel || "Model"}</span>
                   <Icon name="chevronDown" size={10} />
                 </button>
                 {modelDropdownOpen && (
@@ -630,7 +630,7 @@ export function ChatView({
             )}
             <button
               type="button"
-              className="rounded-md bg-pine px-3 py-1 text-xs font-medium text-white hover:bg-pine/90 disabled:opacity-50"
+              className="shrink-0 rounded-md bg-pine px-3 py-1 text-xs font-medium text-white hover:bg-pine/90 disabled:opacity-50"
               onClick={() => void handleSend()}
               disabled={!chatInputValue.trim() || sending || !activeConversationId}
             >

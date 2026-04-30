@@ -4,41 +4,6 @@
 
 ---
 
-## v0.10.0 — Provider 模型架构重构与流式输出
-
-Scope：full-stack
-
-状态：done
-
-约束：
-
-- 不修改 PRD 定义的 desktop-first 架构边界
-- 不修改数据库 schema 中非 Provider/Model 相关部分
-- 不实际运行本地 embedding 模型（仅做架构调整，本地模型集成延后到后续版本）
-- 不实现 RAG 流程（留到 v0.13.0）
-- 不实现 Tool calling（仅架构预留）
-- 前端只通过 typed API client 访问后端
-
-解决的问题：
-
-1. [Architecture] Provider 页面仍区分 chat 和 embedding，但 Provider 只是 API 服务配置，不应按任务角色分类
-2. [Architecture] Chat model 需要手动填写名称，无法从 Provider 已配置的模型列表中选择
-3. [Architecture] 单个 Provider 只能配置一个模型，无法表达同一 Provider 的多个模型
-4. [Architecture] Embedding model 配置混在 Provider 中，应改为本地化方案
-5. [Feature] Chat 尚未实现流式输出，用户需等待完整回复
-
-主要变更：
-
-- 新增 ProviderModel 表，每个 Provider 支持多个模型（+/- 按钮管理）
-- Provider 创建/编辑表单从 chat_model/embedding_model 改为统一的 models 列表
-- Chat 模型角色从所有 Provider 的模型下拉列表中选择
-- Embedding 模型角色改为本地模型方案入口（bge-m3 默认）
-- 后端新增 SSE 流式输出端点 POST /api/chat/send/stream
-- 前端 ChatView 接入流式输出，逐 token 渲染
-- 流式中断时保存已生成内容并显示「Response interrupted」提示
-
----
-
 ## v0.1.0 — MVP 核心骨架
 
 MVP 核心骨架已完成：
@@ -272,3 +237,63 @@ MVP 核心骨架已完成：
 
 1. [Bug] 添加 Provider 时每次返回 500 Internal Server Error
 
+
+---
+
+## v0.10.0 — Provider 模型架构重构与流式输出
+
+Scope：full-stack
+
+状态：done
+
+约束：
+
+- 不修改 PRD 定义的 desktop-first 架构边界
+- 不修改数据库 schema 中非 Provider/Model 相关部分
+- 不实际运行本地 embedding 模型（仅做架构调整，本地模型集成延后到后续版本）
+- 不实现 RAG 流程（留到 v0.13.0）
+- 不实现 Tool calling（仅架构预留）
+- 前端只通过 typed API client 访问后端
+
+解决的问题：
+
+1. [Architecture] Provider 页面仍区分 chat 和 embedding，但 Provider 只是 API 服务配置，不应按任务角色分类
+2. [Architecture] Chat model 需要手动填写名称，无法从 Provider 已配置的模型列表中选择
+3. [Architecture] 单个 Provider 只能配置一个模型，无法表达同一 Provider 的多个模型
+4. [Architecture] Embedding model 配置混在 Provider 中，应改为本地化方案
+5. [Feature] Chat 尚未实现流式输出，用户需等待完整回复
+
+主要变更：
+
+- 新增 ProviderModel 表，每个 Provider 支持多个模型（+/- 按钮管理）
+- Provider 创建/编辑表单从 chat_model/embedding_model 改为统一的 models 列表
+- Chat 模型角色从所有 Provider 的模型下拉列表中选择
+- Embedding 模型角色改为本地模型方案入口（bge-m3 默认）
+- 后端新增 SSE 流式输出端点 POST /api/chat/send/stream
+- 前端 ChatView 接入流式输出，逐 token 渲染
+- 流式中断时保存已生成内容并显示「Response interrupted」提示
+
+---
+
+## v0.10.1 — Provider 编辑 Bug 修复与布局修复
+
+Scope：full-stack
+
+状态：done
+
+约束：
+
+- 不新增 API 端点
+- 不修改数据库 schema
+- 不新增功能
+
+解决的问题：
+
+1. [Bug] Provider 编辑保存模型时报 409 Conflict（`_replace_provider_models` flush 顺序导致唯一约束误触发）
+2. [Bug] 右侧面板折叠到最小时 Send 按钮被挤出视图
+
+主要变更：
+
+- `_replace_provider_models` 先显式删除旧模型条目并 flush，再插入新条目，消除唯一约束冲突
+- `_commit_provider` 区分 IntegrityError 来源，仅对 name 冲突抛出 ProviderNameConflictError
+- ChatView 输入区 Send 按钮和模型选择器添加 `shrink-0`，模型名称 `truncate` 溢出省略
