@@ -20,38 +20,34 @@
 
 ---
 
-## v0.13.0 — 本地 Embedding 模型管理
+## v0.18.0 — File Operations Tauri Native
 
-Scope：full-stack
+Scope：full-stack（Tauri Rust + React 前端）
 
 状态：planned
 
 约束：
 
-- 不把 embedding 模型配置重新塞回 Provider 页面
-- 不允许前端直接调用模型下载源、Provider SDK 或 embedding 执行逻辑
-- 不实现完整模型市场或任意模型导入
-- 不改变 chat model role 的远程 Provider 模型选择方式
-- 模型文件存放在应用数据目录，不存放在具体 Repository 中
+- 不改变 Knowledge 关联、embedding 状态等文件元数据的 API 路径
+- 不实现跨仓库文件拖拽或复制
+- 不改变文件在磁盘上的存储格式
+- 文件元数据（Knowledge 关联、embedding 状态）仍走 FastAPI
 
 解决的问题：
 
-1. [Feature] Model Roles 页面中 embedding 模型仍像自由输入，不是候选模型选择
-2. [Feature] 用户选择本地 embedding 模型时，如果模型缺失，应提供下载能力
-3. [Architecture] 本地 embedding 模型下载位置需要固定在应用数据目录，跟随软件而非污染知识库
-4. [Architecture] Knowledge embedding pipeline 需要明确使用本地 embedding model role
+1. [Architecture] 文件树通过 FastAPI 读取本地文件，导致后端不可用时文件树完全无法使用
+2. [Feature] 文件树缺少拖拽移动文件功能
+3. [Feature] 缺少从文件树拖拽文件到 Editor 打开的能力
+4. [UX] 切换仓库时未关闭旧仓库的已打开文件 Tab
 
 验收标准：
 
-- [ ] Model Roles 页面中 embedding 角色使用候选模型 selector，不再使用自由文本输入
-- [ ] 首版候选模型至少包含默认 `bge-m3`，并展示维度、状态和本地路径摘要
-- [ ] 未下载模型显示可下载状态，下载中、成功、失败、重试状态完整
-- [ ] 模型下载到 `<app_data_dir>/models/embedding/<model_name>/`
-- [ ] FastAPI 通过配置读取 `ASTERIA_DATA_DIR` / `ASTERIA_MODELS_DIR` 或等价路径
-- [ ] 后端提供本地 embedding 模型状态查询和下载触发 API
-- [ ] embedding model role 保存 `provider_id = null`、`model_name` 和 `embedding_dimension`
-- [ ] 更新 `docs/API_CONTRACT.md`、`docs/DATABASE_SCHEMA.md` 和 `docs/APP_DATA_DIRECTORY.md` 中的模型管理 contract
-- [ ] `cd apps/api && pytest` 通过
+- [ ] 文件树读取/创建/删除/重命名使用 Tauri Rust command，不依赖 FastAPI
+- [ ] 文件树内支持拖拽移动文件到子文件夹或上级目录
+- [ ] 支持从文件树拖拽文件到 Editor 区域以在新 Tab 打开
+- [ ] 切换仓库时弹出确认对话框，列出未保存文件，支持保存并关闭或放弃更改
+- [ ] 确认后关闭所有旧仓库 Tab，Editor 区域重置为空状态
+- [ ] 文件元数据（Knowledge 关联状态等）仍通过 FastAPI 获取
 - [ ] `cd apps/desktop && npm run typecheck` 通过
 - [ ] `cd apps/desktop && npm run lint` 通过
 

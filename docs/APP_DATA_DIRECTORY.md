@@ -1,6 +1,6 @@
 # App Data Directory & Local Model Storage
 
-Asteria v0.10.2 调研报告。本文档为后续实现提供方案参考，不涉及代码变更。
+Asteria v0.10.2 调研报告。v0.13.0 已实现模型存储路径配置、HuggingFace 下载、状态查询 API 和 embedding pipeline 接入 model_roles。本地 ONNX 推理执行延后至后续版本。
 
 ## 概述
 
@@ -120,16 +120,23 @@ FastAPI 作为 sidecar 运行时，路径通过以下方式传递：
 - 启动时通过环境变量传入（`ASTERIA_DATA_DIR`、`ASTERIA_MODELS_DIR` 等）
 - 或由 Tauri 在启动 sidecar 前写入 `.env` 文件
 
-### FastAPI 端接收
+### FastAPI 端接收（v0.13.0 已实现）
 
-在 `apps/api/app/core/config.py` 中扩展 `Settings` 类：
+`apps/api/app/core/config.py` 的 `Settings` 类已包含：
 
 ```python
-class Settings(BaseSettings):
-    # 现有字段 ...
-    app_data_dir: str | None = None   # 由 Tauri sidecar 启动时注入
-    models_dir: str | None = None     # 本地模型存放路径
+app_data_dir: str | None = None   # ASTERIA_DATA_DIR 环境变量
+models_dir: str | None = None     # ASTERIA_MODELS_DIR 环境变量
+
+@property
+def embedding_models_dir(self) -> str | None:
+    # 返回 <models_dir>/embedding 或 <app_data_dir>/models/embedding
 ```
+
+模型状态查询 `GET /api/local-models/status` 和下载触发
+`POST /api/local-models/{name}/download` 端点已可用。下载使用
+`httpx` 从 HuggingFace Hub 获取文件，存入
+`<embedding_models_dir>/<model_name>/`。
 
 ## 跨平台注意事项
 

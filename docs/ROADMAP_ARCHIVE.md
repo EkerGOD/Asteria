@@ -534,3 +534,56 @@ Scope：full-stack
 - FileBrowser 仓库切换改为调用后端 select current API
 - AppShell 在当前 Repository 变化时清空旧 Editor tabs，避免继续使用旧 root 下的打开文件
 - 更新 Repository 相关 API、schema、desktop 和 UI contract 文档
+
+---
+
+## v0.13.0 — 本地 Embedding 模型管理
+
+Scope：full-stack
+
+状态：done（2026-05-01）
+
+约束：
+
+- 不把 embedding 模型配置重新塞回 Provider 页面
+- 不允许前端直接调用模型下载源、Provider SDK 或 embedding 执行逻辑
+- 不实现完整模型市场或任意模型导入
+- 不改变 chat model role 的远程 Provider 模型选择方式
+- 模型文件存放在应用数据目录，不存放在具体 Repository 中
+
+解决的问题：
+
+1. [Feature] Model Roles 页面中 embedding 模型仍像自由输入，不是候选模型选择
+2. [Feature] 用户选择本地 embedding 模型时，如果模型缺失，应提供下载能力
+3. [Architecture] 本地 embedding 模型下载位置需要固定在应用数据目录，跟随软件而非污染知识库
+4. [Architecture] Knowledge embedding pipeline 需要明确使用本地 embedding model role
+
+验收标准：
+
+- [x] Model Roles 页面中 embedding 角色使用候选模型 selector，不再使用自由文本输入
+- [x] 首版候选模型至少包含默认 `bge-m3`，并展示维度、状态和本地路径摘要
+- [x] 未下载模型显示可下载状态，下载中、成功、失败、重试状态完整
+- [x] 模型下载到 `<app_data_dir>/models/embedding/<model_name>/`
+- [x] FastAPI 通过配置读取 `ASTERIA_DATA_DIR` / `ASTERIA_MODELS_DIR` 或等价路径
+- [x] 后端提供本地 embedding 模型状态查询和下载触发 API
+- [x] embedding model role 保存 `provider_id = null`、`model_name` 和 `embedding_dimension`
+- [x] 更新 `docs/API_CONTRACT.md`、`docs/DATABASE_SCHEMA.md` 和 `docs/APP_DATA_DIRECTORY.md`
+- [x] `cd apps/api && pytest` 通过（134 passed）
+- [x] `cd apps/desktop && npm run typecheck` 通过
+- [x] `cd apps/desktop && npm run lint` 通过（0 errors）
+
+修改文件：
+
+- `apps/api/app/core/config.py` — `ASTERIA_DATA_DIR` / `ASTERIA_MODELS_DIR` / `embedding_models_dir`
+- `apps/api/app/services/local_models.py` — 模型注册表 + HuggingFace 下载（新建）
+- `apps/api/app/api/routes/local_models.py` — `GET /status` + `POST /{name}/download`（新建）
+- `apps/api/app/main.py` — 注册 local_models 路由
+- `apps/api/app/services/model_roles.py` — `resolve_embedding_model_role()`
+- `apps/api/app/services/embeddings.py` — pipeline 接入 model_roles
+- `apps/api/app/rag/retrieval.py` — RAG 检索同步接入 model_roles
+- `apps/desktop/src/api/types.ts` — `LocalModelStatus` / `LocalModelItem` / `LocalModelsResponse`
+- `apps/desktop/src/api/client.ts` — `listLocalModels()` / `downloadLocalModel()`
+- `apps/desktop/src/pages/ModelRolesPage.tsx` — 候选模型 selector + 下载 UI
+- `docs/API_CONTRACT.md` — Local Models API contract
+- `docs/DATABASE_SCHEMA.md` — model_roles pipeline 使用说明
+- `docs/APP_DATA_DIRECTORY.md` — 标记 v0.13.0 已实现

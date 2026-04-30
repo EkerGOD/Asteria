@@ -257,3 +257,23 @@ export type ModelRoleUpsertRequest = {
   model_name: string;
   embedding_dimension?: number | null;
 };
+
+export type LocalModelStatus =
+  | "not_downloaded"
+  | "downloading"
+  | "downloaded"
+  | "failed";
+
+export type LocalModelItem = {
+  name: string;
+  dimension: number;
+  description: string;
+  status: LocalModelStatus;
+  local_path: string | null;
+  progress?: number | null;
+  error_message?: string | null;
+};
+
+export type LocalModelsResponse = {
+  models: LocalModelItem[];
+};

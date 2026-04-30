@@ -54,6 +54,22 @@ class Settings(BaseSettings):
         default=DEFAULT_CORS_ORIGINS,
         validation_alias=AliasChoices("ASTERIA_API_CORS_ORIGINS", "CORS_ORIGINS"),
     )
+    app_data_dir: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ASTERIA_DATA_DIR"),
+    )
+    models_dir: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ASTERIA_MODELS_DIR"),
+    )
+
+    @property
+    def embedding_models_dir(self) -> str | None:
+        if self.models_dir:
+            return f"{self.models_dir}/embedding"
+        if self.app_data_dir:
+            return f"{self.app_data_dir}/models/embedding"
+        return None
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -29,6 +29,8 @@ import type {
   RAGAnswerResponse,
   Tag,
   TagCreateRequest,
+  LocalModelItem,
+  LocalModelsResponse,
 } from "./types";
 
 export class ApiClientError extends Error {
@@ -547,4 +549,22 @@ export function upsertModelRole(
   init?: RequestInit,
 ): Promise<ModelRole> {
   return requestJsonBody<ModelRole>(`/api/model-roles/${roleType}`, "PUT", payload, init);
+}
+
+export function listLocalModels(
+  init?: RequestInit,
+): Promise<LocalModelsResponse> {
+  return requestJson<LocalModelsResponse>("/api/local-models/status", init);
+}
+
+export function downloadLocalModel(
+  modelName: string,
+  init?: RequestInit,
+): Promise<LocalModelItem> {
+  return requestJsonBody<LocalModelItem>(
+    `/api/local-models/${encodeURIComponent(modelName)}/download`,
+    "POST",
+    undefined,
+    init,
+  );
 }

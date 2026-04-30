@@ -209,6 +209,52 @@ Returns 404 if the specified provider_id does not exist.
 Returns 400 if the chat role model is not listed in the selected Provider's
 `models`, or if an embedding role attempts to select a remote Provider.
 
+## Local Models API
+
+GET /api/local-models/status
+POST /api/local-models/{model_name}/download
+
+Local models are embedding models hosted on the local filesystem rather than
+served by a remote Provider. The model files reside under the configured
+`ASTERIA_DATA_DIR/models/embedding/<model_name>/` path, set by the Tauri
+sidecar when launching the FastAPI process.
+
+```json
+// GET /api/local-models/status → 200
+{
+  "models": [
+    {
+      "name": "bge-m3",
+      "dimension": 1024,
+      "description": "BAAI General Embedding (Multi-language, 1024-dim)",
+      "status": "not_downloaded",
+      "local_path": null
+    }
+  ]
+}
+```
+
+Status values: `"not_downloaded"` | `"downloading"` | `"downloaded"` | `"failed"`.
+While a download is active the response includes `progress` (0–100) and may
+include `error_message` on failure.
+
+```json
+// POST /api/local-models/bge-m3/download → 202
+{
+  "name": "bge-m3",
+  "dimension": 1024,
+  "description": "BAAI General Embedding (Multi-language, 1024-dim)",
+  "status": "downloading",
+  "local_path": null,
+  "progress": 0
+}
+```
+
+The download endpoint returns 202 Accepted on success and starts a background
+download from HuggingFace Hub. Returns 400 if `ASTERIA_DATA_DIR` /
+`ASTERIA_MODELS_DIR` is not configured. Returns 404 for unknown model names.
+The client should poll `GET /api/local-models/status` to track progress.
+
 ## Message API
 
 POST /api/conversations/{id}/messages

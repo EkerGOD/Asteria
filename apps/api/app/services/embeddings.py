@@ -13,6 +13,7 @@ from app.ai import (
     ProviderMalformedResponseError,
 )
 from app.models import AIProvider, KnowledgeEmbedding, KnowledgeUnit
+from app.services.model_roles import resolve_embedding_model_role
 
 
 DEFAULT_CHUNK_SIZE = 1200
@@ -92,8 +93,24 @@ def hash_embedding_content(
 
 
 def get_embedding_provider(session: Session) -> AIProvider | None:
+    role = resolve_embedding_model_role(session)
+    if role is not None and role.embedding_dimension is not None:
+        pass
     statement = select(AIProvider).order_by(AIProvider.created_at.asc()).limit(1)
     return session.scalar(statement)
+
+
+def resolve_embedding_model_info(
+    session: Session,
+) -> tuple[str, int]:
+    """Resolve embedding model name and dimension from model_role or provider fallback."""
+    role = resolve_embedding_model_role(session)
+    if role is not None and role.embedding_dimension is not None:
+        return role.model_name, role.embedding_dimension
+    provider = get_embedding_provider(session)
+    if provider is not None:
+        return provider.embedding_model, provider.embedding_dimension
+    raise ActiveProviderNotConfiguredError
 
 
 def refresh_knowledge_embeddings(
@@ -103,8 +120,11 @@ def refresh_knowledge_embeddings(
     provider = get_embedding_provider(session)
     if provider is None:
         raise ActiveProviderNotConfiguredError
+    model_name, dimension = resolve_embedding_model_info(session)
     try:
-        summary = _refresh_knowledge_embeddings_with_provider(session, knowledge, provider)
+        summary = _refresh_knowledge_embeddings_with_config(
+            session, knowledge, provider, model_name, dimension
+        )
         session.commit()
     except Exception:
         session.rollback()
@@ -121,7 +141,10 @@ def refresh_knowledge_embeddings_if_configured(
     provider = get_embedding_provider(session)
     if provider is None:
         return None
-    return _refresh_knowledge_embeddings_with_provider(session, knowledge, provider)
+    model_name, dimension = resolve_embedding_model_info(session)
+    return _refresh_knowledge_embeddings_with_config(
+        session, knowledge, provider, model_name, dimension
+    )
 
 
 def delete_knowledge_embeddings(session: Session, knowledge_unit_id: UUID) -> int:
@@ -133,14 +156,20 @@ def delete_knowledge_embeddings(session: Session, knowledge_unit_id: UUID) -> in
     return result.rowcount or 0
 
 
-def _refresh_knowledge_embeddings_with_provider(
+def _refresh_knowledge_embeddings_with_config(
     session: Session,
     knowledge: KnowledgeUnit,
     provider: AIProvider,
+    embedding_model: str,
+    embedding_dimension: int,
 ) -> KnowledgeEmbeddingRefreshSummary:
-    chunks = _build_embedding_chunks(knowledge.content, provider)
+    chunks = _build_embedding_chunks(
+        knowledge.content, provider.id, embedding_model, embedding_dimension
+    )
     existing_embeddings = _list_existing_embeddings(session, knowledge.id)
-    reusable_embeddings = _reusable_embeddings(existing_embeddings, chunks, provider)
+    reusable_embeddings = _reusable_embeddings(
+        existing_embeddings, chunks, provider.id, embedding_model, embedding_dimension
+    )
     reusable_ids = {embedding.id for embedding in reusable_embeddings.values()}
     stale_embeddings = [
         embedding
@@ -153,7 +182,7 @@ def _refresh_knowledge_embeddings_with_provider(
         for chunk in chunks
         if (chunk.index, chunk.content_hash) not in reusable_embeddings
     ]
-    vectors = _create_missing_embeddings(provider, missing_chunks)
+    vectors = _create_missing_embeddings(provider, missing_chunks, embedding_dimension)
 
     for chunk, vector in zip(missing_chunks, vectors, strict=True):
         session.add(
@@ -161,8 +190,8 @@ def _refresh_knowledge_embeddings_with_provider(
                 id=uuid4(),
                 knowledge_unit_id=knowledge.id,
                 provider_id=provider.id,
-                embedding_model=provider.embedding_model,
-                embedding_dimension=provider.embedding_dimension,
+                embedding_model=embedding_model,
+                embedding_dimension=embedding_dimension,
                 chunk_index=chunk.index,
                 chunk_text=chunk.text,
                 content_hash=chunk.content_hash,
@@ -176,8 +205,8 @@ def _refresh_knowledge_embeddings_with_provider(
     return KnowledgeEmbeddingRefreshSummary(
         knowledge_unit_id=knowledge.id,
         provider_id=provider.id,
-        embedding_model=provider.embedding_model,
-        embedding_dimension=provider.embedding_dimension,
+        embedding_model=embedding_model,
+        embedding_dimension=embedding_dimension,
         chunk_count=len(chunks),
         created_count=len(missing_chunks),
         reused_count=len(reusable_embeddings),
@@ -187,7 +216,9 @@ def _refresh_knowledge_embeddings_with_provider(
 
 def _build_embedding_chunks(
     content: str,
-    provider: AIProvider,
+    provider_id: UUID,
+    embedding_model: str,
+    embedding_dimension: int,
 ) -> list[_EmbeddingChunk]:
     chunks = chunk_knowledge_content(content)
     return [
@@ -196,9 +227,9 @@ def _build_embedding_chunks(
             text=chunk_text,
             content_hash=hash_embedding_content(
                 chunk_text,
-                provider.id,
-                provider.embedding_model,
-                provider.embedding_dimension,
+                provider_id,
+                embedding_model,
+                embedding_dimension,
             ),
         )
         for index, chunk_text in enumerate(chunks)
@@ -218,7 +249,9 @@ def _list_existing_embeddings(
 def _reusable_embeddings(
     embeddings: list[KnowledgeEmbedding],
     chunks: list[_EmbeddingChunk],
-    provider: AIProvider,
+    provider_id: UUID,
+    embedding_model: str,
+    embedding_dimension: int,
 ) -> dict[tuple[int, str], KnowledgeEmbedding]:
     expected_keys = {(chunk.index, chunk.content_hash) for chunk in chunks}
     reusable: dict[tuple[int, str], KnowledgeEmbedding] = {}
@@ -227,11 +260,11 @@ def _reusable_embeddings(
         key = (embedding.chunk_index, embedding.content_hash)
         if key not in expected_keys:
             continue
-        if embedding.provider_id != provider.id:
+        if embedding.provider_id != provider_id:
             continue
-        if embedding.embedding_model != provider.embedding_model:
+        if embedding.embedding_model != embedding_model:
             continue
-        if embedding.embedding_dimension != provider.embedding_dimension:
+        if embedding.embedding_dimension != embedding_dimension:
             continue
         reusable[key] = embedding
 
@@ -241,6 +274,7 @@ def _reusable_embeddings(
 def _create_missing_embeddings(
     provider: AIProvider,
     chunks: list[_EmbeddingChunk],
+    embedding_dimension: int,
 ) -> list[list[float]]:
     if not chunks:
         return []
@@ -252,7 +286,7 @@ def _create_missing_embeddings(
     _validate_embedding_vectors(
         result.embeddings,
         expected_count=len(chunks),
-        expected_dimension=provider.embedding_dimension,
+        expected_dimension=embedding_dimension,
     )
     return result.embeddings
 

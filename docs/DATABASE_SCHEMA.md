@@ -388,7 +388,9 @@ provider_models 存储每个 OpenAI-compatible Provider 暴露或由用户手动
 
 ## Table: model_roles
 
-model_roles 存储任务角色到模型的选择关系。v0.10.0 中 `chat` 角色选择远程 Provider 模型；`embedding` 角色作为本地模型方案入口，实际本地模型运行延后。
+model_roles 存储任务角色到模型的选择关系。`chat` 角色选择远程 Provider 模型；`embedding` 角色（`provider_id` 为 NULL）指向本地 embedding 模型，其 `model_name` 和 `embedding_dimension` 由 embedding pipeline 和 retrieval pipeline 通过 `resolve_embedding_model_info()` 消费。实际本地 ONNX 推理执行延后至后续版本；当前 embedding 生成仍通过远程 Provider adapter，但使用 role 中配置的模型名和维度作为元数据。
+
+本地 embedding 候选模型（首版含 `bge-m3`，1024 维）定义在 `app/services/local_models.py` 的静态注册表中，非数据库表。模型文件下载到 `<app_data_dir>/models/embedding/<model_name>/`，下载状态通过 `GET /api/local-models/status` 查询。
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |

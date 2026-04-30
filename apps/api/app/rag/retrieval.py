@@ -26,6 +26,7 @@ from app.schemas.tag import TagResponse
 from app.services.embeddings import (
     ActiveProviderNotConfiguredError,
     get_embedding_provider,
+    resolve_embedding_model_info,
 )
 
 
@@ -74,11 +75,14 @@ def retrieve_relevant_chunks(
     provider = get_embedding_provider(session)
     if provider is None:
         raise ActiveProviderNotConfiguredError
+    model_name, dimension = resolve_embedding_model_info(session)
 
-    query_embedding = _create_query_embedding(provider, query)
+    query_embedding = _create_query_embedding(provider, query, dimension)
     results = _search_embeddings(
         session,
         provider,
+        model_name,
+        dimension,
         query_embedding,
         project_id=project_id,
         tag_slugs=tag_slugs or None,
@@ -88,13 +92,15 @@ def retrieve_relevant_chunks(
 
     return RetrievalSearchResponse(
         provider_id=provider.id,
-        embedding_model=provider.embedding_model,
-        embedding_dimension=provider.embedding_dimension,
+        embedding_model=model_name,
+        embedding_dimension=dimension,
         results=results,
     )
 
 
-def _create_query_embedding(provider: AIProvider, query: str) -> list[float]:
+def _create_query_embedding(
+    provider: AIProvider, query: str, embedding_dimension: int
+) -> list[float]:
     adapter = OpenAICompatibleProviderAdapter.from_provider(provider)
     result = adapter.create_embeddings(EmbeddingRequest(texts=[query]))
 
@@ -104,7 +110,7 @@ def _create_query_embedding(provider: AIProvider, query: str) -> list[float]:
         )
 
     embedding = result.embeddings[0]
-    if len(embedding) != provider.embedding_dimension:
+    if len(embedding) != embedding_dimension:
         raise ProviderMalformedResponseError(
             "Provider embedding dimension did not match configuration."
         )
@@ -115,6 +121,8 @@ def _create_query_embedding(provider: AIProvider, query: str) -> list[float]:
 def _search_embeddings(
     session: Session,
     provider: AIProvider,
+    embedding_model: str,
+    embedding_dimension: int,
     query_embedding: list[float],
     *,
     project_id: UUID | None,
@@ -126,6 +134,8 @@ def _search_embeddings(
         return _search_embeddings_postgresql(
             session,
             provider,
+            embedding_model,
+            embedding_dimension,
             query_embedding,
             project_id=project_id,
             tag_slugs=tag_slugs,
@@ -136,6 +146,8 @@ def _search_embeddings(
     return _search_embeddings_in_memory(
         session,
         provider,
+        embedding_model,
+        embedding_dimension,
         query_embedding,
         project_id=project_id,
         tag_slugs=tag_slugs,
@@ -144,7 +156,9 @@ def _search_embeddings(
     )
 
 
-def _base_embedding_statement(provider: AIProvider):
+def _base_embedding_statement(
+    provider: AIProvider, embedding_model: str, embedding_dimension: int
+):
     statement = (
         select(KnowledgeEmbedding)
         .join(KnowledgeEmbedding.knowledge_unit)
@@ -155,8 +169,8 @@ def _base_embedding_statement(provider: AIProvider):
         )
         .where(
             KnowledgeEmbedding.provider_id == provider.id,
-            KnowledgeEmbedding.embedding_model == provider.embedding_model,
-            KnowledgeEmbedding.embedding_dimension == provider.embedding_dimension,
+            KnowledgeEmbedding.embedding_model == embedding_model,
+            KnowledgeEmbedding.embedding_dimension == embedding_dimension,
             KnowledgeUnit.status != "archived",
         )
     )
@@ -189,6 +203,8 @@ def _apply_filters(
 def _search_embeddings_postgresql(
     session: Session,
     provider: AIProvider,
+    embedding_model: str,
+    embedding_dimension: int,
     query_embedding: list[float],
     *,
     project_id: UUID | None,
@@ -196,12 +212,12 @@ def _search_embeddings_postgresql(
     top_k: int,
     min_score: float,
 ) -> list[RetrievalResult]:
-    query_vector = literal(query_embedding, type_=Vector(provider.embedding_dimension))
+    query_vector = literal(query_embedding, type_=Vector(embedding_dimension))
     distance = KnowledgeEmbedding.embedding.op("<=>")(query_vector)
     score = (1.0 - distance).label("score")
 
     statement = _apply_filters(
-        _base_embedding_statement(provider),
+        _base_embedding_statement(provider, embedding_model, embedding_dimension),
         project_id=project_id,
         tag_slugs=tag_slugs,
     )
@@ -219,6 +235,8 @@ def _search_embeddings_postgresql(
 def _search_embeddings_in_memory(
     session: Session,
     provider: AIProvider,
+    embedding_model: str,
+    embedding_dimension: int,
     query_embedding: list[float],
     *,
     project_id: UUID | None,
@@ -227,7 +245,7 @@ def _search_embeddings_in_memory(
     min_score: float,
 ) -> list[RetrievalResult]:
     statement = _apply_filters(
-        _base_embedding_statement(provider),
+        _base_embedding_statement(provider, embedding_model, embedding_dimension),
         project_id=project_id,
         tag_slugs=tag_slugs,
     )

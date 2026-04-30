@@ -77,6 +77,13 @@ def resolve_chat_model_role(session: Session) -> tuple[AIProvider, str] | None:
     return provider, role.model_name
 
 
+def resolve_embedding_model_role(session: Session) -> ModelRole | None:
+    role = session.scalars(
+        select(ModelRole).where(ModelRole.role_type == "embedding")
+    ).first()
+    return role
+
+
 def _validate_role_payload(
     session: Session,
     role_type: str,
