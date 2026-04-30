@@ -22,6 +22,9 @@ import type {
   Project,
   ProjectCreateRequest,
   ProjectUpdateRequest,
+  Repository,
+  RepositoryCreateRequest,
+  RepositoryUpdateRequest,
   RAGAnswerRequest,
   RAGAnswerResponse,
   Tag,
@@ -208,6 +211,43 @@ export function updateProject(
 
 export function archiveProject(projectId: string, init?: RequestInit): Promise<Project> {
   return requestJsonBody<Project>(`/api/projects/${projectId}`, "DELETE", undefined, init);
+}
+
+export function listRepositories(
+  params: { include_unlinked?: boolean } = {},
+  init?: RequestInit
+): Promise<Repository[]> {
+  return requestJson<Repository[]>(
+    `/api/repositories${buildQueryString({ include_unlinked: params.include_unlinked })}`,
+    init
+  );
+}
+
+export function getCurrentRepository(init?: RequestInit): Promise<Repository | null> {
+  return requestJson<Repository | null>("/api/repositories/current", init);
+}
+
+export function createRepository(
+  payload: RepositoryCreateRequest,
+  init?: RequestInit
+): Promise<Repository> {
+  return requestJsonBody<Repository>("/api/repositories", "POST", payload, init);
+}
+
+export function updateRepository(
+  repositoryId: string,
+  payload: RepositoryUpdateRequest,
+  init?: RequestInit
+): Promise<Repository> {
+  return requestJsonBody<Repository>(`/api/repositories/${repositoryId}`, "PUT", payload, init);
+}
+
+export function unlinkRepository(repositoryId: string, init?: RequestInit): Promise<Repository> {
+  return requestJsonBody<Repository>(`/api/repositories/${repositoryId}`, "DELETE", undefined, init);
+}
+
+export function selectRepository(repositoryId: string, init?: RequestInit): Promise<Repository> {
+  return requestJsonBody<Repository>(`/api/repositories/${repositoryId}/select`, "POST", undefined, init);
 }
 
 export function listTags(init?: RequestInit): Promise<Tag[]> {

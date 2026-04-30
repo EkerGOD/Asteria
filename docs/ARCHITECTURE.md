@@ -28,7 +28,7 @@ flowchart LR
 - React 页面、组件、客户端状态和 UI 交互。
 - 通过 HTTP 调用本地 FastAPI。
 - 渲染 conversations、knowledge units、projects、settings 和 diagnostics。
-- 必要时通过 Tauri commands 处理桌面能力，例如未来的本地文件选择、应用生命周期、系统集成等。
+- 必要时通过 Tauri commands 处理桌面能力，例如本地文件选择、文件系统读写、应用生命周期、系统集成等。
 
 `apps/desktop` 不负责：
 
@@ -39,6 +39,7 @@ flowchart LR
 - embedding 生成。
 - RAG 检索、prompt 构造或 Provider 响应解析。
 - 除基础表单校验之外的 Provider secret 校验。
+- Repository / Vault 注册权威、当前 Repository 选择和重复注册校验。
 
 ### apps/api
 
@@ -48,6 +49,7 @@ flowchart LR
 - SQLAlchemy ORM models 和 database sessions。
 - Alembic migrations。
 - conversations、messages、knowledge units、tags、projects、providers、settings 的业务规则。
+- repositories 的注册、更新、unlink 和 current selection 业务规则。
 - AI Provider abstraction 和具体 Provider adapter。
 - embedding 生成。
 - 基于 pgvector 的语义检索。

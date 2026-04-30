@@ -443,3 +443,94 @@ Scope：frontend
 - `useFileTree.ts`：展开状态持久化到 localStorage、目录缓存管理、路径错误恢复、`reloadExpandedDirs` 批量刷新、`toggleExpand` 移入 hook
 - `FileBrowser.tsx`：移除本地 expanded/dirContents/toggleExpand 状态，改用 hook 提供
 - `VaultManagerOverlay.tsx`：移除新建文件夹流程，改为 Obsidian 风格（选已有文件夹→命名→注册）、新增 `ensureVaultMarker` 创建 `.asteria` 标记目录、删除确认文案更新
+
+---
+
+## v0.11.3 — Editor 与文件树回归修复
+
+Scope：frontend
+
+状态：done
+
+约束：
+
+- 不新增后端 API
+- 不修改数据库 schema
+- 不强制引入第三方文件树库；仅在评估后确认为最小可维护方案时引入
+- 不改变 Repository / Vault 与 Project 的独立概念线
+- 不实现 Repository 后端注册能力（留到 v0.12.0）
+
+解决的问题：
+
+1. [Bug] 打开本地文件夹创建仓库后，重启程序文件树显示 `Could not read directory`
+2. [Bug + UX] 文件树仍无法稳定展示多级目录
+3. [Bug] 打开已存在的 `.md` 文件时右上角仍显示 `could not read file`
+4. [Bug] Milkdown 深色模式下文本颜色正确，但相关图标为黑色导致不可读
+
+验收标准：
+
+- [x] 重启应用后，当前仓库文件树能自动恢复并读取目录
+- [x] 文件树支持至少 3 级目录展开/折叠，展开状态和选中态稳定
+- [x] 打开存在的 Markdown 文件不再误报 `could not read file`
+- [x] 文件读取失败时显示具体路径/原因，并提供重试或刷新入口
+- [x] Milkdown 深色模式下 toolbar、menu、icon、button 均符合主题颜色并可读
+- [x] 回归验证覆盖空仓库、含多级目录仓库、含空目录仓库、含 Markdown 文件仓库
+- [x] `cd apps/desktop && npm run typecheck` 通过
+- [x] `cd apps/desktop && npm run lint` 通过
+
+主要变更：
+
+- `tauri-plugin-persisted-scope`：持久化 dialog 选择路径的文件系统 scope，修复重启后当前 Vault 无法读取的问题
+- `useFileTree.ts`：补充路径拼接、目录级 loading/error、展开状态恢复与刷新重载
+- `FileBrowser.tsx`：新增刷新入口、路径/原因错误展示、子目录重试、空目录状态和 active file 选中态
+- `Editor.tsx`：区分读取失败与保存失败，读取失败时显示具体路径/原因并提供 Retry
+- `styles.css`：将 Milkdown Crepe toolbar/menu/icon/button 颜色接入 Asteria 主题 token
+
+---
+
+## v0.12.0 — Repository 注册与新建仓库语义
+
+Scope：full-stack
+
+状态：done
+
+约束：
+
+- 不把 Repository / Vault 与 Project 耦合
+- 不实现云同步、远程仓库或团队共享仓库
+- 不删除磁盘文件；移除仓库仅 unlink 注册关系
+- 不以前端 localStorage 作为 Repository 注册权威
+- MVP 不依赖 `.asteria` 作为唯一权威配置；后端数据库注册为权威
+
+解决的问题：
+
+1. [Feature] 仓库管理缺少“新建仓库”入口
+2. [Architecture] Repository / Vault 生命周期目前主要停留在前端状态，缺少后端注册权威
+3. [UX] `Open Folder` 和“新建仓库”的语义未区分
+4. [UX] 新建仓库应在指定父目录下创建对应名称文件夹，并注册为 Repository
+
+验收标准：
+
+- [x] 数据库 schema 定义 Repository / Vault 注册信息（名称、root path、当前状态、创建/更新时间）
+- [x] 后端提供 create/list/update/unlink/select current Repository API
+- [x] 新建仓库流程：选择父目录 → 输入仓库名 → 创建对应文件夹 → 注册到后端数据库
+- [x] 打开本地仓库流程：选择已有文件夹 → 注册到后端数据库
+- [x] 仓库切换以后，文件树和 Editor 使用当前 Repository root
+- [x] 重启应用后，从后端注册信息恢复当前 Repository
+- [x] 仓库名、路径重复、路径不可读、创建失败均有明确错误反馈
+- [x] unlink 仓库只移除注册关系，不删除磁盘目录和文件
+- [x] 更新 `docs/DATABASE_SCHEMA.md` 和 `docs/API_CONTRACT.md` 的 Repository 相关 contract
+- [x] `cd apps/api && pytest` 通过
+- [x] `cd apps/desktop && npm run typecheck` 通过
+- [x] `cd apps/desktop && npm run lint` 通过（0 errors，2 warnings）
+
+主要变更：
+
+- 新增 `repositories` 数据库表、SQLAlchemy model 和 Alembic migration
+- 新增 Repository FastAPI routes / schemas / service：create、list、get current、update、unlink、select current
+- `current_repository_id` 通过 `app_settings` 持久化，用于应用重启后恢复当前仓库
+- `VaultProvider` 改为从本地 FastAPI 加载仓库注册信息，不再用前端 localStorage 作为注册权威
+- Vault Manager 区分 New Repository 和 Open Local Repository 两条流程
+- FileBrowser 仓库切换改为调用后端 select current API
+- AppShell 在当前 Repository 变化时清空旧 Editor tabs，避免继续使用旧 root 下的打开文件
+- 更新 Repository 相关 API、schema、desktop 和 UI contract 文档

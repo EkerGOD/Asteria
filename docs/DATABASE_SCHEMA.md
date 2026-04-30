@@ -77,6 +77,36 @@ projects 用于按工作上下文组织 conversations 和 knowledge units。
 - `trim(name)` 不能为空。
 - `sort_order >= 0`。
 
+## Table: repositories
+
+repositories 存储本地 Repository / Vault 注册信息。它是仓库注册与当前仓库恢复的后端权威；`.asteria` 目录可以作为本地标记或后续配置入口，但 MVP 不把它作为唯一权威。
+
+Repository / Vault 与 Project 是独立概念线。Repository 表只描述本地文件系统 root，不承载 Project、Conversation、Knowledge 或 AI Provider 配置关系。
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `id` | `uuid` | 是 | 主键，默认 `gen_random_uuid()` |
+| `name` | `text` | 是 | 用户可见仓库名称 |
+| `root_path` | `text` | 是 | 本地文件系统根目录的规范化绝对路径 |
+| `status` | `text` | 是 | `active` 或 `unlinked`，默认 `active` |
+| `created_at` | `timestamptz` | 是 | 创建时间，默认 `now()` |
+| `updated_at` | `timestamptz` | 是 | 更新时间，默认 `now()` |
+| `unlinked_at` | `timestamptz` | 否 | unlink 注册关系的时间；为空表示仍 active |
+
+索引：
+
+- `id` primary key。
+- active repository name 的唯一索引，使用 `lower(name)` 且仅覆盖 `status = 'active'`。
+- active repository root path 的唯一索引，使用 `lower(root_path)` 且仅覆盖 `status = 'active'`。
+- `status` 索引。
+
+约束：
+
+- `trim(name)` 不能为空。
+- `trim(root_path)` 不能为空。
+- `status IN ('active', 'unlinked')`。
+- 当 `status = 'unlinked'` 时，`unlinked_at` 必须非空。
+
 ## Table: conversations
 
 conversations 存储聊天会话，可选关联 project。
@@ -390,6 +420,7 @@ app_settings 存储本地应用偏好和当前选中的 ID。
 
 - `active_provider_id`
 - `active_project_id`
+- `current_repository_id`
 - `theme`
 - `rag.default_top_k`
 - `rag.max_context_chunks`

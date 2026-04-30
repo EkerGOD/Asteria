@@ -28,6 +28,7 @@ def test_mvp_schema_registers_all_tables():
         "model_roles",
         "projects",
         "provider_models",
+        "repositories",
         "tags",
     }
 
@@ -70,6 +71,12 @@ def test_mvp_schema_contains_core_constraints():
         "ck_provider_models_name_not_blank",
         "ck_provider_models_sort_order_non_negative",
     } <= constraint_names("provider_models")
+    assert {
+        "ck_repositories_name_not_blank",
+        "ck_repositories_root_path_not_blank",
+        "ck_repositories_status_allowed",
+        "ck_repositories_unlinked_status_has_unlinked_at",
+    } <= constraint_names("repositories")
 
 
 def test_mvp_schema_contains_key_indexes():
@@ -108,6 +115,11 @@ def test_mvp_schema_contains_key_indexes():
         "uq_provider_models_provider_lower_name",
         "ix_provider_models_provider_id",
     } <= index_names("provider_models")
+    assert {
+        "uq_repositories_active_lower_name",
+        "uq_repositories_active_lower_root_path",
+        "ix_repositories_status",
+    } <= index_names("repositories")
 
 
 def test_embedding_column_uses_mvp_vector_dimension():

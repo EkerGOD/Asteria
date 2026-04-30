@@ -71,6 +71,23 @@ export type ProjectCreateRequest = {
 
 export type ProjectUpdateRequest = Partial<ProjectCreateRequest>;
 
+export type Repository = {
+  id: string;
+  name: string;
+  root_path: string;
+  status: "active" | "unlinked";
+  created_at: string;
+  updated_at: string;
+  unlinked_at: string | null;
+};
+
+export type RepositoryCreateRequest = {
+  name: string;
+  root_path: string;
+};
+
+export type RepositoryUpdateRequest = Partial<RepositoryCreateRequest>;
+
 export type Tag = {
   id: string;
   name: string;

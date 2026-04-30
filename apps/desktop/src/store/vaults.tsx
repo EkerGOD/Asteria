@@ -1,93 +1,121 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createRepository,
+  getCurrentRepository,
+  listRepositories,
+  selectRepository,
+  unlinkRepository,
+} from "../api/client";
+import type { Repository } from "../api/types";
+import { toErrorMessage } from "../lib/errors";
 import type { Vault } from "../types/vault";
-
-const STORAGE_KEY = "asteria_vaults";
-const ACTIVE_KEY = "asteria_active_vault_id";
-
-function readVaults(): Vault[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed as Vault[];
-  } catch {
-    return [];
-  }
-}
-
-function writeVaults(vaults: Vault[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(vaults));
-}
-
-function readActiveVaultId(): string | null {
-  return localStorage.getItem(ACTIVE_KEY);
-}
-
-function writeActiveVaultId(id: string | null): void {
-  if (id) {
-    localStorage.setItem(ACTIVE_KEY, id);
-  } else {
-    localStorage.removeItem(ACTIVE_KEY);
-  }
-}
 
 interface VaultContextValue {
   vaults: Vault[];
   activeVault: Vault | null;
-  addVault: (name: string, path: string) => Vault;
-  removeVault: (id: string) => void;
-  setActiveVault: (id: string | null) => void;
+  isLoading: boolean;
+  error: string | null;
+  refreshVaults: () => Promise<void>;
+  addVault: (name: string, path: string) => Promise<Vault>;
+  removeVault: (id: string) => Promise<void>;
+  setActiveVault: (id: string) => Promise<void>;
+  clearError: () => void;
 }
 
 const VaultContext = createContext<VaultContextValue | null>(null);
 
 export function VaultProvider({ children }: { children: ReactNode }) {
-  const [vaults, setVaults] = useState<Vault[]>(() => readVaults());
-  const [activeId, setActiveId] = useState<string | null>(() => readActiveVaultId());
+  const [vaults, setVaults] = useState<Vault[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const activeVault = vaults.find((v) => v.id === activeId) ?? vaults[0] ?? null;
-
-  const addVault = (name: string, path: string): Vault => {
-    const vault: Vault = {
-      id: crypto.randomUUID(),
-      name,
-      path,
-      createdAt: new Date().toISOString(),
-    };
-    const next = [...vaults, vault];
-    setVaults(next);
-    writeVaults(next);
-    return vault;
-  };
-
-  const removeVault = (id: string): void => {
-    const next = vaults.filter((v) => v.id !== id);
-    setVaults(next);
-    writeVaults(next);
-    if (activeId === id) {
-      const newActive = next[0]?.id ?? null;
-      setActiveId(newActive);
-      writeActiveVaultId(newActive);
+  const refreshVaults = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [repositories, currentRepository] = await Promise.all([
+        listRepositories(),
+        getCurrentRepository(),
+      ]);
+      setVaults(repositories.map(mapRepositoryToVault));
+      setActiveId(currentRepository?.id ?? null);
+    } catch (err) {
+      setVaults([]);
+      setActiveId(null);
+      setError(toErrorMessage(err));
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const setActiveVault = (id: string | null): void => {
-    setActiveId(id);
-    writeActiveVaultId(id);
-  };
+  }, []);
 
   useEffect(() => {
-    if (!activeId || vaults.length === 0) return;
-    if (!vaults.some((v) => v.id === activeId)) {
-      const fallback = vaults[0]?.id ?? null;
-      setActiveId(fallback);
-      writeActiveVaultId(fallback);
-    }
-  }, [vaults, activeId]);
+    void refreshVaults();
+  }, [refreshVaults]);
+
+  const activeVault = activeId
+    ? vaults.find((vault) => vault.id === activeId) ?? null
+    : null;
+
+  const addVault = useCallback(
+    async (name: string, path: string): Promise<Vault> => {
+      setError(null);
+      try {
+        const repository = await createRepository({ name, root_path: path });
+        await refreshVaults();
+        return mapRepositoryToVault(repository);
+      } catch (err) {
+        setError(toErrorMessage(err));
+        throw err;
+      }
+    },
+    [refreshVaults],
+  );
+
+  const removeVault = useCallback(
+    async (id: string): Promise<void> => {
+      setError(null);
+      try {
+        await unlinkRepository(id);
+        await refreshVaults();
+      } catch (err) {
+        setError(toErrorMessage(err));
+        throw err;
+      }
+    },
+    [refreshVaults],
+  );
+
+  const setActiveVault = useCallback(
+    async (id: string): Promise<void> => {
+      setError(null);
+      try {
+        await selectRepository(id);
+        await refreshVaults();
+      } catch (err) {
+        setError(toErrorMessage(err));
+        throw err;
+      }
+    },
+    [refreshVaults],
+  );
+
+  const clearError = useCallback(() => setError(null), []);
 
   return (
-    <VaultContext.Provider value={{ vaults, activeVault, addVault, removeVault, setActiveVault }}>
+    <VaultContext.Provider
+      value={{
+        vaults,
+        activeVault,
+        isLoading,
+        error,
+        refreshVaults,
+        addVault,
+        removeVault,
+        setActiveVault,
+        clearError,
+      }}
+    >
       {children}
     </VaultContext.Provider>
   );
@@ -99,4 +127,16 @@ export function useVaults(): VaultContextValue {
     throw new Error("useVaults must be used within a VaultProvider");
   }
   return ctx;
+}
+
+function mapRepositoryToVault(repository: Repository): Vault {
+  return {
+    id: repository.id,
+    name: repository.name,
+    path: repository.root_path,
+    createdAt: repository.created_at,
+    updatedAt: repository.updated_at,
+    status: repository.status,
+    unlinkedAt: repository.unlinked_at,
+  };
 }

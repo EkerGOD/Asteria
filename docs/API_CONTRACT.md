@@ -8,6 +8,69 @@ GET /api/projects/{id}
 PUT /api/projects/{id}
 DELETE /api/projects/{id}
 
+## Repository API
+
+POST /api/repositories
+GET /api/repositories
+GET /api/repositories/current
+GET /api/repositories/{id}
+PUT /api/repositories/{id}
+DELETE /api/repositories/{id}  (unlink registration only)
+POST /api/repositories/{id}/select
+
+Repository / Vault registration is owned by the local FastAPI backend and
+persisted in PostgreSQL. The desktop UI may use Tauri native file dialog and
+filesystem APIs to select or create local folders, but registration state and
+the current repository selection must come from this API, not `localStorage`.
+
+`POST /api/repositories` registers an existing readable local folder and sets it
+as the current repository. The New Repository UI flow first creates the folder
+under the selected parent directory through Tauri, then calls this endpoint with
+the created folder path. The Open Local Repository flow calls the same endpoint
+with the selected existing folder path.
+
+```json
+// POST /api/repositories
+{
+  "name": "Research",
+  "root_path": "D:\\Documents\\Research"
+}
+
+// Response
+{
+  "id": "uuid",
+  "name": "Research",
+  "root_path": "D:\\Documents\\Research",
+  "status": "active",
+  "created_at": "2026-04-30T00:00:00Z",
+  "updated_at": "2026-04-30T00:00:00Z",
+  "unlinked_at": null
+}
+```
+
+`GET /api/repositories` returns active repositories by default. Pass
+`include_unlinked=true` to include unlinked registrations for diagnostics.
+
+`GET /api/repositories/current` returns the selected active repository, or
+`null` when none is selected.
+
+`PUT /api/repositories/{id}` updates `name` and/or `root_path`. Updating
+`root_path` requires the new path to be a readable local directory.
+
+`DELETE /api/repositories/{id}` unlinks the registration only. It sets
+`status = "unlinked"` and `unlinked_at`; it must not delete the folder or any
+file on disk.
+
+`POST /api/repositories/{id}/select` sets an active repository as the current
+repository and returns it.
+
+Errors:
+
+- 400 if `root_path` is not a readable local directory.
+- 404 if the repository does not exist or has already been unlinked for an
+  active-only operation.
+- 409 if an active repository already uses the same name or root path.
+
 ## Conversation API
 
 POST /api/conversations

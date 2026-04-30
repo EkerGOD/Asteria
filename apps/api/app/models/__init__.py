@@ -6,6 +6,7 @@ from app.models.message import Message
 from app.models.model_role import ModelRole
 from app.models.project import Project
 from app.models.provider import AIProvider, ProviderModel
+from app.models.repository import Repository
 from app.models.setting import AppSetting
 
 __all__ = [
@@ -19,5 +20,6 @@ __all__ = [
     "ModelRole",
     "Project",
     "ProviderModel",
+    "Repository",
     "Tag",
 ]

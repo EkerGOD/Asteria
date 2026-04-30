@@ -3,4 +3,7 @@ export interface Vault {
   name: string;
   path: string;
   createdAt: string;
+  updatedAt: string;
+  status: "active" | "unlinked";
+  unlinkedAt: string | null;
 }

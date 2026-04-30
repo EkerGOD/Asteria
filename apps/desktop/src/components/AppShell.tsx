@@ -15,7 +15,7 @@ import { SettingsOverlay } from "./SettingsOverlay";
 import { VaultManagerOverlay } from "./VaultManagerOverlay";
 import { Editor } from "./Editor";
 import { useThemePreference } from "../hooks/useThemePreference";
-import { VaultProvider } from "../store/vaults";
+import { useVaults, VaultProvider } from "../store/vaults";
 
 export type RightPanelView = "chat" | "knowledge" | "outline" | "graph";
 
@@ -55,6 +55,7 @@ export function AppShell() {
 
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const activeFilePath = openTabs.find((tab) => tab.id === activeTabId)?.filePath ?? null;
 
   const toggleLeftPanel = useCallback(() => setLeftPanelOpen((v) => !v), []);
   const toggleRightPanel = useCallback(() => setRightPanelOpen((v) => !v), []);
@@ -159,7 +160,7 @@ export function AppShell() {
   }, [resizeLeftPanel, resizeRightPanel, resizingPanel]);
 
   const openFile = useCallback((filePath: string) => {
-    const fileName = filePath.split("/").pop() ?? filePath;
+    const fileName = filePath.split(/[/\\]/).pop() ?? filePath;
     const existing = openTabs.find((t) => t.filePath === filePath);
     if (existing) {
       setActiveTabId(existing.id);
@@ -188,6 +189,11 @@ export function AppShell() {
     [activeTabId]
   );
 
+  const closeRepositoryTabs = useCallback(() => {
+    setOpenTabs([]);
+    setActiveTabId(null);
+  }, []);
+
   const panelTransitionClass = resizingPanel
     ? ""
     : "transition-[width] duration-150 ease-out";
@@ -195,6 +201,7 @@ export function AppShell() {
   return (
     <ModelRoleProvider>
     <VaultProvider>
+      <RepositoryTabReset onRepositoryChange={closeRepositoryTabs} />
       <div className="flex h-screen flex-col bg-surface text-ink">
       {/* Main area */}
       <div ref={mainAreaRef} className="flex min-h-0 flex-1">
@@ -218,6 +225,7 @@ export function AppShell() {
             onToggleCollapse={toggleLeftPanel}
             onOpenFile={openFile}
             onManageVaults={() => setVaultManagerOpen(true)}
+            selectedFilePath={activeFilePath}
           />
         </div>
 
@@ -305,6 +313,25 @@ export function AppShell() {
     </VaultProvider>
     </ModelRoleProvider>
   );
+}
+
+function RepositoryTabReset({
+  onRepositoryChange,
+}: {
+  onRepositoryChange: () => void;
+}) {
+  const { activeVault } = useVaults();
+  const previousRepositoryId = useRef<string | null>(activeVault?.id ?? null);
+
+  useEffect(() => {
+    const nextRepositoryId = activeVault?.id ?? null;
+    if (previousRepositoryId.current === nextRepositoryId) return;
+
+    previousRepositoryId.current = nextRepositoryId;
+    onRepositoryChange();
+  }, [activeVault?.id, onRepositoryChange]);
+
+  return null;
 }
 
 function PanelResizeHandle({

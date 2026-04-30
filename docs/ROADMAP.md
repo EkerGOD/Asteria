@@ -20,7 +20,44 @@
 
 ---
 
-## v0.12.0 — Knowledge 核心
+## v0.13.0 — 本地 Embedding 模型管理
+
+Scope：full-stack
+
+状态：planned
+
+约束：
+
+- 不把 embedding 模型配置重新塞回 Provider 页面
+- 不允许前端直接调用模型下载源、Provider SDK 或 embedding 执行逻辑
+- 不实现完整模型市场或任意模型导入
+- 不改变 chat model role 的远程 Provider 模型选择方式
+- 模型文件存放在应用数据目录，不存放在具体 Repository 中
+
+解决的问题：
+
+1. [Feature] Model Roles 页面中 embedding 模型仍像自由输入，不是候选模型选择
+2. [Feature] 用户选择本地 embedding 模型时，如果模型缺失，应提供下载能力
+3. [Architecture] 本地 embedding 模型下载位置需要固定在应用数据目录，跟随软件而非污染知识库
+4. [Architecture] Knowledge embedding pipeline 需要明确使用本地 embedding model role
+
+验收标准：
+
+- [ ] Model Roles 页面中 embedding 角色使用候选模型 selector，不再使用自由文本输入
+- [ ] 首版候选模型至少包含默认 `bge-m3`，并展示维度、状态和本地路径摘要
+- [ ] 未下载模型显示可下载状态，下载中、成功、失败、重试状态完整
+- [ ] 模型下载到 `<app_data_dir>/models/embedding/<model_name>/`
+- [ ] FastAPI 通过配置读取 `ASTERIA_DATA_DIR` / `ASTERIA_MODELS_DIR` 或等价路径
+- [ ] 后端提供本地 embedding 模型状态查询和下载触发 API
+- [ ] embedding model role 保存 `provider_id = null`、`model_name` 和 `embedding_dimension`
+- [ ] 更新 `docs/API_CONTRACT.md`、`docs/DATABASE_SCHEMA.md` 和 `docs/APP_DATA_DIRECTORY.md` 中的模型管理 contract
+- [ ] `cd apps/api && pytest` 通过
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.14.0 — Knowledge 核心
 
 Scope：full-stack
 
@@ -31,6 +68,7 @@ Scope：full-stack
 - 不实现自动知识图谱生成
 - 不实现 PDF/Office/图片等文件解析
 - 不实现 Agent 自动修改 Knowledge
+- 不实现本地 embedding 模型下载（依赖 v0.13.0）
 
 解决的问题：
 
@@ -51,7 +89,7 @@ Scope：full-stack
 
 ---
 
-## v0.13.0 — RAG 对话与 Project 管理
+## v0.15.0 — RAG 对话与 Project 管理
 
 Scope：full-stack
 
@@ -92,7 +130,7 @@ Scope：full-stack
 
 ---
 
-## v0.13.1 — 代码审计与清理
+## v0.15.1 — 代码审计与清理
 
 Scope：frontend
 
@@ -121,7 +159,7 @@ Scope：frontend
 
 ---
 
-## v0.14.0 — Command Palette 与快捷键管理
+## v0.16.0 — Command Palette 与快捷键管理
 
 Scope：frontend
 
@@ -154,7 +192,7 @@ Scope：frontend
 
 ---
 
-## v0.15.0 — UI 中英文切换
+## v0.17.0 — UI 中英文切换
 
 Scope：frontend
 

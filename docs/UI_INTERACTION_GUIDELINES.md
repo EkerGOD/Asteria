@@ -106,7 +106,8 @@ Purpose:
 
 Data Source:
 
-- 通过 Tauri file system API 或本地文件路径读取（后续实现）。当前为占位结构。
+- Repository 注册列表和当前 Repository 选择来自 `GET /api/repositories`、`GET /api/repositories/current`、`POST /api/repositories`、`PUT /api/repositories/{id}`、`DELETE /api/repositories/{id}`、`POST /api/repositories/{id}/select`。
+- 文件树读取、文件新建和本地目录选择通过 Tauri 原生文件系统 / dialog 能力完成；这些能力只处理本地文件系统，不保存 Repository 注册权威。
 
 Primary Actions:
 

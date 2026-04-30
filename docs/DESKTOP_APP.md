@@ -34,6 +34,7 @@ FastAPI 负责：
 
 - 数据库访问。
 - 业务规则。
+- Repository / Vault 注册、更新、unlink 和当前仓库选择。
 - AI Provider 调用。
 - embedding 生成。
 - retrieval 和 RAG orchestration。
@@ -42,9 +43,9 @@ Tauri 负责：
 
 - 桌面窗口生命周期。
 - 原生应用配置。
-- 未来桌面集成能力。
+- 本地目录选择、文件夹创建和文件系统读写等桌面原生能力。
 
-桌面前端不应使用 Tauri commands 绕过后端业务逻辑。Tauri commands 应用于原生桌面能力，而不是直接访问数据库或 AI。
+桌面前端不应使用 Tauri commands 绕过后端业务逻辑。Tauri commands 应用于原生桌面能力，而不是直接访问数据库、Repository 注册权威或 AI。
 
 ## 开发期模式
 

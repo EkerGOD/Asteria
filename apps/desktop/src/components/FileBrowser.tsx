@@ -5,34 +5,49 @@ import { EmptyState } from "./EmptyState";
 import { useVaults } from "../store/vaults";
 import { useFileTree } from "../hooks/useFileTree";
 import type { FileNode } from "../hooks/useFileTree";
+import { toErrorMessage, type FileSystemErrorInfo } from "../lib/errors";
 
 export function FileBrowser({
   collapsed,
   onToggleCollapse,
   onOpenFile,
   onManageVaults,
+  selectedFilePath,
 }: {
   collapsed: boolean;
   onToggleCollapse: () => void;
   onOpenFile: (filePath: string) => void;
   onManageVaults: () => void;
+  selectedFilePath?: string | null;
 }) {
-  const { vaults, activeVault, setActiveVault } = useVaults();
+  const {
+    vaults,
+    activeVault,
+    isLoading: repositoriesLoading,
+    error: repositoriesError,
+    refreshVaults,
+    setActiveVault,
+  } = useVaults();
   const {
     tree,
-    isLoading,
+    isLoading: fileTreeLoading,
     error,
     expanded,
     dirContents,
+    dirErrors,
+    loadingDirs,
     loadRoot,
+    loadDir,
     toggleExpand,
     createFolder,
     createFile,
+    refresh,
   } = useFileTree();
   const [vaultMenuOpen, setVaultMenuOpen] = useState(false);
   const [creatingKind, setCreatingKind] = useState<"file" | "folder" | null>(null);
   const [newName, setNewName] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [switchingVaultId, setSwitchingVaultId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,8 +70,12 @@ export function FileBrowser({
   const handleCreate = useCallback(
     async (kind: "file" | "folder") => {
       if (!newName.trim()) return;
+      if (!activeVault) {
+        setActionError("No vault selected.");
+        return;
+      }
       setActionError(null);
-      const parentPath = activeVault?.path ?? ".";
+      const parentPath = activeVault.path;
       try {
         if (kind === "folder") {
           await createFolder(parentPath, newName.trim());
@@ -67,10 +86,26 @@ export function FileBrowser({
         setNewName("");
         setCreatingKind(null);
       } catch (err) {
-        setActionError(err instanceof Error ? err.message : "Could not create item");
+        setActionError(toErrorMessage(err));
       }
     },
     [newName, activeVault, createFolder, createFile],
+  );
+
+  const handleSelectVault = useCallback(
+    async (vaultId: string) => {
+      setActionError(null);
+      setSwitchingVaultId(vaultId);
+      try {
+        await setActiveVault(vaultId);
+        setVaultMenuOpen(false);
+      } catch (err) {
+        setActionError(toErrorMessage(err));
+      } finally {
+        setSwitchingVaultId(null);
+      }
+    },
+    [setActiveVault],
   );
 
   const renderTree = (nodes: FileNode[], depth: number) => (
@@ -78,12 +113,22 @@ export function FileBrowser({
       {nodes.map((node) => {
         const isExpanded = expanded.has(node.path);
         const children = dirContents[node.path];
+        const nodeError = dirErrors[node.path];
+        const nodeLoading = loadingDirs.has(node.path);
+        const isSelected = node.kind === "file" && node.path === selectedFilePath;
         return (
           <div key={node.path}>
             <button
               type="button"
-              className="flex w-full items-center gap-1.5 rounded px-2 py-0.5 text-left text-sm text-stone-700 hover:bg-stone-100"
+              className={[
+                "flex w-full items-center gap-1.5 rounded px-2 py-0.5 text-left text-sm transition-colors",
+                isSelected
+                  ? "bg-pine/10 text-pine"
+                  : "text-stone-700 hover:bg-stone-100",
+              ].join(" ")}
               style={{ paddingLeft: `${8 + depth * 16}px` }}
+              aria-current={isSelected ? "page" : undefined}
+              aria-expanded={node.kind === "directory" ? isExpanded : undefined}
               onClick={() => {
                 if (node.kind === "directory") {
                   void toggleExpand(node);
@@ -98,9 +143,22 @@ export function FileBrowser({
               />
               <span className="truncate">{node.name}</span>
             </button>
-            {node.kind === "directory" && isExpanded && children
-              ? renderTree(children, depth + 1)
-              : null}
+            {node.kind === "directory" && isExpanded ? (
+              <>
+                {nodeLoading ? <DirectoryStatus depth={depth + 1} message="Loading..." /> : null}
+                {nodeError ? (
+                  <DirectoryError
+                    depth={depth + 1}
+                    error={nodeError}
+                    onRetry={() => void loadDir(node.path).catch(() => undefined)}
+                  />
+                ) : null}
+                {children && children.length > 0 ? renderTree(children, depth + 1) : null}
+                {children && children.length === 0 && !nodeLoading && !nodeError ? (
+                  <DirectoryStatus depth={depth + 1} message="Empty folder" />
+                ) : null}
+              </>
+            ) : null}
           </div>
         );
       })}
@@ -128,11 +186,20 @@ export function FileBrowser({
               <p className="text-xs font-semibold uppercase text-stone-500">Files</p>
               <div className="flex items-center gap-1">
                 <IconButton
+                  icon="refresh"
+                  label="Refresh files"
+                  size="xs"
+                  iconSize={14}
+                  onClick={() => void refresh()}
+                  disabled={!activeVault || fileTreeLoading || repositoriesLoading}
+                />
+                <IconButton
                   icon="fileAdd"
                   label="New file"
                   size="xs"
                   iconSize={14}
                   onClick={() => setCreatingKind("file")}
+                  disabled={!activeVault}
                 />
                 <IconButton
                   icon="folder"
@@ -140,6 +207,7 @@ export function FileBrowser({
                   size="xs"
                   iconSize={14}
                   onClick={() => setCreatingKind("folder")}
+                  disabled={!activeVault}
                 />
                 <div className="mx-1 h-4 w-px bg-stone-200" aria-hidden="true" />
                 <IconButton
@@ -191,24 +259,25 @@ export function FileBrowser({
               </div>
             ) : null}
 
-            {actionError ? (
-              <p className="mb-2 text-xs text-red-700">{actionError}</p>
+            {actionError || repositoriesError ? (
+              <p className="mb-2 text-xs text-red-700">{actionError ?? repositoriesError}</p>
             ) : null}
 
             {/* File tree */}
-            {!activeVault ? (
+            {repositoriesLoading ? (
+              <p className="py-4 text-center text-xs text-stone-400">Loading repositories...</p>
+            ) : !activeVault ? (
               <EmptyState title="No vault selected." detail="Open a vault from Manage Vaults to see files." />
-            ) : isLoading ? (
+            ) : fileTreeLoading ? (
               <p className="py-4 text-center text-xs text-stone-400">Loading...</p>
             ) : error ? (
-              <div className="py-4 text-center text-xs text-red-700">
-                {error}
-                <button type="button" className="ml-1 underline" onClick={() => void loadRoot()}>
-                  Retry
-                </button>
-              </div>
+              <FileAccessError error={error} onRetry={() => void loadRoot()} />
             ) : tree.length === 0 ? (
-              <p className="py-4 text-center text-xs text-stone-400">No files yet.</p>
+              <EmptyState
+                title="No files yet."
+                detail="This vault is empty. Refresh if files were added outside Asteria."
+                action={{ label: "Refresh", onClick: () => void refresh() }}
+              />
             ) : (
               renderTree(tree, 0)
             )}
@@ -231,7 +300,20 @@ export function FileBrowser({
             {vaultMenuOpen && (
               <div className="absolute bottom-full left-2 right-2 mb-1 rounded-md border border-stone-300 bg-white shadow-lg z-30">
                 <div className="py-1">
-                  {vaults.length === 0 ? (
+                  {repositoriesLoading ? (
+                    <p className="px-3 py-2 text-xs text-stone-400">Loading repositories...</p>
+                  ) : repositoriesError ? (
+                    <div className="px-3 py-2 text-xs text-red-700">
+                      <p>{repositoriesError}</p>
+                      <button
+                        type="button"
+                        className="mt-1 font-semibold underline"
+                        onClick={() => void refreshVaults()}
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  ) : vaults.length === 0 ? (
                     <p className="px-3 py-2 text-xs text-stone-400">No vaults yet.</p>
                   ) : null}
                   {vaults.map((vault) => (
@@ -245,16 +327,18 @@ export function FileBrowser({
                           : "text-stone-700 hover:bg-stone-50",
                       ].join(" ")}
                       onClick={() => {
-                        setActiveVault(vault.id);
-                        setVaultMenuOpen(false);
+                        void handleSelectVault(vault.id);
                       }}
+                      disabled={switchingVaultId !== null}
                     >
                       {vault.id === activeVault?.id && (
                         <Icon name="check" size={12} />
                       )}
                       {vault.id !== activeVault?.id && <span className="w-3" />}
                       <Icon name="folder" size={14} />
-                      <span className="truncate">{vault.name}</span>
+                      <span className="truncate">
+                        {switchingVaultId === vault.id ? "Switching..." : vault.name}
+                      </span>
                     </button>
                   ))}
                   <div className="my-1 border-t border-stone-200" />
@@ -275,6 +359,60 @@ export function FileBrowser({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function DirectoryStatus({ depth, message }: { depth: number; message: string }) {
+  return (
+    <p
+      className="py-0.5 text-xs text-stone-400"
+      style={{ paddingLeft: `${8 + depth * 16}px` }}
+    >
+      {message}
+    </p>
+  );
+}
+
+function DirectoryError({
+  depth,
+  error,
+  onRetry,
+}: {
+  depth: number;
+  error: FileSystemErrorInfo;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      className="py-1 text-xs text-red-700"
+      style={{ paddingLeft: `${8 + depth * 16}px` }}
+    >
+      <p className="font-medium">{error.message}</p>
+      <p className="mt-0.5 break-all text-red-700/80">{error.path}</p>
+      <p className="mt-0.5 text-red-700/80">{error.reason}</p>
+      <button type="button" className="mt-1 font-semibold underline" onClick={onRetry}>
+        Retry
+      </button>
+    </div>
+  );
+}
+
+function FileAccessError({
+  error,
+  onRetry,
+}: {
+  error: FileSystemErrorInfo;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="py-4 text-xs text-red-700">
+      <p className="font-semibold">{error.message}</p>
+      <p className="mt-1 break-all text-red-700/80">{error.path}</p>
+      <p className="mt-1 text-red-700/80">{error.reason}</p>
+      <button type="button" className="mt-2 font-semibold underline" onClick={onRetry}>
+        Retry
+      </button>
     </div>
   );
 }
