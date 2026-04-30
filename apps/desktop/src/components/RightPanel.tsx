@@ -31,8 +31,16 @@ export function RightPanel({
           collapsed ? "justify-center px-1" : "gap-0.5 px-2",
         ].join(" ")}
       >
+        <IconButton
+          icon={collapsed ? "chevronLeft" : "chevronRight"}
+          label={collapsed ? "Expand right panel" : "Collapse right panel"}
+          onClick={onToggleCollapse}
+          size="sm"
+          iconSize={16}
+        />
         {collapsed ? null : (
           <>
+            <div className="mx-1 h-5 w-px bg-stone-200" aria-hidden="true" />
             {views.map((view) => (
               <IconButton
                 key={view.id}
@@ -44,16 +52,8 @@ export function RightPanel({
                 iconSize={16}
               />
             ))}
-            <div className="mx-1 h-5 w-px bg-stone-200" aria-hidden="true" />
           </>
         )}
-        <IconButton
-          icon={collapsed ? "chevronLeft" : "chevronRight"}
-          label={collapsed ? "Expand right panel" : "Collapse right panel"}
-          onClick={onToggleCollapse}
-          size="sm"
-          iconSize={16}
-        />
       </div>
 
       {/* View content */}

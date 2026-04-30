@@ -234,6 +234,46 @@ MVP 核心骨架已完成：
 
 ---
 
+## v0.8.8 — AppShell 与 Settings 视觉收口
+
+状态：done
+
+主题：
+
+- 收敛 AppShell 面板控制与 Settings Desktop 概览布局的视觉细节，让当前桌面工作台更安静、更稳定。
+
+约束：
+
+- 不新增后端 API 端点
+- 不修改数据库 schema
+- 不新增页面、业务视图或大型组件
+- 不修改 Provider、RAG、Project、Repository 或文件系统业务能力
+- 不引入新依赖
+- 仅修改 AppShell、RightPanel、SettingsOverlay 相关前端 UI、布局和状态样式
+
+解决的问题：
+
+1. [UX] 左右面板与 Editor 之间的宽度调整线默认状态过于明显，应融入面板边界，hover / focus / dragging 时再清楚提示可拖拽
+2. [Bug] 右侧折叠面板的折叠按钮位于上方 tab 选项卡最右侧，应调整到 RightPanel tab row 的最左侧
+3. [UX] Settings 页面 Desktop 区域中的三项内容横向排列仍会显示不下，应改为始终竖向排列
+
+验收标准：
+
+- [x] 左侧文件浏览器与 Editor 之间的 resize handle 默认视觉权重降低，不再形成过强竖线
+- [x] Editor 与右侧多功能面板之间的 resize handle 默认视觉权重降低，不再形成过强竖线
+- [x] resize handle 在 hover、focus 或 dragging 状态下仍能明确表达可拖拽
+- [x] 左右面板宽度仍可通过拖拽调整，且保留既有最小/最大宽度约束
+- [x] 右侧折叠按钮位于 RightPanel 顶部 tab row 的最左侧
+- [x] 右侧 Chat / Knowledge / Outline / Graph tab 的切换行为保持不变
+- [x] 右侧面板折叠/展开后，折叠按钮仍可见且可点击
+- [x] Settings 页面 Desktop 区域的三项内容始终竖向排列
+- [x] Settings Desktop 区域不产生水平溢出，长 URL 或长 provider 名称仍可读或可截断
+- [x] 不存在前端直接调用 PostgreSQL、AI Provider SDK 或 Provider endpoint 的新增路径
+- [x] `cd apps/desktop && npm run typecheck` 通过
+- [x] `cd apps/desktop && npm run lint` 通过
+
+---
+
 ## v0.9.0 — 前后端集成、Provider 模型角色与基础 AI Chat
 
 状态：planned

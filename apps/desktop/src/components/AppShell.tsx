@@ -217,6 +217,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {leftPanelOpen && (
           <PanelResizeHandle
+            active={resizingPanel === "left"}
             label="Resize file browser panel"
             min={LEFT_PANEL_MIN_WIDTH}
             max={getLeftPanelMaxWidth()}
@@ -269,6 +270,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {rightPanelOpen && (
           <PanelResizeHandle
+            active={resizingPanel === "right"}
             label="Resize right panel"
             min={RIGHT_PANEL_MIN_WIDTH}
             max={getRightPanelMaxWidth()}
@@ -317,6 +319,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function PanelResizeHandle({
+  active,
   label,
   min,
   max,
@@ -324,6 +327,7 @@ function PanelResizeHandle({
   onMouseDown,
   onStep,
 }: {
+  active: boolean;
   label: string;
   min: number;
   max: number;
@@ -353,11 +357,21 @@ function PanelResizeHandle({
       aria-valuemax={max}
       aria-valuenow={Math.round(value)}
       tabIndex={0}
-      className="group flex w-1.5 shrink-0 cursor-col-resize items-stretch justify-center bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/35"
+      className={[
+        "group flex w-1.5 shrink-0 cursor-col-resize items-stretch justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/35",
+        active ? "bg-pine/5" : "bg-transparent hover:bg-stone-200/35"
+      ].join(" ")}
       onMouseDown={onMouseDown}
       onKeyDown={handleKeyDown}
     >
-      <div className="w-px bg-stone-300/80 transition-colors group-hover:bg-pine/50 group-focus-visible:bg-pine/50" />
+      <div
+        className={[
+          "w-px transition-colors",
+          active
+            ? "bg-pine/60"
+            : "bg-stone-300/25 group-hover:bg-pine/45 group-focus-visible:bg-pine/45"
+        ].join(" ")}
+      />
     </div>
   );
 }

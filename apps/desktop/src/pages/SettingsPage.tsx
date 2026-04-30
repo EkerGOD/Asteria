@@ -164,7 +164,7 @@ export function SettingsPage() {
   return (
     <div className="space-y-4">
       <Panel title="Desktop">
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3">
           <Metric label="API base URL" value={API_BASE_URL} />
           <Metric label="Providers" value={String(providers.length)} />
           <Metric label="Active provider" value={activeProvider?.name ?? "Unset"} />
