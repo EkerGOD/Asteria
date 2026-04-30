@@ -59,7 +59,7 @@ MVP 核心骨架已完成：
 
 ## v0.8.5 — 图标库引入与统一替换
 
-状态：planned
+状态：done
 
 约束：
 
@@ -83,14 +83,14 @@ MVP 核心骨架已完成：
 
 验收标准：
 
-- [ ] Codicons 成功引入，项目中有统一图标组件/映射
-- [ ] 所有 emoji 图标已替换为 Codicons 对应图标
-- [ ] 所有手写内联 SVG 图标已替换为 Codicons 对应图标
-- [ ] 设置按钮显示 `codicon-settings-gear`
-- [ ] 面板折叠箭头使用 Codicons 方向图标
-- [ ] 工具栏各按钮图标统一使用 Codicons
-- [ ] `cd apps/desktop && npm run typecheck` 通过
-- [ ] `cd apps/desktop && npm run lint` 通过
+- [x] Codicons 成功引入，项目中有统一图标组件/映射
+- [x] 所有 emoji 图标已替换为 Codicons 对应图标
+- [x] 所有手写内联 SVG 图标已替换为 Codicons 对应图标
+- [x] 设置按钮显示 `codicon-settings-gear`
+- [x] 面板折叠箭头使用 Codicons 方向图标
+- [x] 工具栏各按钮图标统一使用 Codicons
+- [x] `cd apps/desktop && npm run typecheck` 通过
+- [x] `cd apps/desktop && npm run lint` 通过
 
 ---
 

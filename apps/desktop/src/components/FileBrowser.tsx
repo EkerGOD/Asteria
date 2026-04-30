@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Icon } from "./Icon";
 
 interface Vault {
   id: string;
@@ -47,16 +48,15 @@ export function FileBrowser({
             aria-label="New file"
             title="New file"
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-            </svg>
+            <Icon name="fileAdd" size={14} />
           </button>
         </div>
 
         {/* Placeholder file tree */}
         <div className="space-y-0.5 text-sm">
-          <div className="rounded px-2 py-0.5 text-stone-500 hover:bg-stone-100 cursor-pointer">
-            📁 notes
+          <div className="flex items-center gap-1.5 rounded px-2 py-0.5 text-stone-500 hover:bg-stone-100 cursor-pointer">
+            <Icon name="folder" size={14} />
+            <span>notes</span>
           </div>
           <div className="rounded pl-6 pr-2 py-0.5 text-stone-600 hover:bg-stone-100 cursor-pointer"
                onClick={() => onOpenFile(`${activeVault?.path ?? ""}/notes/readme.md`)}>
@@ -66,8 +66,9 @@ export function FileBrowser({
                onClick={() => onOpenFile(`${activeVault?.path ?? ""}/notes/ideas.md`)}>
             ideas.md
           </div>
-          <div className="rounded px-2 py-0.5 text-stone-500 hover:bg-stone-100 cursor-pointer">
-            📁 journal
+          <div className="flex items-center gap-1.5 rounded px-2 py-0.5 text-stone-500 hover:bg-stone-100 cursor-pointer">
+            <Icon name="folder" size={14} />
+            <span>journal</span>
           </div>
           <div className="rounded pl-6 pr-2 py-0.5 text-stone-600 hover:bg-stone-100 cursor-pointer"
                onClick={() => onOpenFile(`${activeVault?.path ?? ""}/journal/2026-04-29.md`)}>
@@ -83,12 +84,10 @@ export function FileBrowser({
           className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-50"
           onClick={() => setVaultMenuOpen((v) => !v)}
         >
-          <span>📁</span>
+          <Icon name="folderOpened" size={14} />
           <span>{activeVault?.name ?? "No vault"}</span>
           <span className="ml-auto text-stone-400">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Icon name="chevronDown" size={10} />
           </span>
         </button>
 
@@ -111,12 +110,11 @@ export function FileBrowser({
                   }}
                 >
                   {vault.id === activeVaultId && (
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <Icon name="check" size={12} className="w-3 shrink-0" />
                   )}
                   {vault.id !== activeVaultId && <span className="w-3" />}
-                  📁 {vault.name}
+                  <Icon name="folder" size={14} />
+                  <span>{vault.name}</span>
                 </button>
               ))}
               <div className="my-1 border-t border-stone-200" />

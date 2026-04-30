@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Provider, ProviderCreateRequest, ProviderUpdateRequest } from "../api/types";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ErrorBox, NumberField, PasswordField, TextField } from "./FormFields";
+import { Icon } from "./Icon";
 
 type ProviderFormState = {
   name: string;
@@ -167,14 +168,7 @@ export function ProviderFormModal({
             onClick={onCancel}
             aria-label="Close"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M4 4L12 12M12 4L4 12"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
+            <Icon name="close" size={16} />
           </button>
         </div>
 

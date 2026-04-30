@@ -3,6 +3,7 @@ import { listConversations, archiveConversation } from "../api/client";
 import type { Conversation } from "../api/types";
 import { EmptyState } from "./EmptyState";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { Icon } from "./Icon";
 
 export function ChatView() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -179,10 +180,11 @@ export function ChatView() {
             <div className="relative">
               <button
                 type="button"
-                className="rounded px-1.5 py-0.5 hover:bg-stone-100"
+                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-stone-100"
                 onClick={() => setProjectMenuOpen((v) => !v)}
               >
-                {activeProjectId ? "📁 Project" : "📂 No Project"}
+                <Icon name={activeProjectId ? "project" : "folder"} size={12} />
+                <span>{activeProjectId ? "Project" : "No Project"}</span>
               </button>
               {projectMenuOpen && (
                 <div className="absolute bottom-full left-0 mb-1 rounded-md border border-stone-300 bg-white shadow-lg z-30 py-1 min-w-[140px]">
@@ -198,7 +200,8 @@ export function ChatView() {
                     className="flex w-full items-center gap-2 px-3 py-1 text-left text-xs text-stone-700 hover:bg-stone-50"
                     onClick={() => { setProjectMenuOpen(false); }}
                   >
-                    + New Project
+                    <Icon name="add" size={12} />
+                    <span>New Project</span>
                   </button>
                 </div>
               )}
@@ -229,10 +232,11 @@ export function ChatView() {
             <p className="text-xs font-semibold uppercase text-stone-500">History</p>
             <button
               type="button"
-              className="rounded px-1.5 py-0.5 text-xs text-stone-500 hover:bg-stone-200"
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-stone-500 hover:bg-stone-200"
               onClick={() => setActiveConversationId(null)}
             >
-              + New Chat
+              <Icon name="add" size={12} />
+              <span>New Chat</span>
             </button>
           </div>
           <div className="flex-1 overflow-auto px-1">
@@ -258,9 +262,7 @@ export function ChatView() {
                   aria-label={`Archive ${conv.title}`}
                   title="Archive"
                 >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M2 4H10M5 5.5V8.5M7 5.5V8.5M3 4L3.5 10.5H8.5L9 4M4.5 1.5H7.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  <Icon name="archive" size={12} />
                 </button>
               </div>
             ))}

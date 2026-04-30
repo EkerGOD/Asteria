@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { SettingsPage } from "../pages/SettingsPage";
 import { DiagnosticsPage } from "../pages/DiagnosticsPage";
+import { Icon } from "./Icon";
 
 type SettingsTab = "providers" | "diagnostics";
 
@@ -24,9 +25,7 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             aria-label="Close settings"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
+            <Icon name="close" size={16} />
           </button>
         </div>
 

@@ -1,6 +1,7 @@
 import { useState, useCallback, type ReactNode } from "react";
 import { VerticalToolbar } from "./VerticalToolbar";
 import { FileBrowser } from "./FileBrowser";
+import { Icon } from "./Icon";
 import { RightPanel } from "./RightPanel";
 import { StatusBar } from "./StatusBar";
 import { SettingsOverlay } from "./SettingsOverlay";
@@ -86,9 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               aria-label="Expand file browser"
               title="Expand file browser"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M11 2L5 8L11 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <Icon name="chevronRight" size={16} />
             </button>
           </div>
         )}
@@ -122,7 +121,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     onClick={() => closeTab(tab.id)}
                     aria-label={`Close ${tab.fileName}`}
                   >
-                    ×
+                    <Icon name="close" size={12} />
                   </button>
                 </div>
               ))}
@@ -150,9 +149,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               aria-label="Expand right panel"
               title="Expand right panel"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M5 2L11 8L5 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <Icon name="chevronLeft" size={16} />
             </button>
           </div>
         )}

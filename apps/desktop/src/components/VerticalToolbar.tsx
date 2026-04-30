@@ -1,3 +1,5 @@
+import { Icon } from "./Icon";
+
 export function VerticalToolbar({
   leftPanelOpen,
   onToggleLeftPanel,
@@ -17,10 +19,7 @@ export function VerticalToolbar({
           ariaLabel={leftPanelOpen ? "Collapse file browser" : "Expand file browser"}
           title="File Browser"
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <rect x="2" y="2" width="14" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M6 2V16" stroke="currentColor" strokeWidth="1.2" />
-          </svg>
+          <Icon name="fileBrowser" size={18} />
         </ToolbarButton>
 
         <div className="my-2 h-px w-6 bg-stone-200" />
@@ -33,10 +32,7 @@ export function VerticalToolbar({
           ariaLabel="Command palette"
           title="Command Palette"
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <rect x="2" y="4" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M6 10L8 12L12 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <Icon name="command" size={18} />
         </ToolbarButton>
       </div>
 
@@ -48,10 +44,7 @@ export function VerticalToolbar({
           ariaLabel="Settings"
           title="Settings"
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M9 1.5L9.5 3.2L11.3 3.5L12 5L13.5 5.8L13.8 7.6L14.8 9L13.8 10.4L13.5 12.2L12 13L11.3 14.5L9.5 14.8L9 16.5L8.5 14.8L6.7 14.5L6 13L4.5 12.2L4.2 10.4L3.2 9L4.2 7.6L4.5 5.8L6 5L6.7 3.5L8.5 3.2L9 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-            <circle cx="9" cy="9" r="1.8" stroke="currentColor" strokeWidth="1" />
-          </svg>
+          <Icon name="settings" size={18} />
         </ToolbarButton>
       </div>
     </div>

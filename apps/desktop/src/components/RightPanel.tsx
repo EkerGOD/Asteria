@@ -1,12 +1,13 @@
 import type { RightPanelView } from "./AppShell";
 import { ChatView } from "./ChatView";
+import { Icon, type IconName } from "./Icon";
 import { KnowledgeView } from "./KnowledgeView";
 
-const views: { id: RightPanelView; label: string; title: string }[] = [
-  { id: "chat", label: "💬", title: "Chat" },
-  { id: "knowledge", label: "🧠", title: "Knowledge" },
-  { id: "outline", label: "📑", title: "Outline" },
-  { id: "graph", label: "🔗", title: "Graph" }
+const views: { id: RightPanelView; icon: IconName; title: string }[] = [
+  { id: "chat", icon: "chat", title: "Chat" },
+  { id: "knowledge", icon: "knowledge", title: "Knowledge" },
+  { id: "outline", icon: "outline", title: "Outline" },
+  { id: "graph", icon: "graph", title: "Graph" }
 ];
 
 export function RightPanel({
@@ -30,9 +31,7 @@ export function RightPanel({
           aria-label="Collapse right panel"
           title="Collapse right panel"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M4 2L9 7L4 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+          <Icon name="chevronRight" size={14} />
         </button>
         {views.map((view) => (
           <button
@@ -48,7 +47,7 @@ export function RightPanel({
             aria-label={view.title}
             title={view.title}
           >
-            {view.label}
+            <Icon name={view.icon} size={16} />
           </button>
         ))}
       </div>

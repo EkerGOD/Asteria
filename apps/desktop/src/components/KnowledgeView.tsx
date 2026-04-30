@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Icon } from "./Icon";
 
 type KnowledgeViewMode = "cards" | "graph";
 
@@ -69,8 +70,9 @@ function KnowledgeCardList() {
           that agents can reference via @knowledge or passive RAG retrieval.
         </p>
       </div>
-      <div className="rounded-md border border-dashed border-stone-300 bg-stone-50 p-3 text-center text-xs text-stone-400">
-        + New Knowledge Unit
+      <div className="flex items-center justify-center gap-1.5 rounded-md border border-dashed border-stone-300 bg-stone-50 p-3 text-center text-xs text-stone-400">
+        <Icon name="add" size={12} />
+        <span>New Knowledge Unit</span>
       </div>
     </div>
   );
@@ -80,12 +82,7 @@ function KnowledgeGraphPlaceholder() {
   return (
     <div className="flex h-full flex-col items-center justify-center text-sm text-stone-400">
       <div className="mb-3 rounded-full border-2 border-dashed border-stone-300 p-4">
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-          <circle cx="16" cy="10" r="3" stroke="currentColor" strokeWidth="1.2" />
-          <circle cx="8" cy="22" r="3" stroke="currentColor" strokeWidth="1.2" />
-          <circle cx="24" cy="22" r="3" stroke="currentColor" strokeWidth="1.2" />
-          <path d="M14 12.5L10 19.5M18 12.5L14 19.5M21 19.5L18 12.5" stroke="currentColor" strokeWidth="1" />
-        </svg>
+        <Icon name="graph" size={32} />
       </div>
       <p>Knowledge graph will render here.</p>
       <p className="mt-1 text-xs">Nodes = knowledge units, Edges = relationships</p>
