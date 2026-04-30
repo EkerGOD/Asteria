@@ -18,10 +18,18 @@ export function FileBrowser({
   onManageVaults: () => void;
 }) {
   const { vaults, activeVault, setActiveVault } = useVaults();
-  const { tree, isLoading, error, loadRoot, loadDir, createFolder, createFile } = useFileTree();
+  const {
+    tree,
+    isLoading,
+    error,
+    expanded,
+    dirContents,
+    loadRoot,
+    toggleExpand,
+    createFolder,
+    createFile,
+  } = useFileTree();
   const [vaultMenuOpen, setVaultMenuOpen] = useState(false);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [dirContents, setDirContents] = useState<Record<string, FileNode[]>>({});
   const [creatingKind, setCreatingKind] = useState<"file" | "folder" | null>(null);
   const [newName, setNewName] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
@@ -43,24 +51,6 @@ export function FileBrowser({
       return () => document.removeEventListener("mousedown", handleClick);
     }
   }, [vaultMenuOpen]);
-
-  const toggleExpand = useCallback(
-    async (node: FileNode) => {
-      const next = new Set(expanded);
-      if (next.has(node.path)) {
-        next.delete(node.path);
-        setExpanded(next);
-        return;
-      }
-      next.add(node.path);
-      setExpanded(next);
-      if (!(node.path in dirContents)) {
-        const children = await loadDir(node.path);
-        setDirContents((prev) => ({ ...prev, [node.path]: children }));
-      }
-    },
-    [expanded, dirContents, loadDir],
-  );
 
   const handleCreate = useCallback(
     async (kind: "file" | "folder") => {

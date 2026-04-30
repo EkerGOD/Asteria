@@ -9,10 +9,11 @@ import { useVaults } from "../store/vaults";
 
 export function VaultManagerOverlay({ onClose }: { onClose: () => void }) {
   const { vaults, activeVault, addVault, removeVault, setActiveVault } = useVaults();
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const [pendingName, setPendingName] = useState("");
+  const [registering, setRegistering] = useState(false);
 
   const handleOpenFolder = async () => {
     setActionError(null);
@@ -22,29 +23,28 @@ export function VaultManagerOverlay({ onClose }: { onClose: () => void }) {
       const folderPath = typeof selected === "string" ? selected : null;
       if (!folderPath) return;
       const name = folderPath.split(/[/\\]/).pop() ?? folderPath;
-      const vault = addVault(name, folderPath);
-      setActiveVault(vault.id);
+      setPendingPath(folderPath);
+      setPendingName(name);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Could not open folder");
     }
   };
 
-  const handleCreateVault = async () => {
-    const name = newName.trim();
-    if (!name) return;
+  const handleConfirmVault = async () => {
+    const name = pendingName.trim();
+    if (!name || !pendingPath) return;
     setActionError(null);
-    setCreating(true);
+    setRegistering(true);
     try {
-      const folderPath = await createVaultDirectory(name);
-      if (!folderPath) return;
-      const vault = addVault(name, folderPath);
+      await ensureVaultMarker(pendingPath);
+      const vault = addVault(name, pendingPath);
       setActiveVault(vault.id);
-      setNewName("");
-      setCreating(false);
+      setPendingPath(null);
+      setPendingName("");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Could not create vault folder");
+      setActionError(err instanceof Error ? err.message : "Could not register vault");
     } finally {
-      setCreating(false);
+      setRegistering(false);
     }
   };
 
@@ -94,7 +94,7 @@ export function VaultManagerOverlay({ onClose }: { onClose: () => void }) {
           {/* Available Vaults */}
           <h4 className="mb-2 text-sm font-semibold">Available Vaults</h4>
           {vaults.length === 0 ? (
-            <EmptyState title="No vaults yet." detail="Create a new vault or open an existing folder." />
+            <EmptyState title="No vaults yet." detail="Open an existing folder to register it as a vault." />
           ) : null}
           <div className="space-y-2">
             {vaults.map((vault) => (
@@ -137,37 +137,58 @@ export function VaultManagerOverlay({ onClose }: { onClose: () => void }) {
             ))}
           </div>
 
-          {/* Create / Open */}
+          {/* Open Folder — primary vault registration */}
           <div className="mt-6 border-t border-stone-200 pt-4">
-            <div className="flex flex-wrap gap-3">
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                <input
-                  type="text"
-                  className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine"
-                  placeholder="Vault name..."
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void handleCreateVault();
-                  }}
-                />
-                <button
-                  type="button"
-                  className="shrink-0 rounded-lg bg-pine px-4 py-2 text-sm font-semibold text-white transition hover:bg-pine/90 disabled:cursor-not-allowed disabled:opacity-60"
-                  onClick={() => void handleCreateVault()}
-                  disabled={!newName.trim() || creating}
-                >
-                  {creating ? "Creating..." : "Create"}
-                </button>
+            <button
+              type="button"
+              className="shrink-0 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:border-pine hover:text-pine"
+              onClick={() => void handleOpenFolder()}
+            >
+              Open Folder...
+            </button>
+
+            {/* Pending folder confirmation */}
+            {pendingPath ? (
+              <div className="mt-3 rounded-lg border border-pine bg-pine/5 p-3">
+                <p className="text-xs text-stone-500">Selected folder</p>
+                <p className="mt-0.5 truncate text-xs text-stone-600">{pendingPath}</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="text"
+                    className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm placeholder:text-stone-400 focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine"
+                    placeholder="Vault name..."
+                    value={pendingName}
+                    onChange={(e) => setPendingName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void handleConfirmVault();
+                      if (e.key === "Escape") {
+                        setPendingPath(null);
+                        setPendingName("");
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-lg bg-pine px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-pine/90 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={() => void handleConfirmVault()}
+                    disabled={!pendingName.trim() || registering}
+                  >
+                    {registering ? "Registering..." : "Register"}
+                  </button>
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-lg px-2 py-1.5 text-sm text-stone-500 hover:bg-stone-100"
+                    onClick={() => {
+                      setPendingPath(null);
+                      setPendingName("");
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                className="shrink-0 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 transition hover:border-pine hover:text-pine"
-                onClick={() => void handleOpenFolder()}
-              >
-                Open Folder...
-              </button>
-            </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -175,7 +196,7 @@ export function VaultManagerOverlay({ onClose }: { onClose: () => void }) {
       <ConfirmDialog
         open={deleteTarget !== null}
         title="Remove Vault"
-        message="Remove this vault from Asteria? The folder and its contents will not be deleted from disk."
+        message="Remove this vault from Asteria? The folder and all its contents (including the .asteria config directory) will remain on disk."
         confirmLabel="Remove"
         onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
         onCancel={() => setDeleteTarget(null)}
@@ -184,16 +205,7 @@ export function VaultManagerOverlay({ onClose }: { onClose: () => void }) {
   );
 }
 
-async function createVaultDirectory(name: string): Promise<string | null> {
-  const { documentDir } = await import("@tauri-apps/api/path");
-  const base = await documentDir();
-  const vaultPath = `${base}Asteria/${name}`;
-  try {
-    await mkdir(vaultPath, { recursive: true });
-  } catch {
-    const altPath = `${base}${name}`;
-    await mkdir(altPath, { recursive: true });
-    return altPath;
-  }
-  return vaultPath;
+async function ensureVaultMarker(vaultPath: string): Promise<void> {
+  const markerPath = `${vaultPath.replace(/[/\\]$/, "")}/.asteria`;
+  await mkdir(markerPath, { recursive: true });
 }

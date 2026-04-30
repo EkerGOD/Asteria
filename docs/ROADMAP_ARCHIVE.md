@@ -404,3 +404,42 @@ Scope：full-stack
 - `Editor.tsx`：`setError(null)` 移到 early-return guard 之前，使用 `useRef<Set>` 替代 `fileContent` 依赖
 - `AppShell.tsx`：移除冗余 Tab Bar 和 `hasTabs`/`IconButton` 导入，Editor 内 Tab 栏为唯一 Tab 栏
 - ModelRoleContext 数据流经代码审查验证正确，`providerModelNames` 正确映射所有 models
+
+---
+
+## v0.11.2 — Vault 管理与文件树增强
+
+Scope：frontend
+
+状态：done
+
+约束：
+
+- 不引入第三方文件树库（仅增强现有实现）
+- 不修改后端 API
+- 不修改数据库 schema
+- 删除仓库仅 unlink（从列表移除），不删除磁盘文件
+- 仓库配置目录使用 `.asteria`
+
+解决的问题：
+
+1. [Feature] 文件树不支持多级目录嵌套（文件夹下子文件夹）
+2. [Bug] 重启程序后文件树显示 "Could not read directory"
+3. [Bug + UX] 创建仓库报 "Could not create vault folder"，流程改为 Obsidian 风格（选已有文件夹 → 命名仓库）
+4. [UX] 删除仓库当前可能删除本地文件，改为 unlink（仅从列表移除，保留磁盘所有文件含 `.asteria` 配置）
+
+验收标准：
+
+- [x] 文件树支持多级目录展开/折叠，文件夹内可嵌套子文件夹
+- [x] 重启程序后文件树自动恢复，不再显示 "Could not read directory"
+- [x] 创建仓库：用户选择已有本地文件夹 → 仓库名默认使用文件夹名（可手动修改）→ 注册到 Asteria
+- [x] 创建仓库不再报 "Could not create vault folder"
+- [x] 删除仓库仅从列表中移除，磁盘上所有文件（含 `.asteria` 配置目录）完整保留
+- [x] 用户可重新打开同一文件夹恢复仓库（因 `.asteria` 配置保留）
+- [x] `cd apps/desktop && npm run typecheck` 通过
+
+主要变更：
+
+- `useFileTree.ts`：展开状态持久化到 localStorage、目录缓存管理、路径错误恢复、`reloadExpandedDirs` 批量刷新、`toggleExpand` 移入 hook
+- `FileBrowser.tsx`：移除本地 expanded/dirContents/toggleExpand 状态，改用 hook 提供
+- `VaultManagerOverlay.tsx`：移除新建文件夹流程，改为 Obsidian 风格（选已有文件夹→命名→注册）、新增 `ensureVaultMarker` 创建 `.asteria` 标记目录、删除确认文案更新
