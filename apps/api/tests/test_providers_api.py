@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
@@ -90,6 +91,27 @@ def test_providers_can_be_created_and_listed(provider_client: TestClient):
     assert [p["name"] for p in response.json()] == ["Local LLM"]
 
 
+def test_provider_metadata_is_mapped_and_persisted(provider_client: TestClient):
+    response = provider_client.post(
+        "/api/providers",
+        json={
+            "name": "With Metadata",
+            "base_url": "http://localhost:11434/v1",
+            "chat_model": "chat-model",
+            "embedding_model": "embedding-model",
+            "metadata": {"region": "local", "priority": 1},
+        },
+    )
+
+    assert response.status_code == 201
+    provider_id = response.json()["id"]
+    assert response.json()["metadata"] == {"region": "local", "priority": 1}
+    assert _provider_metadata(provider_client, provider_id) == {
+        "region": "local",
+        "priority": 1,
+    }
+
+
 def test_provider_api_key_is_encrypted_at_rest(provider_client: TestClient, settings: Settings):
     response = provider_client.post(
         "/api/providers",
@@ -145,6 +167,42 @@ def test_provider_with_api_key_requires_valid_secret_key(
         assert response.status_code == 500
         assert response.json() == {"detail": expected_detail}
         assert client.get("/api/providers").json() == []
+
+
+@pytest.mark.parametrize(
+    "exception",
+    [
+        RuntimeError("metadata is an invalid keyword argument for AIProvider"),
+        SQLAlchemyError("database connection failed"),
+    ],
+)
+def test_provider_create_returns_readable_error_without_internal_details(
+    provider_client: TestClient,
+    exception: Exception,
+):
+    with patch(
+        "app.api.routes.providers.create_provider",
+        side_effect=exception,
+    ):
+        response = provider_client.post(
+            "/api/providers",
+            json={
+                "name": "Broken Mapping",
+                "base_url": "http://localhost:11434/v1",
+                "chat_model": "chat-model",
+                "embedding_model": "embedding-model",
+            },
+        )
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "detail": "Could not create provider. Please check the provider configuration and try again.",
+    }
+    assert "metadata" not in response.text
+    assert "AIProvider" not in response.text
+    assert "RuntimeError" not in response.text
+    assert "SQLAlchemyError" not in response.text
+    assert "database connection failed" not in response.text
 
 
 def test_provider_without_api_key_does_not_require_secret_key():
@@ -516,6 +574,7 @@ def test_default_values_are_applied(provider_client: TestClient):
     assert created["provider_type"] == "openai_compatible"
     assert created["embedding_dimension"] == 1536
     assert created["metadata"] == {}
+    assert _provider_metadata(provider_client, created["id"]) == {}
 
 
 def _provider_api_key_ciphertext(client: TestClient, provider_id: str) -> str | None:
@@ -523,4 +582,12 @@ def _provider_api_key_ciphertext(client: TestClient, provider_id: str) -> str | 
     with session_factory() as session:
         return session.scalar(
             select(AIProvider.api_key_ciphertext).where(AIProvider.id == UUID(provider_id))
+        )
+
+
+def _provider_metadata(client: TestClient, provider_id: str) -> dict[str, object]:
+    session_factory = client.app.state.test_session_factory
+    with session_factory() as session:
+        return session.scalar(
+            select(AIProvider.metadata_).where(AIProvider.id == UUID(provider_id))
         )

@@ -40,6 +40,9 @@ def create_provider_endpoint(
         raise _provider_name_conflict() from exc
     except SecretConfigurationError as exc:
         raise _provider_secret_configuration_error(exc) from exc
+    except Exception as exc:
+        session.rollback()
+        raise _provider_create_failed() from exc
 
 
 @router.get("", response_model=list[ProviderResponse])
@@ -144,4 +147,11 @@ def _provider_secret_configuration_error(exc: SecretConfigurationError) -> HTTPE
     return HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         detail=str(exc),
+    )
+
+
+def _provider_create_failed() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Could not create provider. Please check the provider configuration and try again.",
     )

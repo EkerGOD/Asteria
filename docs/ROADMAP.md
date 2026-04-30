@@ -523,6 +523,38 @@ MVP 核心骨架已完成：
 
 ---
 
+## v0.9.5 — Provider 创建 500 错误修复
+
+状态：done
+
+主题：修复添加 Provider 时因字段名不匹配导致的 500 Internal Server Error。
+
+约束：
+
+- 不新增 API 端点
+- 不修改数据库 schema
+- 不修改 Provider 架构或 AI 调用流程
+- 仅修复 Provider 创建流程中的异常处理和字段映射
+
+解决的问题：
+
+1. [Bug] 添加 Provider 时每次返回 500 Internal Server Error
+
+方案：
+
+- `create_provider()` 中 `metadata` 字段名在 Pydantic schema 与 SQLAlchemy model 之间不匹配（`metadata` vs `metadata_`），pop 后显式传参
+- 路由层添加通用 `except Exception` 防御性 catch，避免未来类似字段映射错误泄漏 500，返回可读的错误信息
+
+验收标准：
+
+- [x] `POST /api/providers` 可正常创建 Provider，不再返回 500
+- [x] Provider 创建成功后 `metadata` 字段正确持久化（默认 `{}`)
+- [x] 字段映射异常或数据库异常时返回可读的错误信息，不泄漏内部堆栈
+- [x] `cd apps/api && pytest` 通过
+- [x] `cd apps/desktop && npm run typecheck` 通过
+
+---
+
 ## v0.10.0 — Provider 模型架构重构与流式输出
 
 状态：planned

@@ -40,9 +40,15 @@ def create_provider(
 
     data = payload.model_dump()
     api_key = data.pop("api_key", None)
+    metadata = data.pop("metadata")
     encrypted_api_key = encrypt_provider_api_key(api_key, settings)
 
-    provider = AIProvider(id=uuid4(), api_key_ciphertext=encrypted_api_key, **data)
+    provider = AIProvider(
+        id=uuid4(),
+        api_key_ciphertext=encrypted_api_key,
+        metadata_=metadata,
+        **data,
+    )
     if provider.is_active:
         _deactivate_all_providers(session)
 
