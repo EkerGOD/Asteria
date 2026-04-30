@@ -3,6 +3,7 @@ import type {
   ChatSendRequest,
   ChatSendResponse,
   Conversation,
+  TokenUsage,
   ConversationCreateRequest,
   ConversationUpdateRequest,
   HealthResponse,
@@ -357,6 +358,147 @@ export function answerRag(payload: RAGAnswerRequest, init?: RequestInit): Promis
 
 export function sendChat(payload: ChatSendRequest, init?: RequestInit): Promise<ChatSendResponse> {
   return requestJsonBody<ChatSendResponse>("/api/chat/send", "POST", payload, init);
+}
+
+export async function sendChatStream(
+  payload: ChatSendRequest,
+  onToken: (content: string) => void,
+  init?: RequestInit,
+): Promise<ChatSendResponse> {
+  const response = await fetch(buildApiUrl("/api/chat/send/stream"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      ...init?.headers,
+    },
+    body: JSON.stringify(payload),
+    signal: init?.signal,
+  });
+
+  if (!response.ok) {
+    let detail: string | null = null;
+    try {
+      detail = readErrorDetail(await response.json());
+    } catch {
+      detail = null;
+    }
+    const statusText = response.statusText || "error";
+    const message = `Local API returned ${response.status} ${statusText}.`;
+    throw new ApiClientError(detail ? `${message} ${detail}` : message, response.status);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new ApiClientError("Streaming is not supported by the browser.");
+  }
+
+  const signal = init?.signal;
+  if (signal?.aborted) {
+    reader.cancel();
+    throw new DOMException("Aborted", "AbortError");
+  }
+
+  const onAbort = () => {
+    reader.cancel();
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let eventType = "";
+  let dataBuffer = "";
+
+  let userMessage: Message | null = null;
+  let assistantMessage: Message | null = null;
+  let providerId = "";
+  let chatModel = "";
+  let tokenUsage: TokenUsage | null = null;
+  let responseDelayMs: number | null = null;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const rawLine of lines) {
+        const line = rawLine.trimEnd();
+
+        if (line.startsWith("event: ")) {
+          eventType = line.slice("event: ".length);
+          continue;
+        }
+
+        if (line.startsWith("data: ")) {
+          dataBuffer = line.slice("data: ".length);
+          continue;
+        }
+
+        if (line === "" && dataBuffer) {
+          try {
+            const parsed = JSON.parse(dataBuffer) as Record<string, unknown>;
+
+            switch (eventType) {
+              case "user_message":
+                userMessage = parsed.message as Message;
+                break;
+              case "token":
+                onToken(String(parsed.content ?? ""));
+                break;
+              case "assistant_message":
+                assistantMessage = parsed.message as Message;
+                providerId = String(parsed.provider_id ?? "");
+                chatModel = String(parsed.chat_model ?? "");
+                tokenUsage = (parsed.token_usage as TokenUsage) ?? null;
+                responseDelayMs = (parsed.response_delay_ms as number) ?? null;
+                break;
+              case "error":
+                if (assistantMessage) {
+                  // Partial content was saved; return it despite the error.
+                  return {
+                    user_message: userMessage!,
+                    assistant_message: assistantMessage,
+                    provider_id: providerId,
+                    chat_model: chatModel,
+                    token_usage: tokenUsage,
+                    response_delay_ms: responseDelayMs,
+                  };
+                }
+                throw new ApiClientError(String(parsed.message ?? "Stream error"));
+              default:
+                break;
+            }
+          } catch (error) {
+            if (error instanceof ApiClientError) throw error;
+            // Malformed SSE frame; skip it.
+          }
+
+          eventType = "";
+          dataBuffer = "";
+        }
+      }
+    }
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+    reader.releaseLock();
+  }
+
+  if (!userMessage || !assistantMessage) {
+    throw new ApiClientError("Stream ended without a complete response.");
+  }
+
+  return {
+    user_message: userMessage,
+    assistant_message: assistantMessage,
+    provider_id: providerId,
+    chat_model: chatModel,
+    token_usage: tokenUsage,
+    response_delay_ms: responseDelayMs,
+  };
 }
 
 export function listModelRoles(init?: RequestInit): Promise<ModelRole[]> {

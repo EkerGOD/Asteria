@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { Provider, ProviderCreateRequest, ProviderUpdateRequest } from "../api/types";
+import { providerModelNames } from "../lib/provider";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ErrorBox, NumberField, PasswordField, TextField } from "./FormFields";
 import { Icon } from "./Icon";
@@ -8,8 +9,7 @@ type ProviderFormState = {
   name: string;
   base_url: string;
   api_key: string;
-  chat_model: string;
-  embedding_model: string;
+  models: string[];
   timeout_seconds: string;
   is_active: boolean;
   clear_api_key: boolean;
@@ -24,8 +24,7 @@ function createEmptyForm(): ProviderFormState {
     name: "",
     base_url: "",
     api_key: "",
-    chat_model: "",
-    embedding_model: "",
+    models: [""],
     timeout_seconds: DEFAULT_TIMEOUT_SECONDS,
     is_active: false,
     clear_api_key: false,
@@ -33,12 +32,12 @@ function createEmptyForm(): ProviderFormState {
 }
 
 function createFormFromProvider(provider: Provider): ProviderFormState {
+  const names = providerModelNames(provider);
   return {
     name: provider.name,
     base_url: provider.base_url,
     api_key: "",
-    chat_model: provider.chat_model,
-    embedding_model: provider.embedding_model,
+    models: names.length > 0 ? names : [provider.chat_model],
     timeout_seconds: String(provider.timeout_seconds),
     is_active: provider.is_active,
     clear_api_key: false,
@@ -55,17 +54,28 @@ function validateForm(form: ProviderFormState): ProviderFormErrors {
   if (!form.base_url.trim()) {
     errors.base_url = "Base URL is required.";
   }
-  if (!form.chat_model.trim()) {
-    errors.chat_model = "Chat model is required.";
-  }
-  if (!form.embedding_model.trim()) {
-    errors.embedding_model = "Embedding model is required.";
+  if (normalizedModelNames(form.models).length === 0) {
+    errors.models = "At least one model is required.";
   }
   if (!Number.isInteger(timeoutSeconds) || timeoutSeconds < 1 || timeoutSeconds > 300) {
     errors.timeout_seconds = "Timeout must be an integer from 1 to 300.";
   }
 
   return errors;
+}
+
+function normalizedModelNames(models: string[]): string[] {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  models.forEach((model) => {
+    const name = model.trim();
+    if (!name) return;
+    const key = name.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    normalized.push(name);
+  });
+  return normalized;
 }
 
 function buildProviderPayload(
@@ -75,8 +85,7 @@ function buildProviderPayload(
   const payload: ProviderCreateRequest | ProviderUpdateRequest = {
     name: form.name.trim(),
     base_url: form.base_url.trim(),
-    chat_model: form.chat_model.trim(),
-    embedding_model: form.embedding_model.trim(),
+    models: normalizedModelNames(form.models),
     timeout_seconds: Number(form.timeout_seconds),
     is_active: form.is_active,
   };
@@ -132,6 +141,34 @@ export function ProviderFormModal({
     },
     [],
   );
+
+  const updateModelName = useCallback((index: number, value: string) => {
+    setForm((current) => ({
+      ...current,
+      models: current.models.map((model, modelIndex) =>
+        modelIndex === index ? value : model,
+      ),
+    }));
+    setFormErrors((current) => ({ ...current, models: undefined }));
+  }, []);
+
+  const addModelName = useCallback(() => {
+    setForm((current) => ({ ...current, models: [...current.models, ""] }));
+    setFormErrors((current) => ({ ...current, models: undefined }));
+  }, []);
+
+  const removeModelName = useCallback((index: number) => {
+    setForm((current) => {
+      if (current.models.length === 1) {
+        return current;
+      }
+      return {
+        ...current,
+        models: current.models.filter((_, modelIndex) => modelIndex !== index),
+      };
+    });
+    setFormErrors((current) => ({ ...current, models: undefined }));
+  }, []);
 
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -204,23 +241,56 @@ export function ProviderFormModal({
               onChange={(value) => updateFormField("base_url", value)}
             />
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <TextField
-                id="provider-chat-model"
-                label="Chat model"
-                value={form.chat_model}
-                error={formErrors.chat_model}
-                required
-                onChange={(value) => updateFormField("chat_model", value)}
-              />
-              <TextField
-                id="provider-embedding-model"
-                label="Embedding model"
-                value={form.embedding_model}
-                error={formErrors.embedding_model}
-                required
-                onChange={(value) => updateFormField("embedding_model", value)}
-              />
+            <div>
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <label
+                  htmlFor="provider-model-0"
+                  className="text-sm font-medium text-stone-700"
+                >
+                  Models
+                </label>
+                <button
+                  type="button"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-stone-500 transition hover:bg-stone-100 hover:text-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/35"
+                  onClick={addModelName}
+                  aria-label="Add model"
+                  title="Add model"
+                >
+                  <Icon name="add" size={14} />
+                </button>
+              </div>
+              <div className="space-y-2">
+                {form.models.map((modelName, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <input
+                      id={`provider-model-${index}`}
+                      type="text"
+                      className={[
+                        "min-w-0 flex-1 rounded-lg border bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-1",
+                        formErrors.models
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-500"
+                          : "border-stone-300 focus:border-pine focus:ring-pine",
+                      ].join(" ")}
+                      value={modelName}
+                      placeholder="e.g. deepseek-v4-pro"
+                      onChange={(event) => updateModelName(index, event.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      onClick={() => removeModelName(index)}
+                      disabled={form.models.length === 1}
+                      aria-label={`Remove model ${index + 1}`}
+                      title="Remove model"
+                    >
+                      <Icon name="close" size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {formErrors.models ? (
+                <p className="mt-1 text-xs font-medium text-red-700">{formErrors.models}</p>
+              ) : null}
             </div>
 
             <PasswordField

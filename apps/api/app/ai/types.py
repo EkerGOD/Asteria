@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import Literal, Protocol
 
@@ -53,6 +53,13 @@ class ChatCompletionResult:
 
 
 @dataclass(frozen=True)
+class ChatCompletionChunk:
+    content_delta: str = ""
+    model: str | None = None
+    usage: TokenUsage | None = None
+
+
+@dataclass(frozen=True)
 class EmbeddingResult:
     embeddings: list[list[float]]
     model: str
@@ -69,6 +76,13 @@ class ProviderAdapter(Protocol):
         request: ChatCompletionRequest,
     ) -> ChatCompletionResult:
         """Create a chat completion through the configured provider."""
+        ...
+
+    def create_chat_completion_stream(
+        self,
+        request: ChatCompletionRequest,
+    ) -> Iterator[ChatCompletionChunk]:
+        """Stream a chat completion through the configured provider."""
         ...
 
     def create_embeddings(self, request: EmbeddingRequest) -> EmbeddingResult:

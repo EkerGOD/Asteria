@@ -138,19 +138,23 @@ Asteria / 星识 使用 OpenAI-compatible Provider abstraction，避免 Provider
 后端抽象需要覆盖：
 
 - Chat completion。
+- Chat completion streaming。
 - Embedding creation。
 - Provider health check。
 - 可用时的 model metadata。
 - 标准化错误映射。
 
-Provider 配置存储在 `ai_providers` 中，active provider 可通过 `app_settings` 或后端配置选择。
+Provider 服务配置存储在 `ai_providers` 中，Provider 可用模型名称存储在
+`provider_models` 中。`model_roles` 负责选择任务角色所用模型：`chat`
+角色选择某个 Provider 的已登记模型；`embedding` 角色在 v0.10.0 后作为本地
+模型方案入口，实际本地模型运行延后。
 
 Provider adapter 需要规范化：
 
 - Base URL。
 - API key 或本地 Provider credential 行为。
-- Chat model name。
-- Embedding model name。
+- Chat model name（通过 `model_roles` 解析，兼容 active provider 默认值）。
+- Embedding model name（旧远程 Provider 兼容路径；本地 embedding 方案后续替换）。
 - Embedding dimension。
 - Request timeout。
 - 返回给 UI 的错误信息。

@@ -17,7 +17,7 @@ from app.core.secrets import FERNET_V1_PREFIX, decrypt_provider_api_key
 from app.db.base import Base
 from app.db.session import build_session_factory, get_db_session
 from app.main import create_app
-from app.models import AIProvider
+from app.models import AIProvider, ProviderModel
 
 
 @pytest.fixture
@@ -78,6 +78,7 @@ def test_providers_can_be_created_and_listed(provider_client: TestClient):
     assert created["base_url"] == "http://localhost:11434/v1"
     assert created["chat_model"] == "chat-model"
     assert created["embedding_model"] == "embedding-model"
+    assert [model["name"] for model in created["models"]] == ["chat-model"]
     assert created["embedding_dimension"] == 1536
     assert created["timeout_seconds"] == 45
     assert created["is_active"] is True
@@ -89,6 +90,58 @@ def test_providers_can_be_created_and_listed(provider_client: TestClient):
 
     assert response.status_code == 200
     assert [p["name"] for p in response.json()] == ["Local LLM"]
+
+
+def test_provider_can_store_multiple_models(provider_client: TestClient):
+    response = provider_client.post(
+        "/api/providers",
+        json={
+            "name": "Multi Model",
+            "base_url": "http://localhost:11434/v1",
+            "models": [" deepseek-v4-pro ", "deepseek-v4-flash", "DEEPSEEK-v4-pro"],
+        },
+    )
+
+    assert response.status_code == 201
+    created = response.json()
+    assert created["chat_model"] == "deepseek-v4-pro"
+    assert created["embedding_model"] == "deepseek-v4-pro"
+    assert [model["name"] for model in created["models"]] == [
+        "deepseek-v4-pro",
+        "deepseek-v4-flash",
+    ]
+    assert _provider_model_names(provider_client, created["id"]) == [
+        "deepseek-v4-pro",
+        "deepseek-v4-flash",
+    ]
+
+
+def test_provider_models_can_be_replaced(provider_client: TestClient):
+    create_response = provider_client.post(
+        "/api/providers",
+        json={
+            "name": "Replace Models",
+            "base_url": "http://localhost:11434/v1",
+            "models": ["first-model"],
+        },
+    )
+    provider_id = create_response.json()["id"]
+
+    response = provider_client.put(
+        f"/api/providers/{provider_id}",
+        json={"models": ["second-model", "third-model"]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["chat_model"] == "second-model"
+    assert [model["name"] for model in response.json()["models"]] == [
+        "second-model",
+        "third-model",
+    ]
+    assert _provider_model_names(provider_client, provider_id) == [
+        "second-model",
+        "third-model",
+    ]
 
 
 def test_provider_metadata_is_mapped_and_persisted(provider_client: TestClient):
@@ -314,6 +367,7 @@ def test_provider_can_be_retrieved_and_updated(provider_client: TestClient, sett
         json={
             "name": "Updated",
             "base_url": "http://localhost:11435/v1",
+            "metadata": {"updated": True},
             "timeout_seconds": 120,
             "is_active": True,
         },
@@ -327,6 +381,8 @@ def test_provider_can_be_retrieved_and_updated(provider_client: TestClient, sett
     assert updated["timeout_seconds"] == 120
     assert updated["is_active"] is True
     assert updated["has_api_key"] is True
+    assert updated["metadata"] == {"updated": True}
+    assert _provider_metadata(provider_client, provider_id) == {"updated": True}
     assert decrypt_provider_api_key(
         _provider_api_key_ciphertext(provider_client, provider_id),
         settings,
@@ -590,4 +646,16 @@ def _provider_metadata(client: TestClient, provider_id: str) -> dict[str, object
     with session_factory() as session:
         return session.scalar(
             select(AIProvider.metadata_).where(AIProvider.id == UUID(provider_id))
+        )
+
+
+def _provider_model_names(client: TestClient, provider_id: str) -> list[str]:
+    session_factory = client.app.state.test_session_factory
+    with session_factory() as session:
+        return list(
+            session.scalars(
+                select(ProviderModel.name)
+                .where(ProviderModel.provider_id == UUID(provider_id))
+                .order_by(ProviderModel.sort_order.asc())
+            )
         )

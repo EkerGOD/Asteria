@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+import json
+from collections.abc import Iterator, Mapping
 from typing import Any
 
 import httpx
@@ -14,6 +15,7 @@ from app.ai.errors import (
     ProviderTimeoutError,
 )
 from app.ai.types import (
+    ChatCompletionChunk,
     ChatCompletionRequest,
     ChatCompletionResult,
     EmbeddingRequest,
@@ -39,6 +41,9 @@ class OpenAICompatibleProviderAdapter:
         cls,
         provider: AIProvider,
         settings: Settings | None = None,
+        *,
+        chat_model: str | None = None,
+        embedding_model: str | None = None,
     ) -> OpenAICompatibleProviderAdapter:
         try:
             api_key = decrypt_provider_api_key(provider.api_key_ciphertext, settings)
@@ -49,8 +54,8 @@ class OpenAICompatibleProviderAdapter:
             ProviderConfig(
                 base_url=provider.base_url,
                 api_key=api_key,
-                chat_model=provider.chat_model,
-                embedding_model=provider.embedding_model,
+                chat_model=chat_model or provider.chat_model,
+                embedding_model=embedding_model or provider.embedding_model,
                 embedding_dimension=provider.embedding_dimension,
                 timeout_seconds=provider.timeout_seconds,
             )
@@ -69,6 +74,20 @@ class OpenAICompatibleProviderAdapter:
         }
         data = self._post_json("chat/completions", payload)
         return self._parse_chat_completion(data)
+
+    def create_chat_completion_stream(
+        self,
+        request: ChatCompletionRequest,
+    ) -> Iterator[ChatCompletionChunk]:
+        payload = {
+            "model": self.config.chat_model,
+            "messages": [
+                {"role": message.role, "content": message.content}
+                for message in request.messages
+            ],
+            "stream": True,
+        }
+        yield from self._post_json_stream("chat/completions", payload)
 
     def create_embeddings(self, request: EmbeddingRequest) -> EmbeddingResult:
         expected_count = len(request.texts)
@@ -92,6 +111,30 @@ class OpenAICompatibleProviderAdapter:
             raise ProviderMalformedResponseError
         return data
 
+    def _post_json_stream(
+        self,
+        path: str,
+        payload: Mapping[str, Any],
+    ) -> Iterator[ChatCompletionChunk]:
+        try:
+            with httpx.stream(
+                "POST",
+                self._url(path),
+                headers=self._headers(),
+                timeout=self.config.timeout_seconds,
+                json=payload,
+            ) as response:
+                self._raise_for_status(response)
+                for line in response.iter_lines():
+                    chunk = self._parse_stream_line(line)
+                    if chunk is None:
+                        continue
+                    yield chunk
+        except httpx.TimeoutException as exc:
+            raise ProviderTimeoutError from exc
+        except httpx.RequestError as exc:
+            raise ProviderConnectionError from exc
+
     def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         try:
             response = httpx.request(
@@ -106,6 +149,10 @@ class OpenAICompatibleProviderAdapter:
         except httpx.RequestError as exc:
             raise ProviderConnectionError from exc
 
+        self._raise_for_status(response)
+        return response
+
+    def _raise_for_status(self, response: httpx.Response) -> None:
         if response.status_code in {401, 403}:
             raise ProviderAuthError(status_code=response.status_code)
         if response.is_error:
@@ -113,7 +160,6 @@ class OpenAICompatibleProviderAdapter:
                 f"Provider returned HTTP {response.status_code}.",
                 status_code=response.status_code,
             )
-        return response
 
     def _url(self, path: str) -> str:
         return f"{self.config.base_url.rstrip('/')}/{path.lstrip('/')}"
@@ -152,6 +198,53 @@ class OpenAICompatibleProviderAdapter:
             content=content,
             model=model,
             usage=self._parse_usage(data.get("usage")),
+        )
+
+    def _parse_stream_line(self, line: str) -> ChatCompletionChunk | None:
+        stripped = line.strip()
+        if not stripped:
+            return None
+        if not stripped.startswith("data:"):
+            return None
+
+        data_text = stripped.removeprefix("data:").strip()
+        if data_text == "[DONE]":
+            return None
+
+        try:
+            data = json.loads(data_text)
+        except ValueError as exc:
+            raise ProviderMalformedResponseError from exc
+        if not isinstance(data, Mapping):
+            raise ProviderMalformedResponseError
+
+        model = data.get("model")
+        if not isinstance(model, str) or not model:
+            model = None
+
+        usage = self._parse_usage(data.get("usage")) if "usage" in data else None
+        choices = data.get("choices")
+        if not isinstance(choices, list) or not choices:
+            return ChatCompletionChunk(model=model, usage=usage)
+
+        first_choice = choices[0]
+        if not isinstance(first_choice, Mapping):
+            raise ProviderMalformedResponseError
+
+        delta = first_choice.get("delta")
+        if not isinstance(delta, Mapping):
+            raise ProviderMalformedResponseError
+
+        content = delta.get("content")
+        if content is None:
+            content = ""
+        if not isinstance(content, str):
+            raise ProviderMalformedResponseError
+
+        return ChatCompletionChunk(
+            content_delta=content,
+            model=model,
+            usage=usage,
         )
 
     def _parse_embeddings(

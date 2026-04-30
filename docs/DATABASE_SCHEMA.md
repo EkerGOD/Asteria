@@ -32,6 +32,8 @@ erDiagram
   knowledge_units ||--o{ knowledge_embeddings : embeds
   ai_providers ||--o{ messages : generated_by
   ai_providers ||--o{ knowledge_embeddings : embedded_by
+  ai_providers ||--o{ provider_models : offers
+  ai_providers ||--o{ model_roles : selected_by
 ```
 
 ## 命名约定
@@ -297,8 +299,8 @@ ai_providers 存储后端拥有的 OpenAI-compatible Provider 配置。
 | `provider_type` | `text` | 是 | MVP 值：`openai_compatible` |
 | `base_url` | `text` | 是 | Provider API base URL |
 | `api_key_ciphertext` | `text` | 否 | 使用后端 secret key 加密后的 API key；无 key 的本地 Provider 可为空 |
-| `chat_model` | `text` | 是 | 默认 chat model |
-| `embedding_model` | `text` | 是 | 默认 embedding model |
+| `chat_model` | `text` | 是 | 兼容字段：默认 chat model；v0.10.0 后 UI 使用 `provider_models` |
+| `embedding_model` | `text` | 是 | 兼容字段：默认 embedding model；本地 embedding 方案后续替换 |
 | `embedding_dimension` | `integer` | 是 | 默认 embedding dimension，MVP 默认 `1536` |
 | `timeout_seconds` | `integer` | 是 | 请求超时时间，默认 `60` |
 | `is_active` | `boolean` | 是 | 是否为当前 active provider |
@@ -310,6 +312,7 @@ ai_providers 存储后端拥有的 OpenAI-compatible Provider 配置。
 
 - messages 可以引用生成它的 provider。
 - knowledge_embeddings 可以引用生成它的 provider。
+- provider_models 记录该 Provider 可供 Chat 模型角色选择的模型名称。
 
 索引：
 
@@ -325,6 +328,55 @@ ai_providers 存储后端拥有的 OpenAI-compatible Provider 配置。
 - `timeout_seconds` 必须在 `1` 到 `300` 之间。
 - `metadata` 必须是 JSON object，默认 `{}`。
 - API key 不能明文存储。
+
+## Table: provider_models
+
+provider_models 存储每个 OpenAI-compatible Provider 暴露或由用户手动登记的模型名称。Provider 本身只是 API 服务配置；具体 Chat 模型角色从这些模型中选择。
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `id` | `uuid` | 是 | 主键，默认 `gen_random_uuid()` |
+| `provider_id` | `uuid` | 是 | 外键到 `ai_providers.id`，`ON DELETE CASCADE` |
+| `name` | `text` | 是 | 模型名称，例如 `deepseek-v4-pro` |
+| `sort_order` | `integer` | 是 | Provider 内部显示顺序，默认 `0` |
+| `created_at` | `timestamptz` | 是 | 创建时间，默认 `now()` |
+| `updated_at` | `timestamptz` | 是 | 更新时间，默认 `now()` |
+
+关系：
+
+- provider_models 属于一个 ai_provider。
+- Chat model role 必须引用某个 Provider 已登记的模型名称。
+
+索引：
+
+- `id` primary key。
+- `(provider_id, lower(name))` unique index。
+- `provider_id` index。
+
+约束：
+
+- `trim(name)` 不能为空。
+- `sort_order >= 0`。
+
+## Table: model_roles
+
+model_roles 存储任务角色到模型的选择关系。v0.10.0 中 `chat` 角色选择远程 Provider 模型；`embedding` 角色作为本地模型方案入口，实际本地模型运行延后。
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `id` | `uuid` | 是 | 主键，默认 `gen_random_uuid()` |
+| `role_type` | `text` | 是 | `chat` 或 `embedding` |
+| `provider_id` | `uuid` | 否 | `chat` 角色引用 `ai_providers.id`；`embedding` 角色必须为空 |
+| `model_name` | `text` | 是 | 选中的模型名称 |
+| `embedding_dimension` | `integer` | 否 | 本地 embedding 方案的目标维度 |
+| `created_at` | `timestamptz` | 是 | 创建时间，默认 `now()` |
+| `updated_at` | `timestamptz` | 是 | 更新时间，默认 `now()` |
+
+约束：
+
+- `role_type IN ('chat', 'embedding')`。
+- `role_type` unique，确保每个角色最多一条配置。
+- `provider_id` 外键为 `ON DELETE SET NULL`。
 
 ## Table: app_settings
 

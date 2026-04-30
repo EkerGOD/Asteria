@@ -23,7 +23,7 @@ class ModelRole(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Text,
         nullable=False,
     )
-    provider_id: Mapped[UUID] = mapped_column(
+    provider_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("ai_providers.id", ondelete="SET NULL"),
         nullable=True,
     )

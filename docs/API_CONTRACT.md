@@ -22,8 +22,11 @@ Archive sets `archived_at` on the conversation. Hard delete permanently removes 
 ## Chat API
 
 POST /api/chat/send
+POST /api/chat/send/stream
 
-Simple non-RAG chat: saves user message, calls active provider chat model, saves assistant message, returns both.
+Simple non-RAG chat: saves user message, resolves the configured chat model role
+(or falls back to the active provider default), calls the Provider abstraction,
+saves assistant message, returns both.
 
 ```json
 // Request
@@ -72,25 +75,57 @@ No embedding, retrieval, or source references are used.
 Requires an active provider. Returns 400 if no provider is active.
 Returns 404 if conversation not found.
 
+`POST /api/chat/send/stream` accepts the same request body and returns
+`text/event-stream`. It emits:
+
+```text
+event: user_message
+data: {"message": {...persisted user message...}}
+
+event: token
+data: {"content": "partial token text"}
+
+event: assistant_message
+data: {"message": {...persisted assistant message...}, "provider_id": "uuid", "chat_model": "chat-model", "token_usage": null, "response_delay_ms": 1234}
+
+event: done
+data: {"ok": true}
+```
+
+On provider interruption after partial output, the endpoint persists the partial
+assistant message with `retrieval_metadata.stream_interrupted = true`, then
+emits:
+
+```text
+event: error
+data: {"message": "Provider failed while streaming response.", "partial": true}
+```
+
+If no token has been generated, no assistant message is saved and the `error`
+event uses `"partial": false`.
+
 ## Model Roles API
 
 GET /api/model-roles
 PUT /api/model-roles/{role_type}
 
-Model roles decouple chat/embedding from provider configuration. Each role (`chat` or `embedding`) selects a provider and model independently.
+Model roles decouple task roles from Provider service configuration.
+The `chat` role selects one model from the selected Provider's persisted model
+list. The `embedding` role is a local model scheme entry and must not select a
+remote Provider; actual local embedding execution is deferred.
 
 ```json
 // PUT /api/model-roles/chat
 {
-  "provider_id": "uuid or null",
+  "provider_id": "uuid",
   "model_name": "gpt-4o"
 }
 
 // PUT /api/model-roles/embedding
 {
-  "provider_id": "uuid or null",
-  "model_name": "text-embedding-3-small",
-  "embedding_dimension": 1536
+  "provider_id": null,
+  "model_name": "bge-m3",
+  "embedding_dimension": 1024
 }
 
 // Response (GET or PUT)
@@ -107,6 +142,8 @@ Model roles decouple chat/embedding from provider configuration. Each role (`cha
 
 `role_type` must be `"chat"` or `"embedding"` (returns 400 otherwise).
 Returns 404 if the specified provider_id does not exist.
+Returns 400 if the chat role model is not listed in the selected Provider's
+`models`, or if an embedding role attempts to select a remote Provider.
 
 ## Message API
 
@@ -148,6 +185,57 @@ POST /api/providers/{id}/activate
 POST /api/providers/{id}/health-check
 
 Provider responses expose `has_api_key` and must not expose raw `api_key` or `api_key_ciphertext`.
+
+Create/update requests use `models` for Provider model names. Legacy
+`chat_model` and `embedding_model` fields are accepted for compatibility but
+should not be shown as task-role fields in the Provider UI.
+
+```json
+// POST /api/providers
+{
+  "name": "DeepSeek",
+  "base_url": "https://api.deepseek.example/v1",
+  "api_key": "sk-...",
+  "models": ["deepseek-v4-pro", "deepseek-v4-flash"],
+  "timeout_seconds": 60,
+  "is_active": true
+}
+
+// Response
+{
+  "id": "uuid",
+  "name": "DeepSeek",
+  "provider_type": "openai_compatible",
+  "base_url": "https://api.deepseek.example/v1",
+  "chat_model": "deepseek-v4-pro",
+  "embedding_model": "deepseek-v4-pro",
+  "embedding_dimension": 1536,
+  "models": [
+    {
+      "id": "uuid",
+      "provider_id": "uuid",
+      "name": "deepseek-v4-pro",
+      "sort_order": 0,
+      "created_at": "2026-04-30T00:00:00Z",
+      "updated_at": "2026-04-30T00:00:00Z"
+    },
+    {
+      "id": "uuid",
+      "provider_id": "uuid",
+      "name": "deepseek-v4-flash",
+      "sort_order": 1,
+      "created_at": "2026-04-30T00:00:00Z",
+      "updated_at": "2026-04-30T00:00:00Z"
+    }
+  ],
+  "timeout_seconds": 60,
+  "is_active": true,
+  "metadata": {},
+  "has_api_key": true,
+  "created_at": "2026-04-30T00:00:00Z",
+  "updated_at": "2026-04-30T00:00:00Z"
+}
+```
 
 Health check responses return:
 

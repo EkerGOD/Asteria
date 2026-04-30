@@ -38,7 +38,7 @@
    - 格式：版本号、主题、约束、scope（frontend/backend/full-stack）、状态（planned/in_progress/done）。
    - 每个版本有明确约束和验收标准。
    - 按语义化版本递增：PATCH（bug/优化）< MINOR（新功能）< MAJOR（架构变更）。
-   - 不删除已标记 done 的版本。
+   - 已标记 done 的版本写入 docs/ROADMAP_ARCHIVE.md，从 ROADMAP.md 中移除。
 2. 清空 VERSION_NOTES.md 中已处理的笔记，只保留一个空白段落。
 
 Claude Code：提问使用 AskUserQuestion 工具，写入使用 Edit 工具。
@@ -67,7 +67,10 @@ Claude Code：提问使用 AskUserQuestion 工具，写入使用 Edit 工具。
 - 调用 /simplify 或等效代码审查工具检查代码质量
 - 检查逻辑、安全、范围、遗漏
 
-通过后继续下一个任务，直到全部完成。全部完成后自动跑模板 4 的文档审查，然后提醒我版本完成可以提交。
+通过后继续下一个任务，直到全部完成。全部完成后：
+1. 将本版本从 ROADMAP.md 移至 docs/ROADMAP_ARCHIVE.md（追加到文件末尾），状态改为 done。
+2. 自动跑模板 4 的文档审查。
+3. 提醒我版本完成可以提交。
 
 Claude Code：确认方案用 AskUserQuestion，任务追踪用 TaskCreate，代码审查用 /simplify skill。
 ```
@@ -119,7 +122,8 @@ Review 本次任务的所有改动，检查以下文档是否需要更新：
 - README.md — 技术栈、产品范围、快速启动步骤变化。
 - CLAUDE.md（根目录及各子目录）— 架构规则、测试命令、工作边界变化。
 - AGENTS.md（根目录及各子目录）— 与 CLAUDE.md 同步检查，确保内容一致。
-- docs/ROADMAP.md — 版本状态需要在任务完成后更新（如 planned → done）。
+- docs/ROADMAP.md — 版本状态更新（如 planned → done → 移至 ARCHIVE）。
+- docs/ROADMAP_ARCHIVE.md — 完成版本的归档追加。
 
 对每个文件给出结论：
 - 无需更新：改动不影响该文档覆盖的范围。
@@ -143,4 +147,6 @@ Review 通过，现在提交。版本号：[填写版本号，如 0.1.1]
 - scope 从以下选择：api, desktop, ui, docs, dev, infra, rag。
 - commit body 第一行注明版本号：Version: v[版本号]
 - 结尾包含 Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+
+提交完成后，将本版本从 ROADMAP.md 移至 docs/ROADMAP_ARCHIVE.md（追加到文件末尾，如模板 2 未完成此步骤）。
 ```

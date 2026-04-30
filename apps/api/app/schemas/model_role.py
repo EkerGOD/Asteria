@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ModelRoleResponse(BaseModel):
@@ -23,3 +23,11 @@ class ModelRoleUpsertRequest(BaseModel):
     provider_id: UUID | None = None
     model_name: str = Field(min_length=1)
     embedding_dimension: int | None = Field(default=None, ge=1, le=8192)
+
+    @field_validator("model_name")
+    @classmethod
+    def validate_model_name(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Field cannot be blank.")
+        return stripped

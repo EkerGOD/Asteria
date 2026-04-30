@@ -6,6 +6,15 @@ export type HealthResponse = {
   database_configured: boolean;
 };
 
+export type ProviderModel = {
+  id: string;
+  provider_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Provider = {
   id: string;
   name: string;
@@ -14,6 +23,7 @@ export type Provider = {
   chat_model: string;
   embedding_model: string;
   embedding_dimension: number;
+  models: ProviderModel[];
   timeout_seconds: number;
   is_active: boolean;
   metadata: Record<string, unknown>;
@@ -26,8 +36,9 @@ export type ProviderCreateRequest = {
   name: string;
   base_url: string;
   api_key?: string | null;
-  chat_model: string;
-  embedding_model: string;
+  models: string[];
+  chat_model?: string | null;
+  embedding_model?: string | null;
   timeout_seconds?: number;
   is_active?: boolean;
   metadata?: Record<string, unknown>;

@@ -10,6 +10,7 @@ from app.ai.errors import (
 from app.ai.openai_compatible import OpenAICompatibleProviderAdapter
 from app.ai.types import (
     ChatCompletionMessage,
+    ChatCompletionChunk,
     ChatCompletionRequest,
     ChatCompletionResult,
     EmbeddingRequest,
@@ -21,6 +22,7 @@ from app.ai.types import (
 
 __all__ = [
     "ChatCompletionMessage",
+    "ChatCompletionChunk",
     "ChatCompletionRequest",
     "ChatCompletionResult",
     "EmbeddingRequest",

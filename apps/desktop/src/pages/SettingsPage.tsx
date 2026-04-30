@@ -167,6 +167,10 @@ export function SettingsPage() {
         <div className="grid gap-3">
           <Metric label="API base URL" value={API_BASE_URL} />
           <Metric label="Providers" value={String(providers.length)} />
+          <Metric
+            label="Models"
+            value={String(providers.reduce((count, provider) => count + provider.models.length, 0))}
+          />
           <Metric label="Active provider" value={activeProvider?.name ?? "Unset"} />
         </div>
       </Panel>
@@ -300,12 +304,10 @@ function ProviderListItem({
         </div>
         <dl className="mt-3 grid gap-2 text-xs text-stone-600">
           <div className="flex justify-between gap-3">
-            <dt>Chat</dt>
-            <dd className="truncate font-semibold text-stone-800">{provider.chat_model}</dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt>Embedding</dt>
-            <dd className="truncate font-semibold text-stone-800">{provider.embedding_model}</dd>
+            <dt>Models</dt>
+            <dd className="truncate font-semibold text-stone-800">
+              {formatProviderModels(provider)}
+            </dd>
           </div>
           <div className="flex justify-between gap-3">
             <dt>API key</dt>
@@ -373,4 +375,15 @@ function ProviderListItem({
 function formatHealthMessage(result: ProviderHealthResponse): string {
   if (result.latency_ms === null) return result.message;
   return `${result.message} ${result.latency_ms} ms`;
+}
+
+function formatProviderModels(provider: Provider): string {
+  const models = provider.models.map((model) => model.name);
+  if (models.length === 0) {
+    return provider.chat_model || "Unset";
+  }
+  if (models.length === 1) {
+    return models[0];
+  }
+  return `${models[0]} +${models.length - 1}`;
 }

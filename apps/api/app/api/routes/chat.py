@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.session import get_db_session
 from app.schemas.chat import ChatSendRequest, ChatSendResponse, TokenUsageSchema
 from app.schemas.message import MessageResponse
-from app.services.chat import send_message
+from app.services.chat import prepare_stream_message, send_message, stream_message_events
 from app.services.conversations import ConversationNotFoundError
 from app.services.embeddings import ActiveProviderNotConfiguredError
 
@@ -43,4 +44,35 @@ def chat_send_endpoint(
         chat_model=result.chat_model,
         token_usage=token_usage,
         response_delay_ms=result.response_delay_ms,
+    )
+
+
+@router.post("/send/stream", status_code=status.HTTP_201_CREATED)
+def chat_send_stream_endpoint(
+    payload: ChatSendRequest,
+    request: Request,
+    session: Session = Depends(get_db_session),
+) -> StreamingResponse:
+    settings: Settings = request.app.state.settings
+    try:
+        context = prepare_stream_message(session, payload)
+    except ConversationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found.",
+        )
+    except ActiveProviderNotConfiguredError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active provider configured. Activate a provider in Settings.",
+        )
+
+    return StreamingResponse(
+        stream_message_events(session, context, settings),
+        status_code=status.HTTP_201_CREATED,
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
     )

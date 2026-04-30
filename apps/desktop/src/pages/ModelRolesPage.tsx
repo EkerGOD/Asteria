@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   listModelRoles,
   listProviders,
@@ -12,6 +12,36 @@ import { EmptyState } from "../components/EmptyState";
 import { ErrorBox } from "../components/FormFields";
 import { Panel } from "../components/Panel";
 import { isAbortError, toErrorMessage, type LoadStatus } from "../lib/errors";
+import { inputClassName } from "../lib/style";
+import { providerModelNames } from "../lib/provider";
+
+type ProviderModelOption = {
+  value: string;
+  provider_id: string;
+  provider_name: string;
+  model_name: string;
+};
+
+const LOCAL_EMBEDDING_DEFAULT = "bge-m3";
+const LOCAL_EMBEDDING_DIMENSION_DEFAULT = "1024";
+const OPTION_SEPARATOR = "\u001f";
+
+function optionValue(providerId: string, modelName: string): string {
+  return `${providerId}${OPTION_SEPARATOR}${modelName}`;
+}
+
+function providerModelOptions(providers: Provider[]): ProviderModelOption[] {
+  return providers.flatMap((provider) => {
+    const modelNames = providerModelNames(provider);
+
+    return modelNames.map((modelName) => ({
+      value: optionValue(provider.id, modelName),
+      provider_id: provider.id,
+      provider_name: provider.name,
+      model_name: modelName,
+    }));
+  });
+}
 
 export function ModelRolesPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -20,13 +50,19 @@ export function ModelRolesPage() {
 
   const [chatProviderId, setChatProviderId] = useState<string | null>(null);
   const [chatModel, setChatModel] = useState("");
-  const [embeddingProviderId, setEmbeddingProviderId] = useState<string | null>(null);
-  const [embeddingModel, setEmbeddingModel] = useState("");
-  const [embeddingDimension, setEmbeddingDimension] = useState("1536");
+  const [embeddingModel, setEmbeddingModel] = useState(LOCAL_EMBEDDING_DEFAULT);
+  const [embeddingDimension, setEmbeddingDimension] = useState(
+    LOCAL_EMBEDDING_DIMENSION_DEFAULT,
+  );
 
-  const [saving, setSaving] = useState<string | null>(null); // role_type or null
+  const [saving, setSaving] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const availableModels = useMemo(() => providerModelOptions(providers), [providers]);
+  const selectedChatOption = chatProviderId
+    ? optionValue(chatProviderId, chatModel)
+    : "";
 
   const loadData = useCallback(async (signal?: AbortSignal) => {
     setLoadStatus("loading");
@@ -36,17 +72,24 @@ export function ModelRolesPage() {
         listProviders({ signal }),
         listModelRoles({ signal }),
       ]);
+      const nextOptions = providerModelOptions(loadedProviders);
+      const chatRole = loadedRoles.find((role) => role.role_type === "chat");
+      const embeddingRole = loadedRoles.find((role) => role.role_type === "embedding");
+      const chatRoleOption =
+        chatRole?.provider_id
+          ? nextOptions.find(
+              (option) =>
+                option.provider_id === chatRole.provider_id &&
+                option.model_name === chatRole.model_name,
+            )
+          : null;
+      const fallbackChatOption = chatRoleOption ?? nextOptions[0] ?? null;
+
       setProviders(loadedProviders);
+      setChatProviderId(fallbackChatOption?.provider_id ?? null);
+      setChatModel(fallbackChatOption?.model_name ?? "");
 
-      const chatRole = loadedRoles.find((r) => r.role_type === "chat");
-      const embeddingRole = loadedRoles.find((r) => r.role_type === "embedding");
-
-      if (chatRole) {
-        setChatProviderId(chatRole.provider_id);
-        setChatModel(chatRole.model_name);
-      }
       if (embeddingRole) {
-        setEmbeddingProviderId(embeddingRole.provider_id);
         setEmbeddingModel(embeddingRole.model_name);
         if (embeddingRole.embedding_dimension) {
           setEmbeddingDimension(String(embeddingRole.embedding_dimension));
@@ -67,20 +110,31 @@ export function ModelRolesPage() {
     return () => controller.abort();
   }, [loadData]);
 
-  const handleSave = async (roleType: string) => {
+  const handleChatSelection = (value: string) => {
+    const option = availableModels.find((item) => item.value === value);
+    setChatProviderId(option?.provider_id ?? null);
+    setChatModel(option?.model_name ?? "");
+  };
+
+  const handleSave = async (roleType: "chat" | "embedding") => {
     setSaving(roleType);
     setSaveError(null);
     setSaveMessage(null);
 
-    const payload: ModelRoleUpsertRequest = {
-      provider_id: roleType === "chat" ? chatProviderId : embeddingProviderId,
-      model_name: roleType === "chat" ? chatModel.trim() : embeddingModel.trim(),
-      embedding_dimension:
-        roleType === "embedding" ? Number(embeddingDimension) || null : undefined,
-    };
+    const payload = buildRolePayload(
+      roleType,
+      chatProviderId,
+      chatModel,
+      embeddingModel,
+      embeddingDimension,
+    );
 
-    if (!payload.model_name) {
-      setSaveError("Model name is required.");
+    if (!payload) {
+      setSaveError(
+        roleType === "chat"
+          ? "Select a provider model before saving."
+          : "Local embedding model name is required.",
+      );
       setSaving(null);
       return;
     }
@@ -119,107 +173,65 @@ export function ModelRolesPage() {
       {providers.length === 0 && (
         <EmptyState
           title="No providers configured."
-          detail="Add a provider in the Providers tab before configuring model roles."
+          detail="Add a provider in the Providers tab before configuring chat."
         />
       )}
 
-      {/* Chat Role */}
       <Panel title="Chat Model Role">
-        <p className="mb-4 text-xs text-stone-500">
-          Select the provider and model to use for AI chat generation.
-        </p>
         <div className="space-y-3">
           <div>
             <label
-              htmlFor="chat-provider"
+              htmlFor="chat-provider-model"
               className="mb-1 block text-sm font-medium text-stone-700"
             >
-              Provider
+              Model
             </label>
             <select
-              id="chat-provider"
-              className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine"
-              value={chatProviderId ?? ""}
-              onChange={(e) => setChatProviderId(e.target.value || null)}
-              disabled={providers.length === 0}
+              id="chat-provider-model"
+              className={inputClassName()}
+              value={selectedChatOption}
+              onChange={(event) => handleChatSelection(event.target.value)}
+              disabled={availableModels.length === 0}
             >
-              <option value="">Unset (use active provider default)</option>
-              {providers.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
+              {availableModels.length === 0 ? (
+                <option value="">No provider models available</option>
+              ) : null}
+              {availableModels.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.model_name} ({option.provider_name})
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <label
-              htmlFor="chat-model"
-              className="mb-1 block text-sm font-medium text-stone-700"
-            >
-              Chat model
-            </label>
-            <input
-              id="chat-model"
-              type="text"
-              className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine"
-              placeholder="e.g. gpt-4o"
-              value={chatModel}
-              onChange={(e) => setChatModel(e.target.value)}
-            />
           </div>
           <button
             type="button"
             className="rounded-lg bg-pine px-4 py-2 text-sm font-semibold text-white transition hover:bg-pine/90 disabled:cursor-not-allowed disabled:opacity-60"
             onClick={() => void handleSave("chat")}
-            disabled={saving !== null}
+            disabled={saving !== null || availableModels.length === 0}
           >
             {saving === "chat" ? "Saving..." : "Save Chat Role"}
           </button>
         </div>
       </Panel>
 
-      {/* Embedding Role */}
-      <Panel title="Embedding Model Role">
-        <p className="mb-4 text-xs text-stone-500">
-          Select the provider and model to use for embedding generation.
-        </p>
+      <Panel title="Local Embedding Model Role">
         <div className="space-y-3">
-          <div>
-            <label
-              htmlFor="embedding-provider"
-              className="mb-1 block text-sm font-medium text-stone-700"
-            >
-              Provider
-            </label>
-            <select
-              id="embedding-provider"
-              className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine"
-              value={embeddingProviderId ?? ""}
-              onChange={(e) => setEmbeddingProviderId(e.target.value || null)}
-              disabled={providers.length === 0}
-            >
-              <option value="">Unset (use active provider default)</option>
-              {providers.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+          <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-600">
+            Local embedding execution is not enabled yet.
           </div>
           <div>
             <label
               htmlFor="embedding-model"
               className="mb-1 block text-sm font-medium text-stone-700"
             >
-              Embedding model
+              Local model
             </label>
             <input
               id="embedding-model"
               type="text"
-              className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine"
-              placeholder="e.g. text-embedding-3-small"
+              className={inputClassName()}
               value={embeddingModel}
-              onChange={(e) => setEmbeddingModel(e.target.value)}
+              onChange={(event) => setEmbeddingModel(event.target.value)}
             />
           </div>
           <div>
@@ -232,12 +244,11 @@ export function ModelRolesPage() {
             <input
               id="embedding-dimension"
               type="number"
-              className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine"
-              placeholder="1536"
+              className={inputClassName()}
               min={1}
               max={8192}
               value={embeddingDimension}
-              onChange={(e) => setEmbeddingDimension(e.target.value)}
+              onChange={(event) => setEmbeddingDimension(event.target.value)}
             />
           </div>
           <button
@@ -252,4 +263,32 @@ export function ModelRolesPage() {
       </Panel>
     </div>
   );
+}
+
+function buildRolePayload(
+  roleType: "chat" | "embedding",
+  chatProviderId: string | null,
+  chatModel: string,
+  embeddingModel: string,
+  embeddingDimension: string,
+): ModelRoleUpsertRequest | null {
+  if (roleType === "chat") {
+    if (!chatProviderId || !chatModel.trim()) {
+      return null;
+    }
+    return {
+      provider_id: chatProviderId,
+      model_name: chatModel.trim(),
+    };
+  }
+
+  const modelName = embeddingModel.trim();
+  if (!modelName) {
+    return null;
+  }
+  return {
+    provider_id: null,
+    model_name: modelName,
+    embedding_dimension: Number(embeddingDimension) || null,
+  };
 }

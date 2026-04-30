@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.ai import (
     OpenAICompatibleProviderAdapter,
@@ -17,7 +17,7 @@ from app.ai import (
 )
 from app.core.config import Settings
 from app.core.secrets import encrypt_provider_api_key
-from app.models import AIProvider
+from app.models import AIProvider, ProviderModel
 from app.schemas.provider import ProviderCreate, ProviderHealthResponse, ProviderUpdate
 
 _UNSET = object()
@@ -41,6 +41,7 @@ def create_provider(
     data = payload.model_dump()
     api_key = data.pop("api_key", None)
     metadata = data.pop("metadata")
+    model_names = data.pop("models")
     encrypted_api_key = encrypt_provider_api_key(api_key, settings)
 
     provider = AIProvider(
@@ -49,6 +50,7 @@ def create_provider(
         metadata_=metadata,
         **data,
     )
+    _replace_provider_models(provider, model_names)
     if provider.is_active:
         _deactivate_all_providers(session)
 
@@ -58,7 +60,11 @@ def create_provider(
 
 
 def list_providers(session: Session) -> list[AIProvider]:
-    statement = select(AIProvider).order_by(func.lower(AIProvider.name).asc())
+    statement = (
+        select(AIProvider)
+        .options(selectinload(AIProvider.model_entries))
+        .order_by(func.lower(AIProvider.name).asc())
+    )
     return list(session.scalars(statement).all())
 
 
@@ -78,6 +84,8 @@ def update_provider(
     provider = get_provider(session, provider_id)
     updates = payload.model_dump(exclude_unset=True)
     api_key = updates.pop("api_key", _UNSET)
+    model_names = updates.pop("models", _UNSET)
+    metadata = updates.pop("metadata", _UNSET)
     encrypted_api_key = (
         encrypt_provider_api_key(api_key, settings)
         if api_key is not _UNSET
@@ -93,8 +101,20 @@ def update_provider(
     for field_name, value in updates.items():
         setattr(provider, field_name, value)
 
+    if metadata is not _UNSET:
+        provider.metadata_ = metadata
+
     if encrypted_api_key is not _UNSET:
         provider.api_key_ciphertext = encrypted_api_key
+
+    if model_names is not _UNSET:
+        _replace_provider_models(provider, model_names)
+        if "chat_model" not in updates:
+            provider.chat_model = model_names[0]
+        if provider.embedding_model is None:
+            provider.embedding_model = model_names[0]
+    elif "chat_model" in updates:
+        _ensure_provider_model_present(provider, updates["chat_model"])
 
     _commit_provider(session, provider)
     return provider
@@ -177,6 +197,15 @@ def get_active_provider(session: Session) -> AIProvider | None:
     ).first()
 
 
+def provider_model_names(provider: AIProvider) -> list[str]:
+    names = [model.name for model in provider.model_entries]
+    if names:
+        return names
+    if provider.chat_model:
+        return [provider.chat_model]
+    return []
+
+
 def _ensure_name_available(
     session: Session,
     name: str,
@@ -196,6 +225,26 @@ def _ensure_name_available(
 def _deactivate_all_providers(session: Session) -> None:
     session.execute(
         update(AIProvider).values(is_active=False).where(AIProvider.is_active.is_(True))
+    )
+
+
+def _replace_provider_models(provider: AIProvider, model_names: list[str]) -> None:
+    provider.model_entries = [
+        ProviderModel(id=uuid4(), name=model_name, sort_order=index)
+        for index, model_name in enumerate(model_names)
+    ]
+
+
+def _ensure_provider_model_present(provider: AIProvider, model_name: str) -> None:
+    existing_names = {name.lower() for name in provider_model_names(provider)}
+    if model_name.lower() in existing_names:
+        return
+    provider.model_entries.append(
+        ProviderModel(
+            id=uuid4(),
+            name=model_name,
+            sort_order=len(provider.model_entries),
+        )
     )
 
 

@@ -27,6 +27,7 @@ def test_mvp_schema_registers_all_tables():
         "messages",
         "model_roles",
         "projects",
+        "provider_models",
         "tags",
     }
 
@@ -65,6 +66,10 @@ def test_mvp_schema_contains_core_constraints():
         "ck_model_roles_role_type",
         "uq_model_roles_role_type",
     } <= {c.name for c in Base.metadata.tables["model_roles"].constraints if c.name}
+    assert {
+        "ck_provider_models_name_not_blank",
+        "ck_provider_models_sort_order_non_negative",
+    } <= constraint_names("provider_models")
 
 
 def test_mvp_schema_contains_key_indexes():
@@ -100,6 +105,10 @@ def test_mvp_schema_contains_key_indexes():
         "uq_ai_providers_lower_name",
         "uq_ai_providers_active",
     } <= index_names("ai_providers")
+    assert {
+        "uq_provider_models_provider_lower_name",
+        "ix_provider_models_provider_id",
+    } <= index_names("provider_models")
 
 
 def test_embedding_column_uses_mvp_vector_dimension():
@@ -133,3 +142,4 @@ def test_relationship_delete_policies_match_schema():
     assert next(iter(tables["knowledge_embeddings"].c.knowledge_unit_id.foreign_keys)).ondelete == "CASCADE"
     assert next(iter(tables["knowledge_embeddings"].c.provider_id.foreign_keys)).ondelete == "SET NULL"
     assert next(iter(tables["model_roles"].c.provider_id.foreign_keys)).ondelete == "SET NULL"
+    assert next(iter(tables["provider_models"].c.provider_id.foreign_keys)).ondelete == "CASCADE"

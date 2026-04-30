@@ -5,7 +5,7 @@ from app.models.knowledge import KnowledgeEmbedding, KnowledgeUnit, KnowledgeUni
 from app.models.message import Message
 from app.models.model_role import ModelRole
 from app.models.project import Project
-from app.models.provider import AIProvider
+from app.models.provider import AIProvider, ProviderModel
 from app.models.setting import AppSetting
 
 __all__ = [
@@ -18,5 +18,6 @@ __all__ = [
     "Message",
     "ModelRole",
     "Project",
+    "ProviderModel",
     "Tag",
 ]

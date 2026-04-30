@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
-from sqlalchemy import Boolean, CheckConstraint, Index, Integer, Text, func, text
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, Integer, Text, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -82,6 +83,11 @@ class AIProvider(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="provider",
         passive_deletes=True,
     )
+    model_entries: Mapped[list["ProviderModel"]] = relationship(
+        back_populates="provider",
+        cascade="all, delete-orphan",
+        order_by="ProviderModel.sort_order",
+    )
 
 
 Index("uq_ai_providers_lower_name", func.lower(AIProvider.name), unique=True)
@@ -92,3 +98,35 @@ Index(
     postgresql_where=AIProvider.is_active.is_(True),
     sqlite_where=AIProvider.is_active.is_(True),
 )
+
+
+class ProviderModel(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "provider_models"
+    __table_args__ = (
+        CheckConstraint("trim(name) <> ''", name="ck_provider_models_name_not_blank"),
+        CheckConstraint("sort_order >= 0", name="ck_provider_models_sort_order_non_negative"),
+    )
+
+    provider_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("ai_providers.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    sort_order: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("0"),
+        default=0,
+    )
+
+    provider: Mapped[AIProvider] = relationship(back_populates="model_entries")
+
+
+Index(
+    "uq_provider_models_provider_lower_name",
+    ProviderModel.provider_id,
+    func.lower(ProviderModel.name),
+    unique=True,
+)
+Index("ix_provider_models_provider_id", ProviderModel.provider_id)

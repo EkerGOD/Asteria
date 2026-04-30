@@ -3,7 +3,13 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db_session
 from app.schemas.model_role import ModelRoleResponse, ModelRoleUpsertRequest
-from app.services.model_roles import ProviderNotFoundError, list_model_roles, upsert_model_role
+from app.services.model_roles import (
+    InvalidModelRoleConfigurationError,
+    ProviderModelNotFoundError,
+    ProviderNotFoundError,
+    list_model_roles,
+    upsert_model_role,
+)
 
 router = APIRouter(prefix="/api/model-roles", tags=["model-roles"])
 
@@ -34,4 +40,17 @@ def upsert_model_role_endpoint(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Provider not found.",
+        )
+    except ProviderModelNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Model is not configured on the selected provider.",
+        )
+    except InvalidModelRoleConfigurationError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Chat roles must select a provider model. "
+                "Embedding roles must use a local model entry."
+            ),
         )

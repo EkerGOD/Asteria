@@ -11,12 +11,13 @@ import {
   listMessages,
   listModelRoles,
   listProviders,
-  sendChat,
+  sendChatStream,
   updateConversation,
   upsertModelRole,
 } from "../api/client";
 import type { Conversation, Message, TokenUsage } from "../api/types";
 import { readMessageDisplayConfig } from "../store/messageDisplay";
+import { providerModelNames } from "../lib/provider";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EmptyState } from "./EmptyState";
 import { Icon } from "./Icon";
@@ -143,12 +144,15 @@ export function ChatView({
       try {
         const [providers, roles] = await Promise.all([listProviders(), listModelRoles()]);
         const models = providers
-          .filter((p) => p.chat_model)
-          .map((p) => ({
-            provider_id: p.id,
-            provider_name: p.name,
-            model_name: p.chat_model,
-          }));
+          .flatMap((provider) => {
+            const modelNames = providerModelNames(provider);
+
+            return modelNames.map((modelName) => ({
+              provider_id: provider.id,
+              provider_name: provider.name,
+              model_name: modelName,
+            }));
+          });
         setAvailableModels(models);
         const chatRole = roles.find((r) => r.role_type === "chat");
         if (chatRole) {
@@ -243,7 +247,7 @@ export function ChatView({
     setChatError(null);
     setSending(true);
 
-    const optimisticMessage: Message = {
+    const optimisticUser: Message = {
       id: `optimistic-${Date.now()}`,
       conversation_id: activeConversationId,
       provider_id: null,
@@ -254,16 +258,35 @@ export function ChatView({
       retrieval_metadata: {},
       created_at: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, optimisticMessage]);
+    const streamingId = `streaming-${Date.now()}`;
+    const streamingPlaceholder: Message = {
+      id: streamingId,
+      conversation_id: activeConversationId,
+      provider_id: null,
+      role: "assistant",
+      content: "",
+      model: null,
+      token_count: null,
+      retrieval_metadata: {},
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticUser, streamingPlaceholder]);
 
     try {
-      const result = await sendChat({
-        conversation_id: activeConversationId,
-        content: trimmed,
-      });
+      const result = await sendChatStream(
+        { conversation_id: activeConversationId, content: trimmed },
+        (token) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === streamingId ? { ...m, content: m.content + token } : m,
+            ),
+          );
+        },
+      );
+
       setMessages((prev) =>
         prev
-          .filter((m) => m.id !== optimisticMessage.id)
+          .filter((m) => m.id !== optimisticUser.id && m.id !== streamingId)
           .concat([result.user_message, result.assistant_message]),
       );
       setMessageMeta((prev) => {
@@ -276,11 +299,25 @@ export function ChatView({
       });
       setConversations((prev) =>
         prev.map((c) =>
-          c.id === activeConversationId ? { ...c, updated_at: result.assistant_message.created_at } : c,
+          c.id === activeConversationId
+            ? { ...c, updated_at: result.assistant_message.created_at }
+            : c,
         ),
       );
     } catch (err) {
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticMessage.id));
+      setMessages((prev) => {
+        const streaming = prev.find((m) => m.id === streamingId);
+        if (streaming && streaming.content) {
+          return prev
+            .filter((m) => m.id !== optimisticUser.id)
+            .map((m) =>
+              m.id === streamingId
+                ? { ...m, retrieval_metadata: { stream_interrupted: true } }
+                : m,
+            );
+        }
+        return prev.filter((m) => m.id !== optimisticUser.id && m.id !== streamingId);
+      });
       const msg = err instanceof Error ? err.message : "Failed to send message";
       setChatError(msg);
       onChatInputChange(trimmed);
@@ -490,7 +527,7 @@ export function ChatView({
                   {sending && (
                     <div className="mb-2 flex items-center gap-2 text-sm text-stone-400">
                       <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-pine/60" />
-                      Waiting for response...
+                      Generating...
                     </div>
                   )}
 
@@ -863,6 +900,11 @@ function MessageBubble({
 
           {metaItems.length > 0 && (
             <p className="mt-1 text-right text-xs opacity-60">{metaItems.join(" · ")}</p>
+          )}
+          {Boolean(message.retrieval_metadata?.stream_interrupted) && (
+            <p className="mt-1 text-right text-xs font-medium text-amber-600">
+              Response interrupted
+            </p>
           )}
         </div>
 
