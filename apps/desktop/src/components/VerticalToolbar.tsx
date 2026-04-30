@@ -20,7 +20,7 @@ export function VerticalToolbar({
       </div>
 
       {/* Bottom: settings */}
-      <div className="flex h-10 w-full shrink-0 items-center justify-center border-t border-stone-200">
+      <div className="flex h-10 w-full shrink-0 items-center justify-center">
         <IconButton
           icon="settings"
           onClick={onOpenSettings}

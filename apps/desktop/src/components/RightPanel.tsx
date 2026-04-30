@@ -12,36 +12,59 @@ const views: { id: RightPanelView; icon: IconName; title: string }[] = [
 ];
 
 export function RightPanel({
+  collapsed,
+  onToggleCollapse,
   activeView,
   onViewChange,
 }: {
+  collapsed: boolean;
+  onToggleCollapse: () => void;
   activeView: RightPanelView;
   onViewChange: (view: RightPanelView) => void;
 }) {
   return (
-    <div className="flex h-full w-full flex-col bg-white/80">
+    <div className="flex h-full w-full flex-col border-l border-stone-300/80 bg-white/80">
       {/* View switcher icons */}
-      <div className="flex items-center gap-0.5 border-b border-stone-200 px-2 py-1.5">
-        {views.map((view) => (
-          <IconButton
-            key={view.id}
-            icon={view.icon}
-            label={view.title}
-            active={view.id === activeView}
-            onClick={() => onViewChange(view.id)}
-            size="sm"
-            iconSize={16}
-          />
-        ))}
+      <div
+        className={[
+          "flex items-center border-b border-stone-200 py-1.5",
+          collapsed ? "justify-center px-1" : "gap-0.5 px-2",
+        ].join(" ")}
+      >
+        {collapsed ? null : (
+          <>
+            {views.map((view) => (
+              <IconButton
+                key={view.id}
+                icon={view.icon}
+                label={view.title}
+                active={view.id === activeView}
+                onClick={() => onViewChange(view.id)}
+                size="sm"
+                iconSize={16}
+              />
+            ))}
+            <div className="mx-1 h-5 w-px bg-stone-200" aria-hidden="true" />
+          </>
+        )}
+        <IconButton
+          icon={collapsed ? "chevronLeft" : "chevronRight"}
+          label={collapsed ? "Expand right panel" : "Collapse right panel"}
+          onClick={onToggleCollapse}
+          size="sm"
+          iconSize={16}
+        />
       </div>
 
       {/* View content */}
-      <div className="flex-1 overflow-hidden">
+      {collapsed ? null : (
+        <div className="flex-1 overflow-hidden">
         {activeView === "chat" && <ChatView />}
         {activeView === "knowledge" && <KnowledgeView />}
         {activeView === "outline" && <OutlineView />}
         {activeView === "graph" && <GraphView />}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

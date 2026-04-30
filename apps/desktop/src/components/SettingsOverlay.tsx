@@ -1,11 +1,23 @@
 import { useState } from "react";
 import { SettingsPage } from "../pages/SettingsPage";
 import { DiagnosticsPage } from "../pages/DiagnosticsPage";
+import { AppearancePage } from "../pages/AppearancePage";
+import type { ResolvedTheme, ThemePreference } from "../hooks/useThemePreference";
 import { Icon } from "./Icon";
 
-type SettingsTab = "providers" | "diagnostics";
+type SettingsTab = "providers" | "appearance" | "diagnostics";
 
-export function SettingsOverlay({ onClose }: { onClose: () => void }) {
+export function SettingsOverlay({
+  themePreference,
+  resolvedTheme,
+  onThemePreferenceChange,
+  onClose,
+}: {
+  themePreference: ThemePreference;
+  resolvedTheme: ResolvedTheme;
+  onThemePreferenceChange: (preference: ThemePreference) => void;
+  onClose: () => void;
+}) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("providers");
 
   return (
@@ -40,6 +52,12 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
               Providers
             </SettingsTabButton>
             <SettingsTabButton
+              active={activeTab === "appearance"}
+              onClick={() => setActiveTab("appearance")}
+            >
+              Appearance
+            </SettingsTabButton>
+            <SettingsTabButton
               active={activeTab === "diagnostics"}
               onClick={() => setActiveTab("diagnostics")}
             >
@@ -50,6 +68,13 @@ export function SettingsOverlay({ onClose }: { onClose: () => void }) {
           {/* Content area */}
           <div className="min-w-0 flex-1 overflow-auto px-6 py-4">
             {activeTab === "providers" && <SettingsPage />}
+            {activeTab === "appearance" && (
+              <AppearancePage
+                preference={themePreference}
+                resolvedTheme={resolvedTheme}
+                onPreferenceChange={onThemePreferenceChange}
+              />
+            )}
             {activeTab === "diagnostics" && (
               <DiagnosticsPage onNavigateToSettings={() => setActiveTab("providers")} />
             )}

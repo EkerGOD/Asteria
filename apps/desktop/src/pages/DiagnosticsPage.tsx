@@ -144,7 +144,7 @@ export function DiagnosticsPage({ onNavigateToSettings }: { onNavigateToSettings
       {/* Status sections — vertical stack */}
       <div className="space-y-4">
         {/* Local API */}
-        <DiagnosticSection title="Local API" badge={stateBadge(apiHealth.status)}>
+        <DiagnosticSection title="Local API">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold">{localApiValue}</p>
             <StatusBadge state={apiHealth.status} />
@@ -159,7 +159,7 @@ export function DiagnosticsPage({ onNavigateToSettings }: { onNavigateToSettings
         </DiagnosticSection>
 
         {/* Database */}
-        <DiagnosticSection title="Database" badge={stateBadge(databaseState)}>
+        <DiagnosticSection title="Database">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold">{databaseValue}</p>
             <StatusBadge state={databaseState} />
@@ -167,7 +167,7 @@ export function DiagnosticsPage({ onNavigateToSettings }: { onNavigateToSettings
         </DiagnosticSection>
 
         {/* Provider */}
-        <DiagnosticSection title="AI Provider" badge={stateBadge(providerState)}>
+        <DiagnosticSection title="AI Provider">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold">{providerValue}</p>
             <StatusBadge state={providerState} />
@@ -215,31 +215,17 @@ export function DiagnosticsPage({ onNavigateToSettings }: { onNavigateToSettings
 
 type StatusState = "idle" | "loading" | "success" | "error";
 
-function stateBadge(state: StatusState): string {
-  return {
-    idle: "Pending",
-    loading: "Checking",
-    success: "Online",
-    error: "Error",
-  }[state];
-}
-
 function DiagnosticSection({
   title,
-  badge,
   children,
 }: {
   title: string;
-  badge: string;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-lg border border-stone-200 p-4">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3">
         <h3 className="text-sm font-semibold text-stone-800">{title}</h3>
-        <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-500">
-          {badge}
-        </span>
       </div>
       {children}
     </section>

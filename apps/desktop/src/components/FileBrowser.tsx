@@ -9,9 +9,13 @@ interface Vault {
 }
 
 export function FileBrowser({
+  collapsed,
+  onToggleCollapse,
   onOpenFile,
   onManageVaults,
 }: {
+  collapsed: boolean;
+  onToggleCollapse: () => void;
   onOpenFile: (filePath: string) => void;
   onManageVaults: () => void;
 }) {
@@ -39,11 +43,35 @@ export function FileBrowser({
 
   return (
     <div className="flex h-full w-full flex-col border-r border-stone-300/80 bg-white/80">
+      {collapsed ? (
+        <div className="flex h-10 shrink-0 items-center justify-center">
+          <IconButton
+            icon="chevronRight"
+            label="Expand file browser"
+            onClick={onToggleCollapse}
+            size="sm"
+            iconSize={16}
+          />
+        </div>
+      ) : null}
+
+      {collapsed ? null : (
+        <>
       {/* File tree area */}
       <div className="flex-1 overflow-auto px-3 py-3">
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs font-semibold uppercase text-stone-500">Files</p>
-          <IconButton icon="fileAdd" label="New file" size="xs" iconSize={14} />
+          <div className="flex items-center gap-1">
+            <IconButton icon="fileAdd" label="New file" size="xs" iconSize={14} />
+            <div className="mx-1 h-4 w-px bg-stone-200" aria-hidden="true" />
+            <IconButton
+              icon="chevronLeft"
+              label="Collapse file browser"
+              onClick={onToggleCollapse}
+              size="xs"
+              iconSize={14}
+            />
+          </div>
         </div>
 
         {/* Placeholder file tree */}
@@ -72,7 +100,7 @@ export function FileBrowser({
       </div>
 
       {/* Vault switcher */}
-      <div className="relative shrink-0 border-t border-stone-200" ref={menuRef}>
+      <div className="relative shrink-0" ref={menuRef}>
         <button
           type="button"
           className="flex h-10 w-full items-center gap-1.5 px-3 text-left text-sm font-medium text-stone-700 hover:bg-stone-50"
@@ -127,6 +155,8 @@ export function FileBrowser({
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

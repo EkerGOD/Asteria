@@ -15,11 +15,11 @@ export default {
         ]
       },
       colors: {
-        surface: "#f7f5ef",
-        ink: "#1f2933",
-        pine: "#1f6f55",
-        clay: "#b35c38",
-        denim: "#315c8c"
+        surface: "rgb(var(--asteria-surface) / <alpha-value>)",
+        ink: "rgb(var(--asteria-ink) / <alpha-value>)",
+        pine: "rgb(var(--asteria-pine) / <alpha-value>)",
+        clay: "rgb(var(--asteria-clay) / <alpha-value>)",
+        denim: "rgb(var(--asteria-denim) / <alpha-value>)"
       }
     }
   },

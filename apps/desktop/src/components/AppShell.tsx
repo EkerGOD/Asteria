@@ -13,6 +13,7 @@ import { IconButton } from "./IconButton";
 import { RightPanel } from "./RightPanel";
 import { StatusBar } from "./StatusBar";
 import { SettingsOverlay } from "./SettingsOverlay";
+import { useThemePreference } from "../hooks/useThemePreference";
 
 export type RightPanelView = "chat" | "knowledge" | "outline" | "graph";
 
@@ -25,7 +26,7 @@ export interface OpenTab {
 type ResizingPanel = "left" | "right";
 
 const TOOLBAR_WIDTH = 44;
-const EDGE_TOGGLE_WIDTH = 40;
+const COLLAPSED_PANEL_WIDTH = 40;
 const RESIZE_HANDLE_WIDTH = 6;
 const MIN_EDITOR_WIDTH = 360;
 const LEFT_PANEL_MIN_WIDTH = 200;
@@ -38,6 +39,7 @@ const KEYBOARD_RESIZE_STEP = 16;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const mainAreaRef = useRef<HTMLDivElement>(null);
+  const theme = useThemePreference();
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [leftPanelWidth, setLeftPanelWidth] = useState(LEFT_PANEL_DEFAULT_WIDTH);
@@ -58,12 +60,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const getLeftPanelMaxWidth = useCallback(() => {
     const rightSideWidth =
-      EDGE_TOGGLE_WIDTH +
-      (rightPanelOpen ? rightPanelWidth + RESIZE_HANDLE_WIDTH : 0);
+      rightPanelOpen
+        ? rightPanelWidth + RESIZE_HANDLE_WIDTH
+        : COLLAPSED_PANEL_WIDTH;
     const available =
       getMainAreaWidth() -
       TOOLBAR_WIDTH -
-      EDGE_TOGGLE_WIDTH -
       RESIZE_HANDLE_WIDTH -
       rightSideWidth -
       MIN_EDITOR_WIDTH;
@@ -77,13 +79,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const getRightPanelMaxWidth = useCallback(() => {
     const leftSideWidth =
       TOOLBAR_WIDTH +
-      EDGE_TOGGLE_WIDTH +
-      (leftPanelOpen ? leftPanelWidth + RESIZE_HANDLE_WIDTH : 0);
+      (leftPanelOpen
+        ? leftPanelWidth + RESIZE_HANDLE_WIDTH
+        : COLLAPSED_PANEL_WIDTH);
     const available =
       getMainAreaWidth() -
       leftSideWidth -
       RESIZE_HANDLE_WIDTH -
-      EDGE_TOGGLE_WIDTH -
       MIN_EDITOR_WIDTH;
 
     return Math.max(
@@ -126,12 +128,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       if (resizingPanel === "left") {
         resizeLeftPanel(
-          event.clientX - rect.left - TOOLBAR_WIDTH - EDGE_TOGGLE_WIDTH
+          event.clientX - rect.left - TOOLBAR_WIDTH
         );
         return;
       }
 
-      resizeRightPanel(rect.right - event.clientX - EDGE_TOGGLE_WIDTH);
+      resizeRightPanel(rect.right - event.clientX);
     }
 
     function handleMouseUp() {
@@ -203,31 +205,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           ]
             .filter(Boolean)
             .join(" ")}
-          style={{ width: leftPanelOpen ? leftPanelWidth : 0 }}
+          style={{ width: leftPanelOpen ? leftPanelWidth : COLLAPSED_PANEL_WIDTH }}
         >
-          {leftPanelOpen && (
-            <FileBrowser
-              onOpenFile={openFile}
-              onManageVaults={() => setSettingsOpen(true)}
-            />
-          )}
-        </div>
-
-        {/* Left panel edge toggle */}
-        <div
-          className={[
-            "flex w-10 shrink-0 flex-col items-center bg-white/50 pt-2 transition-colors",
-            leftPanelOpen ? "" : "border-r border-stone-300/80",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
-          <IconButton
-            icon={leftPanelOpen ? "chevronLeft" : "chevronRight"}
-            label={leftPanelOpen ? "Collapse file browser" : "Expand file browser"}
-            onClick={toggleLeftPanel}
-            size="sm"
-            iconSize={16}
+          <FileBrowser
+            collapsed={!leftPanelOpen}
+            onToggleCollapse={toggleLeftPanel}
+            onOpenFile={openFile}
+            onManageVaults={() => setSettingsOpen(true)}
           />
         </div>
 
@@ -297,24 +281,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           />
         )}
 
-        {/* Right panel edge toggle */}
-        <div
-          className={[
-            "flex w-10 shrink-0 flex-col items-center bg-white/50 pt-2 transition-colors",
-            rightPanelOpen ? "" : "border-l border-stone-300/80",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
-          <IconButton
-            icon={rightPanelOpen ? "chevronRight" : "chevronLeft"}
-            label={rightPanelOpen ? "Collapse right panel" : "Expand right panel"}
-            onClick={toggleRightPanel}
-            size="sm"
-            iconSize={16}
-          />
-        </div>
-
         {/* Right Panel (collapsible) */}
         <div
           className={[
@@ -323,14 +289,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           ]
             .filter(Boolean)
             .join(" ")}
-          style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
+          style={{ width: rightPanelOpen ? rightPanelWidth : COLLAPSED_PANEL_WIDTH }}
         >
-          {rightPanelOpen && (
-            <RightPanel
-              activeView={rightPanelView}
-              onViewChange={setRightPanelView}
-            />
-          )}
+          <RightPanel
+            collapsed={!rightPanelOpen}
+            onToggleCollapse={toggleRightPanel}
+            activeView={rightPanelView}
+            onViewChange={setRightPanelView}
+          />
         </div>
       </div>
 
@@ -338,7 +304,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       <StatusBar />
 
       {/* Settings Overlay */}
-      {settingsOpen && <SettingsOverlay onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsOverlay
+          themePreference={theme.preference}
+          resolvedTheme={theme.resolvedTheme}
+          onThemePreferenceChange={theme.setPreference}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </div>
   );
 }

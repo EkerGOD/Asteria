@@ -146,9 +146,6 @@ export function ChatView() {
           <div className="p-3">
             <div className="rounded-md bg-pine/5 px-3 py-2 text-sm text-pine">
               <p className="font-medium">{activeConversation.title}</p>
-              {activeConversation.project_id && (
-                <p className="text-xs text-stone-500">Project: {activeConversation.project_id}</p>
-              )}
             </div>
             <div className="mt-2 space-y-2 text-sm text-stone-500 px-1">
               <p>Messages will appear here.</p>
@@ -246,18 +243,26 @@ export function ChatView() {
             {conversations.map((conv) => (
               <div
                 key={conv.id}
+                role="button"
+                tabIndex={0}
                 className={[
-                  "group flex items-center justify-between rounded px-2 py-1 text-xs cursor-pointer",
+                  "group flex h-7 cursor-pointer items-center justify-between rounded px-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/35",
                   conv.id === activeConversationId
                     ? "bg-pine/10 text-pine"
-                    : "text-stone-600 hover:bg-stone-100"
+                    : "text-stone-600 hover:bg-stone-100 focus-visible:bg-stone-100"
                 ].join(" ")}
                 onClick={() => setActiveConversationId(conv.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setActiveConversationId(conv.id);
+                  }
+                }}
               >
-                <span className="truncate flex-1">{conv.title}</span>
+                <span className="min-w-0 flex-1 truncate">{conv.title}</span>
                 <button
                   type="button"
-                  className="ml-1 hidden rounded p-0.5 text-stone-400 hover:text-red-500 group-hover:inline"
+                  className="ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-stone-400 opacity-0 transition-colors hover:text-red-500 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/35 group-focus-within:opacity-100 group-hover:opacity-100"
                   onClick={(e) => { e.stopPropagation(); setArchiveTargetId(conv.id); }}
                   aria-label={`Archive ${conv.title}`}
                   title="Archive"

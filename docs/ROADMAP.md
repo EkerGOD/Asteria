@@ -176,41 +176,61 @@ MVP 核心骨架已完成：
 
 ---
 
-## v0.8.7 — Settings 与当前信息展示修复
+## v0.8.7 — AppShell、Settings 外观与 Chat history polish
 
-状态：planned
+状态：done
 
 约束：
 
 - 不新增后端 API 端点
 - 不修改数据库 schema
-- 不新增 Settings 子页面
+- 不修改 Provider、RAG 或 Project 管理业务能力
 - 不实现 Project 配置页面或 Project 管理能力
-- 仅修复 Settings 信息展示和 Chat 当前 Project 顶部信息
+- 主题仅作为本地 UI 偏好实现，不接 FastAPI、不改 app settings API
+- 仅修改 AppShell、Settings、Chat history 相关前端 UI 与状态样式
 
 解决的问题：
 
 1. [Bug] Diagnostics 页面中 Local API、Database、AI Provider 的状态重复显示；标题旁和检查项旁各有一个 `online`
 2. [Bug] Providers 页面 Desktop 区域中的 API base URL 和 Active provider 文本会撑破所在容器
 3. [UX] Chat 顶部显示当前 Project 的 UUID，日常使用不需要暴露该内部标识
+4. [UX] 左右侧面板折叠按钮额外占用空间，应融入面板工具区域，而不是单独占用按钮轨道
+5. [UX] Settings 按钮和 MyVault 上方分割线视觉冗余，应只移除分割线并保留原有功能
+6. [Feature] Settings 需要 Appearance / 外观选项卡，支持浅色、深色、跟随系统主题
+7. [UX] Chat history hover / selected 状态会放大背景，应改为只通过颜色区分状态
 
 方案：
 
 - Diagnostics 保留每个检查项旁边的状态，移除标题或分组旁边的重复状态
 - Providers 中长 URL、长 provider 名称和 active provider 文本必须在容器内换行或截断，并保持可读
 - Chat 顶部当前 Project 区域只展示用户可读的项目名称，不展示 project UUID
+- 左侧折叠按钮融入 FileBrowser 顶部操作区，靠近 New File，并通过轻量视觉分隔与其他操作区分
+- 右侧折叠按钮融入右侧面板 tab 区，靠近 Chat / Knowledge / Outline / Graph，并通过轻量视觉分隔与其他 tab 区分
+- 移除专门承载左右折叠按钮的额外空间轨道
+- 移除 Settings 按钮和 MyVault 上方分割线，不删除按钮、不改变 Vault switcher 功能
+- Settings 新增 Appearance / 外观选项卡，提供 Light / Dark / System 三种本地 UI 主题偏好
+- Chat history hover、selected 和 focus 状态保持尺寸稳定，只使用颜色区分
 - Project 配置入口延后到 v0.12.0 实现
 
 验收标准：
 
-- [ ] Diagnostics 每个检查项旁只显示一个状态标签，标题旁不再显示重复状态
-- [ ] Local API、Database、AI Provider 的状态仍可清楚区分 online/offline/error
-- [ ] Providers 页面中的 API base URL 不会撑破卡片或产生水平溢出
-- [ ] Providers 页面中的 Active provider 不会撑破卡片或产生水平溢出
-- [ ] Chat 顶部当前 Project 不显示 UUID
-- [ ] Chat 顶部当前 Project 名称仍清楚可读
-- [ ] `cd apps/desktop && npm run typecheck` 通过
-- [ ] `cd apps/desktop && npm run lint` 通过
+- [x] Diagnostics 每个检查项旁只显示一个状态标签，标题旁不再显示重复状态
+- [x] Local API、Database、AI Provider 的状态仍可清楚区分 online/offline/error
+- [x] Providers 页面中的 API base URL 不会撑破卡片或产生水平溢出
+- [x] Providers 页面中的 Active provider 不会撑破卡片或产生水平溢出
+- [x] Chat 顶部当前 Project 不显示 UUID
+- [x] Chat 顶部当前 Project 名称仍清楚可读
+- [x] 左侧折叠按钮位于 FileBrowser 顶部操作区，靠近 New File，并用轻量视觉分隔
+- [x] 右侧折叠按钮位于右侧面板 tab 区，靠近 Chat / Knowledge / Outline / Graph，并用轻量视觉分隔
+- [x] 不再出现额外专门承载折叠按钮的空间轨道
+- [x] Settings 按钮和 MyVault 上方分割线被移除，按钮和 Vault 功能保留
+- [x] Settings 包含 Appearance / 外观选项卡
+- [x] 用户可选择 Light / Dark / System
+- [x] 主题偏好本地持久化，重启后保持
+- [x] System 模式跟随系统浅色 / 深色
+- [x] Chat history hover / selected / focus 不改变尺寸，只通过颜色区分
+- [x] `cd apps/desktop && npm run typecheck` 通过
+- [x] `cd apps/desktop && npm run lint` 通过
 
 ---
 

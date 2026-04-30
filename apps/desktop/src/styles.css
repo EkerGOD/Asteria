@@ -4,6 +4,11 @@
 
 @layer base {
   :root {
+    --asteria-surface: 247 245 239;
+    --asteria-ink: 31 41 51;
+    --asteria-pine: 31 111 85;
+    --asteria-clay: 179 92 56;
+    --asteria-denim: 49 92 140;
     color-scheme: light;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
@@ -11,11 +16,75 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  :root[data-theme="dark"] {
+    --asteria-surface: 24 28 33;
+    --asteria-ink: 231 229 222;
+    --asteria-pine: 105 181 148;
+    --asteria-clay: 214 130 94;
+    --asteria-denim: 118 158 204;
+  }
+
   body {
     margin: 0;
+    background: rgb(var(--asteria-surface));
+    color: rgb(var(--asteria-ink));
   }
 
   button {
     font: inherit;
+  }
+}
+
+@layer utilities {
+  :root[data-theme="dark"] .bg-white {
+    background-color: rgb(31 36 42 / var(--tw-bg-opacity, 1));
+  }
+
+  :root[data-theme="dark"] .bg-white\/70 {
+    background-color: rgb(31 36 42 / 0.7);
+  }
+
+  :root[data-theme="dark"] .bg-white\/80 {
+    background-color: rgb(31 36 42 / 0.8);
+  }
+
+  :root[data-theme="dark"] .bg-white\/90 {
+    background-color: rgb(31 36 42 / 0.9);
+  }
+
+  :root[data-theme="dark"] .bg-stone-50,
+  :root[data-theme="dark"] .bg-stone-100,
+  :root[data-theme="dark"] .bg-stone-200 {
+    background-color: rgb(42 48 55 / var(--tw-bg-opacity, 1));
+  }
+
+  :root[data-theme="dark"] .hover\:bg-stone-50:hover,
+  :root[data-theme="dark"] .hover\:bg-stone-100:hover,
+  :root[data-theme="dark"] .hover\:bg-stone-200:hover {
+    background-color: rgb(54 61 69 / var(--tw-bg-opacity, 1));
+  }
+
+  :root[data-theme="dark"] .border-stone-200,
+  :root[data-theme="dark"] .border-stone-300,
+  :root[data-theme="dark"] .border-stone-300\/80 {
+    border-color: rgb(75 85 99 / var(--tw-border-opacity, 1));
+  }
+
+  :root[data-theme="dark"] .text-stone-400 {
+    color: rgb(156 163 175 / var(--tw-text-opacity, 1));
+  }
+
+  :root[data-theme="dark"] .text-stone-500,
+  :root[data-theme="dark"] .text-stone-600 {
+    color: rgb(180 185 192 / var(--tw-text-opacity, 1));
+  }
+
+  :root[data-theme="dark"] .text-stone-700,
+  :root[data-theme="dark"] .text-stone-800 {
+    color: rgb(224 226 229 / var(--tw-text-opacity, 1));
+  }
+
+  :root[data-theme="dark"] .placeholder\:text-stone-400::placeholder {
+    color: rgb(156 163 175 / var(--tw-placeholder-opacity, 1));
   }
 }
