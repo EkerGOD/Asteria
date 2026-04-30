@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Icon } from "./Icon";
+import { IconButton } from "./IconButton";
 
 interface Vault {
   id: string;
@@ -37,19 +38,12 @@ export function FileBrowser({
   }, [vaultMenuOpen]);
 
   return (
-    <div className="flex w-60 shrink-0 flex-col border-r border-stone-300/80 bg-white/80">
+    <div className="flex h-full w-full flex-col border-r border-stone-300/80 bg-white/80">
       {/* File tree area */}
       <div className="flex-1 overflow-auto px-3 py-3">
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs font-semibold uppercase text-stone-500">Files</p>
-          <button
-            type="button"
-            className="rounded p-0.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
-            aria-label="New file"
-            title="New file"
-          >
-            <Icon name="fileAdd" size={14} />
-          </button>
+          <IconButton icon="fileAdd" label="New file" size="xs" iconSize={14} />
         </div>
 
         {/* Placeholder file tree */}
@@ -81,7 +75,7 @@ export function FileBrowser({
       <div className="relative shrink-0 border-t border-stone-200" ref={menuRef}>
         <button
           type="button"
-          className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-50"
+          className="flex h-10 w-full items-center gap-1.5 px-3 text-left text-sm font-medium text-stone-700 hover:bg-stone-50"
           onClick={() => setVaultMenuOpen((v) => !v)}
         >
           <Icon name="folderOpened" size={14} />

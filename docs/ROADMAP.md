@@ -57,6 +57,37 @@ MVP 核心骨架已完成：
 
 ---
 
+## v0.8.4 — 设置与面板布局优化
+
+状态：done
+
+约束：
+
+- 不新增后端 API 端点
+- 不修改数据库 schema
+- 仅修改 Settings 和面板相关组件
+
+解决的问题：
+
+1. [UX] 设置界面 Providers 和 Diagnostics 页面布局拥挤，未适配侧栏宽度
+2. [UX] Edit Provider 表单一直显示，应在点击 Edit 按钮后才出现
+3. [UX] 每个 Provider 缺少独立 Edit 按钮，无法直观编辑单个 Provider
+4. [UX] Diagnostics 页面布局需要重新调整为竖排结构
+5. [UX] Chat 视图中消息区和输入区之间分隔线不可拖动调整
+
+验收标准：
+
+- [ ] Providers 页面采用竖排布局，每个配置 section 用标题和边框区分
+- [ ] Provider 列表项各有一个 Edit 按钮，点击后显示 Edit Provider 表单
+- [ ] 点击 New 按钮时显示 New Provider 表单
+- [ ] Desktop 总览数据界面位于 Providers 页面顶部
+- [ ] Diagnostics 页面采用竖排布局，信息层次清晰不拥挤
+- [ ] Chat 视图上下分区间分隔线可通过鼠标拖动调整高度
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
 ## v0.8.5 — 图标库引入与统一替换
 
 状态：done
@@ -94,87 +125,132 @@ MVP 核心骨架已完成：
 
 ---
 
-## v0.8.6 — 面板折叠交互修正
+## v0.8.6 — AppShell 面板与交互 polish
 
-状态：planned
+状态：done
 
 约束：
 
-- 不新增布局区域或视图
+- 不新增布局区域或业务视图
 - 不修改后端 API
+- 不修改数据库 schema
 - 不新增依赖
-- 仅修改面板折叠交互机制
+- 仅修改 AppShell 面板折叠、展开、尺寸调节、图标按钮和分隔线视觉
 
 解决的问题：
 
 1. [UX] 左侧文件树面板折叠按钮冗余：竖向工具栏和面板边缘各有一个，逻辑混乱
 2. [UX] 左侧面板展开/折叠交互与右侧面板不一致
+3. [UX] 左侧文件树、中央 Editor、右侧多功能面板之间的分界不可左右拖拽，无法像 Cursor 一样调整工作区宽度
+4. [Bug] 左下方设置按钮上方的分割线与 MyVault 上方分割线未齐平
+5. [UX] 图标按钮 hover / active 背景尺寸不统一，部分为长方形，且图标未在背景中居中
+6. [UX] 左右侧栏折叠/展开过于生硬，需要克制的桌面应用动效
 
 方案：
 
 - 对齐右侧面板交互模式：面板折叠由面板边缘按钮负责，不由竖向工具栏控制
 - 移除竖向工具栏上的文件浏览器面板折叠按钮
 - 在左侧面板边缘添加折叠/展开按钮（与右侧面板风格一致）
-- 面板折叠后边缘按钮始终可见可点击
+- 在左侧文件浏览器与中央 Editor、中央 Editor 与右侧面板之间加入可拖拽分隔线
+- 为左右面板设置最小/最大宽度，确保中央 Editor 始终保留可用编辑空间
+- 对齐 VerticalToolbar 底部设置区和 FileBrowser 底部 Vault switcher 的分隔线高度
+- 统一 icon-only button 的稳定正方形尺寸、hover / active 背景和图标居中规则
+- 为左右面板折叠/展开加入短时、低干扰动画，不改变布局语义和可点击区域
 
 验收标准：
 
-- [ ] 竖向工具栏不再包含文件浏览器面板的折叠/展开按钮
-- [ ] 左侧文件浏览器面板边缘有折叠/展开按钮，与右侧面板风格一致
-- [ ] 面板折叠后，边缘按钮仍然可见且可点击
-- [ ] 面板展开后，边缘按钮仍然可见可点击
-- [ ] 两侧面板折叠交互行为一致
-- [ ] `cd apps/desktop && npm run typecheck` 通过
-- [ ] `cd apps/desktop && npm run lint` 通过
+- [x] 竖向工具栏不再包含文件浏览器面板的折叠/展开按钮
+- [x] 左侧文件浏览器面板边缘有折叠/展开按钮，与右侧面板风格一致
+- [x] 面板折叠后，边缘按钮仍然可见且可点击
+- [x] 面板展开后，边缘按钮仍然可见可点击
+- [x] 两侧面板折叠交互行为一致
+- [x] 左侧文件浏览器宽度可通过拖拽分隔线调整
+- [x] 右侧多功能面板宽度可通过拖拽分隔线调整
+- [x] 拖拽时宽度受最小/最大值约束，中央 Editor 不被挤压到不可用
+- [x] 左下设置区分隔线与 FileBrowser 底部 Vault switcher 分隔线在视觉上齐平
+- [x] 所有 AppShell icon-only button 的 hover / active 背景为稳定正方形
+- [x] 图标在按钮 hover / active 背景中水平和垂直居中
+- [x] 左右侧栏折叠和展开具有克制动画，且不会造成布局跳动或按钮位置不可预测
+- [x] `cd apps/desktop && npm run typecheck` 通过
+- [x] `cd apps/desktop && npm run lint` 通过
 
 ---
 
-## v0.8.4 — 设置与面板布局优化
-
-状态：done
-
-约束：
-
-- 不新增后端 API 端点
-- 不修改数据库 schema
-- 仅修改 Settings 和面板相关组件
-
-解决的问题：
-
-1. [UX] 设置界面 Providers 和 Diagnostics 页面布局拥挤，未适配侧栏宽度
-2. [UX] Edit Provider 表单一直显示，应在点击 Edit 按钮后才出现
-3. [UX] 每个 Provider 缺少独立 Edit 按钮，无法直观编辑单个 Provider
-4. [UX] Diagnostics 页面布局需要重新调整为竖排结构
-5. [UX] Chat 视图中消息区和输入区之间分隔线不可拖动调整
-
-验收标准：
-
-- [ ] Providers 页面采用竖排布局，每个配置 section 用标题和边框区分
-- [ ] Provider 列表项各有一个 Edit 按钮，点击后显示 Edit Provider 表单
-- [ ] 点击 New 按钮时显示 New Provider 表单
-- [ ] Desktop 总览数据界面位于 Providers 页面顶部
-- [ ] Diagnostics 页面采用竖排布局，信息层次清晰不拥挤
-- [ ] Chat 视图上下分区间分隔线可通过鼠标拖动调整高度
-- [ ] `cd apps/desktop && npm run typecheck` 通过
-- [ ] `cd apps/desktop && npm run lint` 通过
-
----
-
-## v0.9.0 — 前后端集成
+## v0.8.7 — Settings 与当前信息展示修复
 
 状态：planned
 
 约束：
 
-- 不新增数据库表或迁移
-- 不修改 PRD 定义的架构边界
+- 不新增后端 API 端点
+- 不修改数据库 schema
+- 不新增 Settings 子页面
+- 不实现 Project 配置页面或 Project 管理能力
+- 仅修复 Settings 信息展示和 Chat 当前 Project 顶部信息
+
+解决的问题：
+
+1. [Bug] Diagnostics 页面中 Local API、Database、AI Provider 的状态重复显示；标题旁和检查项旁各有一个 `online`
+2. [Bug] Providers 页面 Desktop 区域中的 API base URL 和 Active provider 文本会撑破所在容器
+3. [UX] Chat 顶部显示当前 Project 的 UUID，日常使用不需要暴露该内部标识
+
+方案：
+
+- Diagnostics 保留每个检查项旁边的状态，移除标题或分组旁边的重复状态
+- Providers 中长 URL、长 provider 名称和 active provider 文本必须在容器内换行或截断，并保持可读
+- Chat 顶部当前 Project 区域只展示用户可读的项目名称，不展示 project UUID
+- Project 配置入口延后到 v0.12.0 实现
+
+验收标准：
+
+- [ ] Diagnostics 每个检查项旁只显示一个状态标签，标题旁不再显示重复状态
+- [ ] Local API、Database、AI Provider 的状态仍可清楚区分 online/offline/error
+- [ ] Providers 页面中的 API base URL 不会撑破卡片或产生水平溢出
+- [ ] Providers 页面中的 Active provider 不会撑破卡片或产生水平溢出
+- [ ] Chat 顶部当前 Project 不显示 UUID
+- [ ] Chat 顶部当前 Project 名称仍清楚可读
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.9.0 — 前后端集成、Provider 模型角色与基础 AI Chat
+
+状态：planned
+
+约束：
+
+- 不修改 PRD 定义的 desktop-first 架构边界
 - 前端只通过 typed API client 访问后端
+- 前端不直接调用 PostgreSQL、AI Provider SDK 或 Provider endpoint
+- 模型角色首版仅支持 `chat` 和 `embedding`
+- 基础 Chat 仅使用 `chat` 模型角色生成真实 AI 回复
+- 不生成或刷新 embedding
+- 不执行 semantic search
+- 不展示 RAG source references
+- 不实现重任务模型、上下文压缩模型或更多自定义角色
+- 不实现 RAG 对话完整体验（RAG UI 留到 v0.12.0）
 
 解决的问题：
 
 1. [Feature] 前端 UI 目前仅展示静态界面，未与 FastAPI 后端衔接
 2. [Feature] Provider 配置需要通过 API 持久化而非本地 mock
 3. [Feature] Settings 和 Diagnostics 数据需从后端实时获取
+4. [Architecture] 当前 Provider 配置把 chat model 和 embedding model 绑定在同一个 Provider 上，无法表达“不同任务角色使用不同 provider/model”
+5. [UX] 一个 Provider 可能提供多个模型，配置中只有一个 chat model 和一个 embedding model 表达能力不足
+6. [Feature] 尚未跑通创建 conversation、发送 message、接收真实 AI 回复的基础 Chat 流程
+7. [Feature] 尚未提供 conversation 归档和删除能力
+8. [UX] 删除或归档 conversation 需要确认或明确防误触机制
+
+方案：
+
+- 保留 OpenAI-compatible Provider 作为 provider 连接配置
+- 增加模型角色配置层：`chat` 角色和 `embedding` 角色分别选择 provider 与 model
+- Provider 配置支持记录该 Provider 可用或用户填写的模型名称，供模型角色配置选择
+- 后端服务通过模型角色解析实际 provider/model；前端只渲染和提交配置，不直接调用 Provider
+- 在 Chat 视图中先实现非 RAG 的真实 AI Chat：创建 conversation、发送用户消息、由 `apps/api` 调用 Provider abstraction 生成 assistant message、保存并渲染消息线程
+- Conversation 管理首版包含 Archive 和 Delete；二者都必须有确认或明确防误触机制
+- 如需 schema、API contract 或 migration 调整，应与本版本同步完成
 
 验收标准：
 
@@ -182,13 +258,25 @@ MVP 核心骨架已完成：
 - [ ] Settings 数据从后端读取并持久化
 - [ ] Diagnostics 页面展示后端实时状态（数据库连接、Provider 连通性等）
 - [ ] API client 类型与后端 OpenAPI schema 一致
-- [ ] 前端不直接调用 PostgreSQL 或 AI Provider SDK
+- [ ] Settings 中可以分别配置 `chat` 和 `embedding` 两个模型角色
+- [ ] `chat` 模型角色可选择 provider 和 model
+- [ ] `embedding` 模型角色可选择 provider、model 和 embedding dimension
+- [ ] 后端调用 chat generation 时使用 `chat` 模型角色配置
+- [ ] 用户可创建 conversation 并选择当前 conversation
+- [ ] 用户可在 selected conversation 中发送非空 message
+- [ ] 后端保存 user message，调用 Provider abstraction 生成 assistant message，并保存 assistant message
+- [ ] Chat 消息线程渲染后端持久化的 user / assistant messages
+- [ ] 基础 Chat 不展示 source references，不执行 retrieval，不依赖 embedding
+- [ ] 用户可归档 conversation；归档操作有确认或明确防误触机制
+- [ ] 用户可删除 conversation；删除操作有二次确认并明确删除后果
+- [ ] 归档后的 conversation 默认不出现在常规历史列表中，但不被硬删除
+- [ ] 不存在前端直接调用 PostgreSQL 或 AI Provider SDK 的路径
 - [ ] `cd apps/api && pytest` 通过
 - [ ] `cd apps/desktop && npm run typecheck` 通过
 
 ---
 
-## v0.10.0 — 编辑器技术选型 + 实现
+## v0.10.0 — 编辑器技术选型、Repository 文件系统与 Vault Manager
 
 状态：planned
 
@@ -196,14 +284,21 @@ MVP 核心骨架已完成：
 
 - 不实现实时协作编辑
 - 不实现非 Markdown 文件的高级编辑
-- 编辑器方案暂不锁定，待选型评估后决定（不预设"先用 textarea"）
+- 不实现 Knowledge 提取的后端创建流程（入口可预留，功能在 v0.11.0 实现）
+- 不把 Repository / Vault 与 Project 概念耦合
+- 不把 Manage Vaults 做成 SettingsOverlay 子页面
+- 不提前实现无真实仓库能力的纯 UI 壳
+- 编辑器方案暂不锁定，待选型评估后决定（不预设“先用 textarea”）
 
 解决的问题：
 
 1. [Feature] 中央 Editor 区域尚未实现 Markdown 编辑功能
 2. [Feature] 无法打开本地仓库并显示文件树
 3. [Feature] 无法在 Editor 中以 Tab 形式打开文件
-4. [Research] 编辑器组件方案未经过系统评估，需先选型再动手
+4. [Feature] 文件系统尚不能创建文件夹或新建文件
+5. [Research] 编辑器组件方案未经过系统评估，需先选型再动手
+6. [UX] 点击 Manage Vaults 仍打开 Settings，未体现 Repository / Vault 管理的独立信息架构
+7. [Feature] 尚未提供独立 Vault Manager，用于查看当前仓库、已注册仓库、新建仓库和打开本地仓库
 
 方案（分两阶段）：
 
@@ -212,8 +307,8 @@ MVP 核心骨架已完成：
 2. 评估维度：Markdown 语法高亮、编辑/预览切换、WYSIWYG、轻量程度（bundle size/性能）、Tauri/webview 兼容性、AI 辅助可扩展性（inline suggestion、选中文本操作等）
 3. 产出推荐方案及理由，用户确认后锁定约束
 
-**阶段 2：编辑器实现**
-按选型结果实现 Markdown 编辑功能，范围包括文件树、Tab 管理、编辑/预览切换
+**阶段 2：编辑器与文件系统实现**
+按选型结果实现 Markdown 编辑功能，范围包括文件树、文件/文件夹创建、Tab 管理、编辑/预览切换，以及独立 Vault Manager。
 
 验收标准（选型阶段）：
 
@@ -226,10 +321,19 @@ MVP 核心骨架已完成：
 
 - [ ] 用户可通过左侧文件浏览器打开本地仓库（Repository/Vault）
 - [ ] 文件树正确显示仓库目录结构（文件和文件夹）
+- [ ] 点击 FileBrowser 底部菜单中的 Manage Vaults 进入独立全屏 Vault Manager，而不是打开 Settings
+- [ ] Vault Manager 清楚区分 current vault、available vaults、create vault 和 open local vault actions
+- [ ] 用户可在 Vault Manager 中创建新仓库并注册为 Repository
+- [ ] 用户可在 Vault Manager 中打开已有本地文件夹并注册为 Repository
+- [ ] 用户可在已注册仓库之间切换，FileBrowser 显示当前仓库的文件树
+- [ ] Vault Manager 不展示 Project 概念，不承载 Provider、Diagnostics 或 Settings 功能
+- [ ] 用户可在当前仓库中新建文件夹
+- [ ] 用户可在当前仓库中新建 Markdown 文件
 - [ ] 点击文件在中央 Editor 打开新 Tab
 - [ ] 支持 Markdown 文件编辑和预览模式切换
 - [ ] 支持多 Tab 管理（打开、切换、关闭）
 - [ ] 选中文本右键菜单包含「提取为 Knowledge 单元」入口（功能在 v0.11.0 实现）
+- [ ] 文件操作提供 loading、empty、error、disabled 和 success feedback
 - [ ] `cd apps/desktop && npm run typecheck` 通过
 - [ ] `cd apps/desktop && npm run lint` 通过
 
@@ -264,32 +368,48 @@ MVP 核心骨架已完成：
 
 ---
 
-## v0.12.0 — RAG 对话
+## v0.12.0 — RAG 对话与 Project 管理
 
 状态：planned
 
 约束：
 
+- 不重新实现 v0.9.0 已完成的基础非 RAG Chat 流程
 - 不实现多轮对话上下文之外的 Agent 自主行为
 - 不实现对话分支或版本管理
 - 不实现对话导出或分享
+- 不实现多用户、团队、权限、云同步或 Project 成员管理
+- Project 管理仅限 Chat 视图下半区和当前 Project 配置入口
+- Project 配置首版仅包含名称、描述、颜色、归档/删除等轻量字段和危险操作
 
 解决的问题：
 
-1. [Feature] 尚未实现对话和消息管理
+1. [Feature] 基础 Chat 尚未升级为基于 Knowledge 的 RAG 问答
 2. [Feature] 尚未实现基于 pgvector 的语义检索
 3. [Feature] 尚未实现 RAG 问答流程
 4. [Feature] 尚未实现 Chat 视图的 Project 选择器
+5. [Feature] Chat 页面项目管理器尚不能创建 Project，只能创建 Chat
+6. [UX] Project 列表项当前只暴露删除操作，缺少统一的 `...` 操作菜单承载重命名、配置和归档/删除
+7. [UX] 当前 Project 名称可以作为配置入口，但不应展示 project UUID
+8. [UX] Project selector 必须选择 No project 或 New project 才能关闭，无法通过点击外部取消
 
 验收标准：
 
-- [ ] 用户可创建 conversation 并发送消息
-- [ ] 对话消息正确保存到数据库并关联 conversation
+- [ ] 用户可在已有 conversation 中发送 RAG 问题
+- [ ] RAG user message 和 assistant message 正确保存到数据库并关联 conversation
 - [ ] 用户提问时后端执行语义检索 → 构造 prompt → 调用 AI Provider
 - [ ] 回答展示引用的 Knowledge source references
-- [ ] Chat 视图 Project 选择器可切换/新建 Project
+- [ ] Chat 视图 Project 选择器可切换已有 Project / 新建 Project / 选择不使用 Project
+- [ ] Project selector 打开后点击外部区域会自动关闭
+- [ ] Project selector 点击外部关闭时保持原 Project 状态，不强迫用户选择 No project 或 New project
+- [ ] Project 列表项悬停或聚焦时显示 `...` 操作菜单
+- [ ] Project `...` 菜单包含 Rename、Configure、Archive/Delete 等操作
+- [ ] Project 危险操作有确认或明确防误触机制
+- [ ] 点击 Chat 顶部当前 Project 名称可进入 Project 配置界面
+- [ ] Project 配置界面支持编辑名称、描述、颜色，并提供归档/删除入口
+- [ ] Chat 顶部和 Project 配置入口均不显示 project UUID
 - [ ] 支持 @knowledge 引用特定知识单元
-- [ ] `cd apps/api && pytest` 通过（RAG service + retrieval 相关测试）
+- [ ] `cd apps/api && pytest` 通过（RAG service + retrieval + Project 管理相关测试）
 - [ ] `cd apps/desktop && npm run typecheck` 通过
 
 ---
@@ -316,5 +436,75 @@ MVP 核心骨架已完成：
 - [ ] API client 类型定义与后端 OpenAPI schema 一致
 - [ ] 后端接口路径、参数和响应格式经审查无遗留问题
 - [ ] `cd apps/api && pytest` 通过
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.13.0 — Command Palette 与快捷键管理
+
+状态：planned
+
+约束：
+
+- 不实现插件市场或第三方命令扩展系统
+- 不实现 Prompt Studio、复杂自动化流程或 Agent 自主执行能力
+- 不实现 OS 全局快捷键；首版仅管理 Asteria 应用窗口内快捷键
+- 不重构 Settings 全部页面，仅新增快捷键配置所需入口和视图
+- 不改变 desktop-first、本地 API 和后端权威边界
+
+解决的问题：
+
+1. [Feature] 需要后期添加 Command Palette，集中承载常用命令入口
+2. [UX] 当前按 `Ctrl+P` 会触发浏览器/默认打印行为，和未来命令入口存在冲突
+3. [UX] 缺少统一快捷键管理位置，无法查看、修改或检查快捷键冲突
+
+验收标准：
+
+- [ ] Command Palette 可通过应用内注册快捷键打开
+- [ ] `Ctrl+P` 等被 Asteria 接管的快捷键不会触发默认打印行为
+- [ ] Settings 中新增 Shortcuts / Keyboard 页面或等价入口
+- [ ] 快捷键设置页面列出命令名称、当前快捷键和可编辑入口
+- [ ] 修改快捷键时能检测并阻止同一作用域内的冲突
+- [ ] 用户可恢复默认快捷键
+- [ ] 快捷键配置通过本地设置持久化，不依赖云账号或团队设置
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.14.0 — UI 中英文切换
+
+状态：planned
+
+约束：
+
+- 仅实现 UI 文案层面的 English / 中文切换
+- 不改变 AI 输出语言、内容翻译或 prompt 行为
+- 不新增账号、云同步或团队级语言偏好
+- 不重构 AppShell 信息架构
+- 不引入大型 i18n 框架，除非评估后确认为最小可维护方案
+
+解决的问题：
+
+1. [Feature] 应用尚未支持多语言 UI
+2. [UX] 早期用户需要在 English 和中文之间切换界面语言
+3. [Architecture] UI 文案缺少集中资源层，后续新增页面容易继续散落硬编码文案
+
+方案：
+
+- 建立最小 i18n 资源层，首版只覆盖 English 和中文
+- 将 AppShell、Settings、Chat、Knowledge、FileBrowser、Vault Manager 等已存在或 planned UI 的用户可见文案迁移到语言资源
+- 在 Settings 或等价本地偏好入口中提供语言切换
+- 语言偏好通过本地 app settings 持久化，缺失翻译时回退到默认语言
+
+验收标准：
+
+- [ ] 用户可在 English 和中文之间切换 UI 语言
+- [ ] 语言偏好本地持久化，重启应用后保持
+- [ ] 默认语言策略明确（例如跟随系统或默认 English / 中文）
+- [ ] 缺失翻译有 fallback，不显示空白 key 或破碎占位
+- [ ] 已存在核心 UI 的用户可见文案使用 i18n 资源，而不是散落硬编码
+- [ ] UI 语言切换不影响 AI 回复语言、知识内容、Provider 配置或 prompt 行为
 - [ ] `cd apps/desktop && npm run typecheck` 通过
 - [ ] `cd apps/desktop && npm run lint` 通过

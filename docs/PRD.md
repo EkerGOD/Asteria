@@ -136,10 +136,10 @@ Asteria MVP 采用 Obsidian 风格的多区域 AppShell 布局，而非传统独
 各区域职责：
 
 - **Tab Bar**：打开文件的 Tab 切换，Obsidian 细条风格。
-- **左侧竖向工具栏**：快捷操作图标按钮（面板切换、命令面板入口），底部固定设置 ⚙️。
-- **左侧文件浏览器（可折叠）**：纯文件管理 — 当前 Repository（Vault）的文件树，仓库切换器。
+- **左侧竖向工具栏**：快捷操作图标按钮（命令面板入口等），底部固定设置 ⚙️；不承载文件浏览器折叠入口。
+- **左侧文件浏览器（可折叠、可调宽）**：纯文件管理 — 当前 Repository（Vault）的文件树，仓库切换器；折叠/展开由面板边缘按钮负责。
 - **中央 Editor**：AI-native 工作台 — md 编辑/预览、AI 辅助润色、Knowledge 提取、对话式协作。
-- **右侧多功能面板（可折叠）**：图标切换 Chat / Knowledge / Outline / Graph 视图。
+- **右侧多功能面板（可折叠、可调宽）**：图标切换 Chat / Knowledge / Outline / Graph 视图；折叠/展开由面板边缘按钮负责。
   - Chat 视图：上下分 — 消息流+输入 / History+Project 管理器。
   - Knowledge 视图：卡片/列表 ↔ 图谱模式，Agent 驱动生长 + 手动管理。
   - Outline 视图：当前 md 文件大纲结构。
