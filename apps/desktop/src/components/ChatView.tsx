@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -36,6 +36,7 @@ export function ChatView({
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [messagesRevealed, setMessagesRevealed] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -98,6 +99,7 @@ export function ChatView({
 
   const fetchMessages = useCallback(async (conversationId: string) => {
     setLoadingMessages(true);
+    setMessagesRevealed(false);
     setChatError(null);
     try {
       const result = await listMessages(conversationId);
@@ -113,9 +115,13 @@ export function ChatView({
   useEffect(() => {
     if (activeConversationId) {
       setMessages([]);
+      setMessagesRevealed(false);
+      prevMessageCountRef.current = 0;
       void fetchMessages(activeConversationId);
     } else {
       setMessages([]);
+      setMessagesRevealed(true);
+      prevMessageCountRef.current = 0;
     }
   }, [activeConversationId, fetchMessages]);
 
@@ -188,19 +194,29 @@ export function ChatView({
     el.style.overflowY = scrollHeight > MAX_TEXTAREA_HEIGHT ? "auto" : "hidden";
   }, [chatInputValue]);
 
-  // Auto-scroll to bottom — instant for initial load, smooth for new messages.
-  // Uses message count delta to detect initial load, avoiding StrictMode race conditions.
+  // Reveal a freshly loaded thread only after its DOM exists and the bottom is in view.
+  useLayoutEffect(() => {
+    if (!activeConversationId || loadingMessages || messagesRevealed) return;
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "instant",
+      block: "end",
+    });
+    prevMessageCountRef.current = messages.length;
+    setMessagesRevealed(true);
+  }, [activeConversationId, loadingMessages, messages.length, messagesRevealed]);
+
+  // Auto-scroll smoothly only for new messages after the initial reveal.
   useEffect(() => {
+    if (!messagesRevealed || loadingMessages) return;
     if (messages.length === 0) {
       prevMessageCountRef.current = 0;
       return;
     }
-    const isInitial = prevMessageCountRef.current === 0;
-    messagesEndRef.current?.scrollIntoView({
-      behavior: isInitial ? "instant" : "smooth",
-    });
+    if (messages.length > prevMessageCountRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
     prevMessageCountRef.current = messages.length;
-  }, [messages]);
+  }, [loadingMessages, messages.length, messagesRevealed]);
 
   /* ---- actions ---- */
 
@@ -440,41 +456,47 @@ export function ChatView({
                 </div>
               )}
 
-              {loadingMessages && (
-                <div className="flex items-center justify-center py-8 text-sm text-stone-400">
-                  Loading messages...
-                </div>
-              )}
+              {loadingMessages && <MessageListSkeleton />}
 
-              {!loadingMessages && messages.length === 0 && (
+              {!loadingMessages && messagesRevealed && messages.length === 0 && (
                 <div className="flex items-center justify-center py-8 text-sm text-stone-400">
                   Send a message to start the conversation.
                 </div>
               )}
 
-              {(() => {
-                const displayConfig = readMessageDisplayConfig();
-                return messages.map((msg) => (
-                  <MessageBubble
-                    key={msg.id}
-                    message={msg}
-                    meta={messageMeta.get(msg.id)}
-                    displayConfig={displayConfig}
-                    onCopy={(content) => void handleCopy(content)}
-                    onEdit={(content) => handleEditMessage(content)}
-                    onRetry={() => handleRetry()}
-                  />
-                ));
-              })()}
+              {!loadingMessages && (
+                <div
+                  className={[
+                    "transition-opacity duration-150",
+                    messagesRevealed ? "opacity-100" : "pointer-events-none opacity-0",
+                  ].join(" ")}
+                  aria-hidden={!messagesRevealed}
+                >
+                  {(() => {
+                    const displayConfig = readMessageDisplayConfig();
+                    return messages.map((msg) => (
+                      <MessageBubble
+                        key={msg.id}
+                        message={msg}
+                        meta={messageMeta.get(msg.id)}
+                        displayConfig={displayConfig}
+                        onCopy={(content) => void handleCopy(content)}
+                        onEdit={(content) => handleEditMessage(content)}
+                        onRetry={() => handleRetry()}
+                      />
+                    ));
+                  })()}
 
-              {sending && (
-                <div className="mb-2 flex items-center gap-2 text-sm text-stone-400">
-                  <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-pine/60" />
-                  Waiting for response...
+                  {sending && (
+                    <div className="mb-2 flex items-center gap-2 text-sm text-stone-400">
+                      <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-pine/60" />
+                      Waiting for response...
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
                 </div>
               )}
-
-              <div ref={messagesEndRef} />
             </div>
           </div>
         )}
@@ -502,8 +524,8 @@ export function ChatView({
           }}
           disabled={sending || !activeConversationId}
         />
-        <div className="mt-1 flex items-center justify-between">
-          <div className="flex items-center gap-1 text-xs text-stone-400">
+        <div className="mt-1 flex min-w-0 items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1 text-xs text-stone-400">
             {/* Project selector */}
             <div className="relative">
               <button
@@ -534,18 +556,18 @@ export function ChatView({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
             {/* Model switcher */}
             {availableModels.length > 0 && (
               <div className="relative" ref={modelDropdownRef}>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-stone-500 hover:bg-stone-100 disabled:opacity-50"
+                  className="inline-flex max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-xs text-stone-500 hover:bg-stone-100 disabled:opacity-50"
                   onClick={() => setModelDropdownOpen((v) => !v)}
                   disabled={sending || !activeConversationId}
                   title={activeChatModel || "Select model"}
                 >
-                  <span className="max-w-[100px] truncate">{activeChatModel || "Model"}</span>
+                  <span className="whitespace-nowrap">{activeChatModel || "Model"}</span>
                   <Icon name="chevronDown" size={10} />
                 </button>
                 {modelDropdownOpen && (
@@ -554,6 +576,7 @@ export function ChatView({
                       <button
                         key={`${m.provider_id}:${m.model_name}`}
                         type="button"
+                        title={`${m.model_name} (${m.provider_name})`}
                         className={[
                           "block w-full text-left px-3 py-1.5 text-xs hover:bg-stone-100",
                           m.model_name === activeChatModel ? "text-pine font-medium" : "text-stone-700",
@@ -610,10 +633,10 @@ export function ChatView({
                 role="button"
                 tabIndex={0}
                 className={[
-                  "group flex items-center justify-between rounded px-2 py-1 text-xs cursor-pointer",
+                  "group flex min-h-7 cursor-pointer items-center justify-between rounded px-2 py-1 text-xs outline-none transition-colors focus-visible:ring-1 focus-visible:ring-pine/50",
                   conv.id === activeConversationId
                     ? "bg-pine/10 text-pine"
-                    : "text-stone-600 hover:bg-stone-100",
+                    : "text-stone-600 hover:bg-stone-100 focus-visible:bg-stone-100",
                 ].join(" ")}
                 onClick={() => handleSelectConversation(conv)}
                 onKeyDown={(e) => {
@@ -626,7 +649,7 @@ export function ChatView({
                 {renamingId === conv.id ? (
                   <input
                     type="text"
-                    className="flex-1 rounded border border-pine bg-white px-1 py-0 text-xs text-stone-800 focus:outline-none focus:ring-1 focus:ring-pine"
+                    className="min-w-0 flex-1 rounded border border-pine bg-white px-1 py-0 text-xs text-stone-800 focus:outline-none focus:ring-1 focus:ring-pine"
                     value={renameValue}
                     onChange={(e) => setRenameValue(e.target.value)}
                     onKeyDown={(e) => {
@@ -646,12 +669,17 @@ export function ChatView({
                     autoFocus
                   />
                 ) : (
-                  <span className="truncate flex-1">{conv.title}</span>
+                  <span className="min-w-0 flex-1 truncate">{conv.title}</span>
                 )}
-                <div className="relative ml-1">
+                <div className="relative ml-1 flex h-5 w-5 shrink-0 items-center justify-center">
                   <button
                     type="button"
-                    className="hidden rounded p-0.5 text-stone-400 hover:text-stone-600 group-hover:inline"
+                    className={[
+                      "inline-flex h-5 w-5 items-center justify-center rounded text-stone-400 opacity-0 transition-opacity hover:bg-stone-200 hover:text-stone-600 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-pine/50",
+                      menuOpenId === conv.id
+                        ? "opacity-100"
+                        : "group-hover:opacity-100 group-focus-within:opacity-100",
+                    ].join(" ")}
                     onClick={(e) => {
                       e.stopPropagation();
                       setMenuOpenId((prev) => (prev === conv.id ? null : conv.id));
@@ -723,6 +751,47 @@ export function ChatView({
   );
 }
 
+function MessageListSkeleton() {
+  const rows = [
+    { align: "start", width: "w-4/5", lines: ["w-3/4", "w-full", "w-2/3"] },
+    { align: "end", width: "w-3/5", lines: ["w-full", "w-2/3"] },
+    { align: "start", width: "w-5/6", lines: ["w-2/3", "w-full", "w-1/2"] },
+  ] as const;
+
+  return (
+    <div className="space-y-3 py-2" aria-label="Loading messages">
+      {rows.map((row, index) => (
+        <div
+          key={index}
+          className={[
+            "flex",
+            row.align === "end" ? "justify-end" : "justify-start",
+          ].join(" ")}
+        >
+          <div
+            className={[
+              "rounded-lg border border-stone-200 bg-white px-3 py-2",
+              row.width,
+            ].join(" ")}
+          >
+            <div className="space-y-2">
+              {row.lines.map((line, lineIndex) => (
+                <div
+                  key={lineIndex}
+                  className={[
+                    "h-2 animate-pulse rounded bg-stone-200",
+                    line,
+                  ].join(" ")}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MessageBubble({
   message,
   meta,
@@ -763,34 +832,46 @@ function MessageBubble({
   }
 
   return (
-    <div className={["mb-2 flex", isUser ? "justify-end" : "justify-start"].join(" ")}>
+    <div className={["mb-3 flex", isUser ? "justify-end" : "justify-start"].join(" ")}>
       <div
         className={[
-          "max-w-[85%] rounded-lg px-3 py-2 text-sm group/bubble",
-          isUser
-            ? "bg-pine text-white"
-            : "border border-stone-200 bg-white text-stone-800",
-          isOptimistic ? "opacity-70" : "",
+          "group/message flex min-w-0 max-w-[85%] flex-col",
+          isUser ? "items-end" : "items-start",
         ].join(" ")}
       >
-        {isUser ? (
-          <p className="whitespace-pre-wrap break-words">{message.content}</p>
-        ) : (
-          <div className="prose prose-sm max-w-none prose-stone prose-headings:mb-1 prose-headings:mt-3 prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-pre:my-2 prose-code:bg-stone-100 prose-code:px-1 prose-code:rounded prose-code:text-xs prose-pre:bg-stone-100 prose-pre:p-3">
-            <Markdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeHighlight]}
-            >
-              {message.content}
-            </Markdown>
-          </div>
-        )}
-
-        {/* Action buttons */}
         <div
           className={[
-            "mt-1 flex items-center gap-0.5",
-            isUser ? "justify-end opacity-0 group-hover/bubble:opacity-100 transition-opacity" : "justify-end",
+            "max-w-full rounded-lg px-3 py-2 text-sm",
+            isUser
+              ? "bg-pine text-white"
+              : "border border-stone-200 bg-white text-stone-800",
+            isOptimistic ? "opacity-70" : "",
+          ].join(" ")}
+        >
+          {isUser ? (
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          ) : (
+            <div className="asteria-chat-markdown prose prose-sm max-w-none">
+              <Markdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeHighlight]}
+              >
+                {message.content}
+              </Markdown>
+            </div>
+          )}
+
+          {metaItems.length > 0 && (
+            <p className="mt-1 text-right text-xs opacity-60">{metaItems.join(" · ")}</p>
+          )}
+        </div>
+
+        <div
+          className={[
+            "mt-1 flex h-6 items-center gap-1 transition-opacity",
+            isUser
+              ? "opacity-0 group-hover/message:opacity-100 group-focus-within/message:opacity-100"
+              : "opacity-100",
           ].join(" ")}
         >
           {isUser ? (
@@ -805,10 +886,6 @@ function MessageBubble({
             </>
           )}
         </div>
-
-        {metaItems.length > 0 && (
-          <p className="mt-1 text-right text-xs opacity-60">{metaItems.join(" · ")}</p>
-        )}
       </div>
     </div>
   );
@@ -826,7 +903,7 @@ function ActionButton({
   return (
     <button
       type="button"
-      className="rounded p-0.5 opacity-60 hover:opacity-100 hover:bg-white/15 transition-opacity"
+      className="inline-flex h-6 w-6 items-center justify-center rounded text-stone-500 opacity-75 transition-colors hover:bg-stone-100 hover:text-stone-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-pine/60"
       onClick={(e) => {
         e.preventDefault();
         onClick();
