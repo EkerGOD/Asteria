@@ -46,6 +46,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [rightPanelWidth, setRightPanelWidth] = useState(RIGHT_PANEL_DEFAULT_WIDTH);
   const [resizingPanel, setResizingPanel] = useState<ResizingPanel | null>(null);
   const [rightPanelView, setRightPanelView] = useState<RightPanelView>("chat");
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [chatInputValue, setChatInputValue] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
@@ -298,6 +300,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             onToggleCollapse={toggleRightPanel}
             activeView={rightPanelView}
             onViewChange={setRightPanelView}
+            activeConversationId={activeConversationId}
+            onConversationChange={setActiveConversationId}
+            chatInputValue={chatInputValue}
+            onChatInputChange={setChatInputValue}
           />
         </div>
       </div>

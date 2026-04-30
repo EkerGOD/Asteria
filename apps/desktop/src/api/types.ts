@@ -131,6 +131,12 @@ export type ConversationCreateRequest = {
   metadata?: Record<string, unknown>;
 };
 
+export type ConversationUpdateRequest = {
+  title?: string;
+  summary?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
 export type Message = {
   id: string;
   conversation_id: string;

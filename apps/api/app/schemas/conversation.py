@@ -29,6 +29,22 @@ class ConversationCreate(BaseModel):
         return normalize_optional_text(value)
 
 
+class ConversationUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1)
+    summary: str | None = None
+    metadata: dict[str, Any] | None = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Conversation title cannot be blank.")
+        return stripped
+
+
 class ConversationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

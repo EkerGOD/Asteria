@@ -15,8 +15,9 @@ GET /api/conversations
 GET /api/conversations/{id}
 DELETE /api/conversations/{id}  (archive)
 DELETE /api/conversations/{id}?permanent=true  (hard delete)
+PATCH /api/conversations/{id}  (update title, summary, metadata)
 
-Archive sets `archived_at` on the conversation. Hard delete permanently removes the conversation and all associated messages.
+Archive sets `archived_at` on the conversation. Hard delete permanently removes the conversation and all associated messages. PATCH supports partial updates — only provided fields are changed.
 
 ## Chat API
 

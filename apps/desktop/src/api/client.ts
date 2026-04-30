@@ -4,6 +4,7 @@ import type {
   ChatSendResponse,
   Conversation,
   ConversationCreateRequest,
+  ConversationUpdateRequest,
   HealthResponse,
   KnowledgeEmbeddingRefreshResponse,
   KnowledgeUnit,
@@ -93,7 +94,7 @@ function readErrorDetail(body: unknown): string | null {
 
 function requestJsonBody<TResponse>(
   path: string,
-  method: "POST" | "PUT" | "DELETE",
+  method: "POST" | "PUT" | "PATCH" | "DELETE",
   body?: unknown,
   init?: RequestInit
 ): Promise<TResponse> {
@@ -306,6 +307,14 @@ export function createConversation(
   init?: RequestInit
 ): Promise<Conversation> {
   return requestJsonBody<Conversation>("/api/conversations", "POST", payload, init);
+}
+
+export function updateConversation(
+  conversationId: string,
+  payload: ConversationUpdateRequest,
+  init?: RequestInit
+): Promise<Conversation> {
+  return requestJsonBody<Conversation>(`/api/conversations/${conversationId}`, "PATCH", payload, init);
 }
 
 export function getConversation(conversationId: string, init?: RequestInit): Promise<Conversation> {

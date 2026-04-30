@@ -8,6 +8,7 @@ const iconClassByName = {
   chevronDown: "codicon-chevron-down",
   chevronLeft: "codicon-chevron-left",
   chevronRight: "codicon-chevron-right",
+  edit: "codicon-edit",
   close: "codicon-close",
   command: "codicon-terminal-cmd",
   file: "codicon-file",

@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Conversation
-from app.schemas.conversation import ConversationCreate
+from app.schemas.conversation import ConversationCreate, ConversationUpdate
 
 
 class ConversationNotFoundError(Exception):
@@ -59,3 +59,19 @@ def hard_delete_conversation(session: Session, conversation_id: UUID) -> None:
     conversation = get_conversation(session, conversation_id)
     session.delete(conversation)
     session.commit()
+
+
+def update_conversation(
+    session: Session, conversation_id: UUID, payload: ConversationUpdate
+) -> Conversation:
+    conversation = get_conversation(session, conversation_id)
+    update_data = payload.model_dump(exclude_unset=True)
+    if not update_data:
+        return conversation
+    if "metadata" in update_data:
+        update_data["metadata_"] = update_data.pop("metadata")
+    for key, value in update_data.items():
+        setattr(conversation, key, value)
+    session.commit()
+    session.refresh(conversation)
+    return conversation

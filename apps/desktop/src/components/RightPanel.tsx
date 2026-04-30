@@ -16,11 +16,19 @@ export function RightPanel({
   onToggleCollapse,
   activeView,
   onViewChange,
+  activeConversationId,
+  onConversationChange,
+  chatInputValue,
+  onChatInputChange,
 }: {
   collapsed: boolean;
   onToggleCollapse: () => void;
   activeView: RightPanelView;
   onViewChange: (view: RightPanelView) => void;
+  activeConversationId: string | null;
+  onConversationChange: (id: string | null) => void;
+  chatInputValue: string;
+  onChatInputChange: (value: string) => void;
 }) {
   return (
     <div className="flex h-full w-full flex-col border-l border-stone-300/80 bg-white/80">
@@ -59,7 +67,14 @@ export function RightPanel({
       {/* View content */}
       {collapsed ? null : (
         <div className="flex-1 overflow-hidden">
-        {activeView === "chat" && <ChatView />}
+        {activeView === "chat" && (
+          <ChatView
+            activeConversationId={activeConversationId}
+            onConversationChange={onConversationChange}
+            chatInputValue={chatInputValue}
+            onChatInputChange={onChatInputChange}
+          />
+        )}
         {activeView === "knowledge" && <KnowledgeView />}
         {activeView === "outline" && <OutlineView />}
         {activeView === "graph" && <GraphView />}

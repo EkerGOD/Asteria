@@ -289,12 +289,12 @@ MVP 核心骨架已完成：
 - 不执行 semantic search
 - 不展示 RAG source references
 - 不实现重任务模型、上下文压缩模型或更多自定义角色
-- 不实现 RAG 对话完整体验（RAG UI 留到 v0.12.0）
+- 不实现 RAG 对话完整体验（RAG UI 留到 v0.13.0）
 
 解决的问题：
 
 1. [Feature] 前端 UI 目前仅展示静态界面，未与 FastAPI 后端衔接
-2. [Architecture] 当前 Provider 配置把 chat model 和 embedding model 绑定在同一个 Provider 上，无法表达”不同任务角色使用不同 provider/model”
+2. [Architecture] 当前 Provider 配置把 chat model 和 embedding model 绑定在同一个 Provider 上，无法表达"不同任务角色使用不同 provider/model"
 3. [UX] 一个 Provider 可能提供多个模型，配置中只有一个 chat model 和一个 embedding model 表达能力不足
 4. [Feature] 尚未跑通创建 conversation、发送 message、接收真实 AI 回复的基础 Chat 流程
 5. [Feature] 尚未提供 conversation 归档和删除能力
@@ -339,7 +339,142 @@ MVP 核心骨架已完成：
 
 ---
 
-## v0.10.0 — 编辑器技术选型、Repository 文件系统与 Vault Manager
+## v0.9.1 — Chat 核心体验修复
+
+状态：done
+
+约束：
+
+- 不新增后端 API 端点（conversation 重命名除外）
+- 不修改数据库 schema（conversation 重命名除外）
+- 不引入新依赖
+- 不做消息渲染和视觉增强
+- 仅修复 Chat 视图状态保持、键盘交互和基础会话管理
+
+解决的问题：
+
+1. [Bug] 发送消息等待回复中切换到别的界面，切回后消息历史丢失——必须退出重开才能看到
+2. [Bug] 从 Chat 切换到别的页面再切回，对话重置为 No conversation selected
+3. [Bug] 输入框半输入内容在切换视图后丢失
+4. [UX] 发送消息应使用 Enter 发送、Ctrl+Enter 换行，当前键位相反
+5. [Feature] Conversation 无法重命名
+6. [UX] 打开长对话时页面从顶部滚动到底部，应直接定位到最新消息
+
+方案：
+
+- Chat 视图 mount/unmount 时保持消息列表和选中对话状态，不因视图切换销毁
+- 视图重新挂载时从持久化状态（React 状态管理）恢复，不重新请求导致状态丢失
+- 输入框内容在视图切换时保留在内存中
+- 修改消息输入框键盘事件：Enter 发送，Ctrl+Enter 插入换行
+- 添加 conversation 重命名 API 和 UI
+- 对话打开时自动 scrollToBottom，无滚动动画
+
+验收标准：
+
+- [x] Chat 视图中发送消息后切换到其他视图再切回，消息历史完整保留
+- [x] 从 Chat 切换到其他页面再切回，保持原选中的 conversation，不重置为 No conversation selected
+- [x] 输入框半输入内容在视图切换后保留
+- [x] Enter 键发送消息
+- [x] Ctrl+Enter 在输入框中插入换行
+- [x] 用户可重命名 conversation，新名称持久化并在 UI 中正确显示
+- [x] 打开任意 conversation 时消息列表直接定位到最底部
+- [x] `cd apps/desktop && npm run typecheck` 通过
+- [x] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.9.2 — Chat 消息渲染与交互增强
+
+状态：planned
+
+约束：
+
+- 不修改 Provider 配置体系
+- 不修改后端 AI 调用流程
+- 不实现流式输出
+- 仅做消息展示和用户交互增强
+
+解决的问题：
+
+1. [Feature] AI 返回 Markdown 内容但渲染为纯文本，无法展示格式
+2. [Feature] 用户发送的消息缺少快捷操作入口（复制、编辑）
+3. [Feature] AI 回复消息缺少快捷操作入口（复制、重试）
+4. [UX] 消息输入框高度固定，长文本输入不便
+
+方案：
+
+- 引入 react-markdown 或等价 Markdown 渲染库，在消息气泡中渲染 Markdown
+- 支持常见 Markdown 语法：标题、列表、代码块（含语法高亮）、粗体、斜体、链接、表格
+- 用户消息：hover 时底部显示隐藏动作按钮（复制、编辑）
+- AI 回复：底部始终显示动作按钮（复制、重试），不依赖 hover
+- 输入框：随内容增长高度直至最大限制后内部滚动，添加高度过渡动画
+- 所有动作按钮使用 Codicons
+
+验收标准：
+
+- [ ] AI 回复中的 Markdown 格式正确渲染（标题、列表、代码块、粗体、斜体、链接、表格）
+- [ ] 代码块有语法高亮
+- [ ] 用户消息 hover 时显示复制和编辑按钮，鼠标移出后隐藏
+- [ ] AI 回复底部始终显示复制和重试按钮
+- [ ] 复制按钮可复制消息纯文本内容到剪贴板
+- [ ] 输入框高度随文本内容自适应增长
+- [ ] 输入框达到最大高度后出现垂直滚动条
+- [ ] 输入框高度变化有平滑过渡动画
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.10.0 — Provider 模型架构重构与流式输出
+
+状态：planned
+
+约束：
+
+- 不修改 PRD 定义的 desktop-first 架构边界
+- 不修改数据库 schema 中非 Provider/Model 相关部分
+- 不实际运行本地 embedding 模型（仅做架构调整，本地模型集成延后到后续版本）
+- 不实现 RAG 流程（留到 v0.13.0）
+- 不实现 Tool calling（仅架构预留）
+- 前端只通过 typed API client 访问后端
+
+解决的问题：
+
+1. [Architecture] Provider 页面仍区分 chat 和 embedding，但 Provider 只是 API 服务配置，不应按任务角色分类
+2. [Architecture] Chat model 需要手动填写名称，无法从 Provider 已配置的模型列表中选择
+3. [Architecture] 单个 Provider 只能配置一个模型，无法表达同一 Provider 的多个模型（如 deepseek-v4-pro 和 deepseek-v4-flash）
+4. [Architecture] Embedding model 配置混在 Provider 中，应改为本地化方案
+5. [Feature] Chat 尚未实现流式输出，用户需等待完整回复
+
+方案：
+
+- Provider 页面统一使用 Model 命名，不再区分 chat/embedding
+- 每个 Provider 支持手动添加多个模型：通过 + 按钮动态增加输入框，- 按钮删除
+- Chat 模型角色从所有 Provider 的模型列表中通过下拉菜单选择，不再手动填写
+- Embedding 模型角色改为本地模型方案入口，不再依赖远程 Provider 配置
+- 本地 embedding 模型（如 bge-m3）的实际运行和集成延后到后续版本
+- 后端 Chat endpoint 支持 SSE 流式输出
+- 前端 Chat 消息渲染支持逐 token 流式展示
+- Provider 模型列表和 Chat 模型角色选择通过后端 API 持久化
+
+验收标准：
+
+- [ ] Provider 页面中模型配置使用 Model 命名，不出现 chat/embedding 标签区分
+- [ ] 每个 Provider 可通过 + 按钮添加新模型输入框，- 按钮删除已有模型
+- [ ] Provider 模型名称列表持久化保存
+- [ ] Chat 模型角色配置可通过下拉菜单从所有 Provider 的模型中选择
+- [ ] Embedding 模型角色不再出现在 Provider 配置页面
+- [ ] Embedding 模型角色页面显示本地模型方案入口（实际运行延后）
+- [ ] Chat 消息支持 SSE 流式输出，用户可看到逐 token 生成
+- [ ] 流式输出中断或出错时正确回退到已生成内容并提示
+- [ ] 不存在前端直接调用 PostgreSQL 或 AI Provider SDK 的路径
+- [ ] `cd apps/api && pytest` 通过
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.11.0 — 编辑器技术选型、Repository 文件系统与 Vault Manager
 
 状态：planned
 
@@ -347,11 +482,11 @@ MVP 核心骨架已完成：
 
 - 不实现实时协作编辑
 - 不实现非 Markdown 文件的高级编辑
-- 不实现 Knowledge 提取的后端创建流程（入口可预留，功能在 v0.11.0 实现）
+- 不实现 Knowledge 提取的后端创建流程（入口可预留，功能在 v0.12.0 实现）
 - 不把 Repository / Vault 与 Project 概念耦合
 - 不把 Manage Vaults 做成 SettingsOverlay 子页面
 - 不提前实现无真实仓库能力的纯 UI 壳
-- 编辑器方案暂不锁定，待选型评估后决定（不预设“先用 textarea”）
+- 编辑器方案暂不锁定，待选型评估后决定（不预设"先用 textarea"）
 
 解决的问题：
 
@@ -378,7 +513,7 @@ MVP 核心骨架已完成：
 - [ ] 候选方案列表完整（≥3 个），覆盖轻量到全功能
 - [ ] 每个方案按 6 个需求维度给出明确评估
 - [ ] 给出推荐方案和理由
-- [ ] 用户确认推荐方案后，更新 ROADMAP v0.10.0 约束
+- [ ] 用户确认推荐方案后，更新 ROADMAP v0.11.0 约束
 
 验收标准（实现阶段）：
 
@@ -395,14 +530,14 @@ MVP 核心骨架已完成：
 - [ ] 点击文件在中央 Editor 打开新 Tab
 - [ ] 支持 Markdown 文件编辑和预览模式切换
 - [ ] 支持多 Tab 管理（打开、切换、关闭）
-- [ ] 选中文本右键菜单包含「提取为 Knowledge 单元」入口（功能在 v0.11.0 实现）
+- [ ] 选中文本右键菜单包含「提取为 Knowledge 单元」入口（功能在 v0.12.0 实现）
 - [ ] 文件操作提供 loading、empty、error、disabled 和 success feedback
 - [ ] `cd apps/desktop && npm run typecheck` 通过
 - [ ] `cd apps/desktop && npm run lint` 通过
 
 ---
 
-## v0.11.0 — Knowledge 核心
+## v0.12.0 — Knowledge 核心
 
 状态：planned
 
@@ -431,7 +566,7 @@ MVP 核心骨架已完成：
 
 ---
 
-## v0.12.0 — RAG 对话与 Project 管理
+## v0.13.0 — RAG 对话与 Project 管理
 
 状态：planned
 
@@ -455,6 +590,14 @@ MVP 核心骨架已完成：
 6. [UX] Project 列表项当前只暴露删除操作，缺少统一的 `...` 操作菜单承载重命名、配置和归档/删除
 7. [UX] 当前 Project 名称可以作为配置入口，但不应展示 project UUID
 8. [UX] Project selector 必须选择 No project 或 New project 才能关闭，无法通过点击外部取消
+9. [Research] 探索 AI Tool / Function Calling 接入方案，评估技术可行性和实现路径
+
+方案：
+
+- 实现 RAG 流程：用户消息 → 语义检索 Knowledge → 构造 prompt → 调用 AI Provider → 展示回答和引用
+- 实现 Project 选择器、创建、配置和操作菜单
+- 同步探索 AI Tool calling 技术方案（如 OpenAI function calling），评估与 RAG 的结合方式
+- Tool calling 的正式实现延后到后续版本，本版本仅做技术探索和方案评估
 
 验收标准：
 
@@ -472,12 +615,13 @@ MVP 核心骨架已完成：
 - [ ] Project 配置界面支持编辑名称、描述、颜色，并提供归档/删除入口
 - [ ] Chat 顶部和 Project 配置入口均不显示 project UUID
 - [ ] 支持 @knowledge 引用特定知识单元
+- [ ] 产出 AI Tool calling 技术探索报告，评估与当前架构的集成方案
 - [ ] `cd apps/api && pytest` 通过（RAG service + retrieval + Project 管理相关测试）
 - [ ] `cd apps/desktop && npm run typecheck` 通过
 
 ---
 
-## v0.12.1 — 代码审计与清理
+## v0.13.1 — 代码审计与清理
 
 状态：planned
 
@@ -504,7 +648,7 @@ MVP 核心骨架已完成：
 
 ---
 
-## v0.13.0 — Command Palette 与快捷键管理
+## v0.14.0 — Command Palette 与快捷键管理
 
 状态：planned
 
@@ -536,7 +680,7 @@ MVP 核心骨架已完成：
 
 ---
 
-## v0.14.0 — UI 中英文切换
+## v0.15.0 — UI 中英文切换
 
 状态：planned
 

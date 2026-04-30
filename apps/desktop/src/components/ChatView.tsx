@@ -6,17 +6,26 @@ import {
   listConversations,
   listMessages,
   sendChat,
+  updateConversation,
 } from "../api/client";
 import type { Conversation, Message } from "../api/types";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EmptyState } from "./EmptyState";
 import { Icon } from "./Icon";
 
-export function ChatView() {
+export function ChatView({
+  activeConversationId,
+  onConversationChange,
+  chatInputValue,
+  onChatInputChange,
+}: {
+  activeConversationId: string | null;
+  onConversationChange: (id: string | null) => void;
+  chatInputValue: string;
+  onChatInputChange: (value: string) => void;
+}) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [inputValue, setInputValue] = useState("");
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
@@ -27,8 +36,11 @@ export function ChatView() {
   const [archiveTarget, setArchiveTarget] = useState<Conversation | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
   const [retryFlag, setRetryFlag] = useState(0);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isInitialScrollRef = useRef(true);
   const abortRef = useRef<AbortController | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ y: number; height: number } | null>(null);
@@ -88,9 +100,18 @@ export function ChatView() {
     }
   }, [activeConversationId, fetchMessages]);
 
-  // Auto-scroll to bottom
+  // Reset scroll flag when conversation changes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    isInitialScrollRef.current = true;
+  }, [activeConversationId]);
+
+  // Auto-scroll to bottom — instant for initial load, smooth for new messages
+  useEffect(() => {
+    if (messages.length === 0) return;
+    messagesEndRef.current?.scrollIntoView({
+      behavior: isInitialScrollRef.current ? "instant" : "smooth",
+    });
+    isInitialScrollRef.current = false;
   }, [messages]);
 
   /* ---- actions ---- */
@@ -100,21 +121,21 @@ export function ChatView() {
     try {
       const conv = await createConversation({ title: "New conversation" });
       setConversations((prev) => [conv, ...prev]);
-      setActiveConversationId(conv.id);
+      onConversationChange(conv.id);
     } catch (err) {
       setChatError(err instanceof Error ? err.message : "Failed to create conversation");
     }
   };
 
   const handleSelectConversation = (conversation: Conversation) => {
-    setActiveConversationId(conversation.id);
+    onConversationChange(conversation.id);
     setChatError(null);
   };
 
   const handleSend = async () => {
-    const trimmed = inputValue.trim();
+    const trimmed = chatInputValue.trim();
     if (!trimmed || !activeConversationId) return;
-    setInputValue("");
+    onChatInputChange("");
     setChatError(null);
     setSending(true);
 
@@ -132,7 +153,7 @@ export function ChatView() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to send message";
       setChatError(msg);
-      setInputValue(trimmed);
+      onChatInputChange(trimmed);
     } finally {
       setSending(false);
     }
@@ -143,7 +164,7 @@ export function ChatView() {
     try {
       await archiveConversation(archiveTarget.id);
       setConversations((prev) => prev.filter((c) => c.id !== archiveTarget.id));
-      if (activeConversationId === archiveTarget.id) setActiveConversationId(null);
+      if (activeConversationId === archiveTarget.id) onConversationChange(null);
     } catch {
       // keep dialog open on error
     } finally {
@@ -156,12 +177,44 @@ export function ChatView() {
     try {
       await deleteConversation(deleteTarget.id);
       setConversations((prev) => prev.filter((c) => c.id !== deleteTarget.id));
-      if (activeConversationId === deleteTarget.id) setActiveConversationId(null);
+      if (activeConversationId === deleteTarget.id) onConversationChange(null);
     } catch {
       // keep dialog open on error
     } finally {
       setDeleteTarget(null);
     }
+  };
+
+  const startRename = (conv: Conversation) => {
+    setRenamingId(conv.id);
+    setRenameValue(conv.title);
+  };
+
+  const cancelRename = () => {
+    setRenamingId(null);
+    setRenameValue("");
+  };
+
+  const submitRename = async () => {
+    const trimmed = renameValue.trim();
+    if (!trimmed || !renamingId) {
+      cancelRename();
+      return;
+    }
+    const conv = conversations.find((c) => c.id === renamingId);
+    if (conv && conv.title === trimmed) {
+      cancelRename();
+      return;
+    }
+    try {
+      const updated = await updateConversation(renamingId, { title: trimmed });
+      setConversations((prev) =>
+        prev.map((c) => (c.id === renamingId ? updated : c)),
+      );
+    } catch {
+      return;
+    }
+    cancelRename();
   };
 
   /* ---- derived ---- */
@@ -289,10 +342,15 @@ export function ChatView() {
           className="w-full resize-none rounded-md border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine disabled:opacity-50"
           rows={2}
           placeholder="Ask anything... @knowledge to reference"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          value={chatInputValue}
+          onChange={(e) => onChatInputChange(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            if (e.key === "Enter") {
+              if (e.ctrlKey || e.metaKey) {
+                // Ctrl+Enter: insert newline (default behavior)
+                return;
+              }
+              // Enter alone: send message
               e.preventDefault();
               void handleSend();
             }
@@ -335,7 +393,7 @@ export function ChatView() {
             type="button"
             className="rounded-md bg-pine px-3 py-1 text-xs font-medium text-white hover:bg-pine/90 disabled:opacity-50"
             onClick={() => void handleSend()}
-            disabled={!inputValue.trim() || sending || !activeConversationId}
+            disabled={!chatInputValue.trim() || sending || !activeConversationId}
           >
             {sending ? "Sending..." : "Send"}
           </button>
@@ -385,7 +443,40 @@ export function ChatView() {
                   }
                 }}
               >
-                <span className="truncate flex-1">{conv.title}</span>
+                {renamingId === conv.id ? (
+                  <input
+                    type="text"
+                    className="flex-1 rounded border border-pine bg-white px-1 py-0 text-xs text-stone-800 focus:outline-none focus:ring-1 focus:ring-pine"
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void submitRename();
+                      }
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        cancelRename();
+                      }
+                    }}
+                    onBlur={() => submitRename()}
+                    onClick={(e) => e.stopPropagation()}
+                    autoFocus
+                  />
+                ) : (
+                  <span className="truncate flex-1">{conv.title}</span>
+                )}
+                <button
+                  type="button"
+                  className="ml-1 hidden rounded p-0.5 text-stone-400 hover:text-stone-600 group-hover:inline"
+                  onClick={(e) => { e.stopPropagation(); startRename(conv); }}
+                  aria-label={`Rename ${conv.title}`}
+                  title="Rename"
+                >
+                  <Icon name="edit" size={12} />
+                </button>
                 <button
                   type="button"
                   className="ml-1 hidden rounded p-0.5 text-stone-400 hover:text-red-500 group-hover:inline"

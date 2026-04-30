@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db_session
-from app.schemas.conversation import ConversationCreate, ConversationResponse
+from app.schemas.conversation import ConversationCreate, ConversationResponse, ConversationUpdate
 from app.schemas.message import MessageCreate, MessageResponse
 from app.services.conversations import (
     ConversationNotFoundError,
@@ -13,6 +13,7 @@ from app.services.conversations import (
     get_conversation,
     hard_delete_conversation,
     list_conversations,
+    update_conversation,
 )
 from app.services.messages import append_message, list_messages
 
@@ -50,6 +51,20 @@ def get_conversation_endpoint(
 ) -> ConversationResponse:
     try:
         return ConversationResponse.model_validate(get_conversation(session, conversation_id))
+    except ConversationNotFoundError as exc:
+        raise _conversation_not_found() from exc
+
+
+@router.patch("/{conversation_id}", response_model=ConversationResponse)
+def update_conversation_endpoint(
+    conversation_id: UUID,
+    payload: ConversationUpdate,
+    session: Session = Depends(get_db_session),
+) -> ConversationResponse:
+    try:
+        return ConversationResponse.model_validate(
+            update_conversation(session, conversation_id, payload)
+        )
     except ConversationNotFoundError as exc:
         raise _conversation_not_found() from exc
 
