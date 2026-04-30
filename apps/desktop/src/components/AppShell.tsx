@@ -5,7 +5,6 @@ import {
   useState,
   type KeyboardEvent,
   type MouseEvent,
-  type ReactNode,
 } from "react";
 import { ModelRoleProvider } from "../contexts/ModelRoleContext";
 import { VerticalToolbar } from "./VerticalToolbar";
@@ -14,7 +13,10 @@ import { IconButton } from "./IconButton";
 import { RightPanel } from "./RightPanel";
 import { StatusBar } from "./StatusBar";
 import { SettingsOverlay } from "./SettingsOverlay";
+import { VaultManagerOverlay } from "./VaultManagerOverlay";
+import { Editor } from "./Editor";
 import { useThemePreference } from "../hooks/useThemePreference";
+import { VaultProvider } from "../store/vaults";
 
 export type RightPanelView = "chat" | "knowledge" | "outline" | "graph";
 
@@ -38,7 +40,7 @@ const RIGHT_PANEL_MAX_WIDTH = 520;
 const RIGHT_PANEL_DEFAULT_WIDTH = 320;
 const KEYBOARD_RESIZE_STEP = 16;
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell() {
   const mainAreaRef = useRef<HTMLDivElement>(null);
   const theme = useThemePreference();
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
@@ -50,6 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [chatInputValue, setChatInputValue] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [vaultManagerOpen, setVaultManagerOpen] = useState(false);
 
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -193,6 +196,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <ModelRoleProvider>
+    <VaultProvider>
       <div className="flex h-screen flex-col bg-surface text-ink">
       {/* Main area */}
       <div ref={mainAreaRef} className="flex min-h-0 flex-1">
@@ -215,7 +219,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             collapsed={!leftPanelOpen}
             onToggleCollapse={toggleLeftPanel}
             onOpenFile={openFile}
-            onManageVaults={() => setSettingsOpen(true)}
+            onManageVaults={() => setVaultManagerOpen(true)}
           />
         </div>
 
@@ -269,7 +273,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               ))}
             </div>
           )}
-          {children}
+          <Editor
+            openTabs={openTabs}
+            activeTabId={activeTabId}
+            onCloseTab={closeTab}
+            onSetActiveTabId={setActiveTabId}
+          />
         </div>
 
         {rightPanelOpen && (
@@ -322,7 +331,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           onClose={() => setSettingsOpen(false)}
         />
       )}
+
+      {/* Vault Manager Overlay */}
+      {vaultManagerOpen && (
+        <VaultManagerOverlay onClose={() => setVaultManagerOpen(false)} />
+      )}
       </div>
+    </VaultProvider>
     </ModelRoleProvider>
   );
 }

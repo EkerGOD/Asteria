@@ -331,3 +331,45 @@ Scope：full-stack
 - 新增 `docs/APP_DATA_DIRECTORY.md` 调研报告（Tauri 2 路径 API、平台路径、目录布局、模型存储）
 - 更新 `docs/API_CONTRACT.md`、`docs/DATABASE_SCHEMA.md` 移除 is_active 相关内容
 - 新增 Alembic migration `20260430_0004_remove_is_active_from_ai_providers.py`
+
+---
+
+## v0.11.0 — 编辑器技术选型、Repository 文件系统与 Vault Manager
+
+Scope：frontend
+
+状态：done
+
+约束：
+
+- 不实现实时协作编辑
+- 不实现非 Markdown 文件的高级编辑
+- Knowledge 提取入口预留（右键菜单），功能延后到 v0.12.0
+- 不把 Repository/Vault 与 Project 耦合
+- Manage Vaults 为独立全屏浮层，非 Settings 子页面
+- 编辑器已锁定 Milkdown Crepe（ProseMirror + Remark）
+
+解决的问题：
+
+1. [Feature] 中央 Editor 区域实现 Markdown 编辑（Milkdown Crepe，WYSIWYG + 源码模式）
+2. [Feature] 实现 Tauri 文件系统集成，打开本地仓库并显示文件树
+3. [Feature] 实现 Tab 形式打开文件
+4. [Feature] 文件系统支持创建文件夹和新建 Markdown 文件
+5. [Research] 编辑器组件方案完成系统评估（4 候选 × 6 维度）
+6. [UX] Manage Vaults 打开独立全屏 Vault Manager
+7. [Feature] 独立 Vault Manager：current vault、available vaults、create vault、open local vault
+
+主要变更：
+
+- 新增 Tauri 插件：`tauri-plugin-fs`、`tauri-plugin-dialog`（文件系统 + 原生对话框）
+- 新增 Milkdown 编辑器：`@milkdown/crepe`、`@milkdown/react`、`@milkdown/preset-commonmark`
+- 新增 `src/store/vaults.tsx`：Vault 类型、localStorage 持久化、React Context
+- 新增 `src/hooks/useFileTree.ts`：Tauri fs 文件树懒加载 hook
+- 新增 `src/components/VaultManagerOverlay.tsx`：独立全屏 Vault Manager
+- 新增 `src/components/MarkdownEditor.tsx`：Milkdown Crepe React 封装
+- 新增 `src/components/Editor.tsx`：编辑器容器、Tab 栏、Ctrl+S 保存、脏状态
+- 新增 `src/components/ContextMenu.tsx`：可复用右键菜单
+- 重写 `src/components/FileBrowser.tsx`：真实文件树、展开/折叠、新建文件/文件夹
+- 更新 `src/components/AppShell.tsx`：集成 VaultProvider、Editor、VaultManagerOverlay
+- 更新 `src/App.tsx`：移除 placeholder，Editor 接管中央区域
+- 选型报告：`docs/EDITOR_EVALUATION.md`

@@ -3,5 +3,15 @@
   "identifier": "default",
   "description": "Default permissions for the Asteria desktop window.",
   "windows": ["main"],
-  "permissions": []
+  "permissions": [
+    "fs:default",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    "fs:allow-read-dir",
+    "fs:allow-mkdir",
+    "fs:allow-exists",
+    "fs:allow-remove",
+    "dialog:default",
+    "dialog:allow-open"
+  ]
 }
