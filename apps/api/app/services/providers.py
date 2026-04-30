@@ -165,6 +165,12 @@ def health_check_provider(
         )
 
 
+def get_active_provider(session: Session) -> AIProvider | None:
+    return session.scalars(
+        select(AIProvider).where(AIProvider.is_active.is_(True))
+    ).first()
+
+
 def _ensure_name_available(
     session: Session,
     name: str,

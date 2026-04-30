@@ -2,10 +2,11 @@ import { useState } from "react";
 import { SettingsPage } from "../pages/SettingsPage";
 import { DiagnosticsPage } from "../pages/DiagnosticsPage";
 import { AppearancePage } from "../pages/AppearancePage";
+import { ModelRolesPage } from "../pages/ModelRolesPage";
 import type { ResolvedTheme, ThemePreference } from "../hooks/useThemePreference";
 import { Icon } from "./Icon";
 
-type SettingsTab = "providers" | "appearance" | "diagnostics";
+type SettingsTab = "providers" | "model-roles" | "appearance" | "diagnostics";
 
 export function SettingsOverlay({
   themePreference,
@@ -52,6 +53,12 @@ export function SettingsOverlay({
               Providers
             </SettingsTabButton>
             <SettingsTabButton
+              active={activeTab === "model-roles"}
+              onClick={() => setActiveTab("model-roles")}
+            >
+              Model Roles
+            </SettingsTabButton>
+            <SettingsTabButton
               active={activeTab === "appearance"}
               onClick={() => setActiveTab("appearance")}
             >
@@ -68,6 +75,7 @@ export function SettingsOverlay({
           {/* Content area */}
           <div className="min-w-0 flex-1 overflow-auto px-6 py-4">
             {activeTab === "providers" && <SettingsPage />}
+            {activeTab === "model-roles" && <ModelRolesPage />}
             {activeTab === "appearance" && (
               <AppearancePage
                 preference={themePreference}

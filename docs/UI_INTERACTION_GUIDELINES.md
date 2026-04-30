@@ -389,7 +389,8 @@ Required States:
 Layout Rules:
 
 - 独立全屏浮层（z-50），带背景遮罩。
-- 左侧子页面 Tab 栏（约 176px 宽），右侧内容区。
+- 左侧子页面 Tab 栏（约 176px 宽）：Providers、Model Roles、Appearance、Diagnostics。
+- 右侧内容区渲染对应 Tab 页面。
 - 浮层有标题 "Settings" + 关闭按钮。
 - API key 字段不显示已存储 key，仅通过 `has_api_key` 指示。
 

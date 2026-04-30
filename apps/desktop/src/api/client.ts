@@ -1,5 +1,7 @@
 import { API_BASE_URL } from "./config";
 import type {
+  ChatSendRequest,
+  ChatSendResponse,
   Conversation,
   ConversationCreateRequest,
   HealthResponse,
@@ -9,6 +11,8 @@ import type {
   KnowledgeUnitUpdateRequest,
   Message,
   MessageCreateRequest,
+  ModelRole,
+  ModelRoleUpsertRequest,
   Provider,
   ProviderCreateRequest,
   ProviderHealthResponse,
@@ -19,7 +23,7 @@ import type {
   RAGAnswerRequest,
   RAGAnswerResponse,
   Tag,
-  TagCreateRequest
+  TagCreateRequest,
 } from "./types";
 
 export class ApiClientError extends Error {
@@ -312,6 +316,20 @@ export function archiveConversation(conversationId: string, init?: RequestInit):
   return requestJsonBody<Conversation>(`/api/conversations/${conversationId}`, "DELETE", undefined, init);
 }
 
+export async function deleteConversation(conversationId: string, init?: RequestInit): Promise<void> {
+  const response = await fetch(buildApiUrl(`/api/conversations/${conversationId}?permanent=true`), {
+    method: "DELETE",
+    headers: { Accept: "application/json", ...init?.headers },
+    ...init,
+  });
+  if (!response.ok) {
+    let detail: string | null = null;
+    try { detail = readErrorDetail(await response.json()); } catch { /* no-op */ }
+    const message = `Local API returned ${response.status} ${response.statusText || "error"}.`;
+    throw new ApiClientError(detail ? `${message} ${detail}` : message, response.status);
+  }
+}
+
 export function listMessages(conversationId: string, init?: RequestInit): Promise<Message[]> {
   return requestJson<Message[]>(`/api/conversations/${conversationId}/messages`, init);
 }
@@ -326,4 +344,20 @@ export function appendMessage(
 
 export function answerRag(payload: RAGAnswerRequest, init?: RequestInit): Promise<RAGAnswerResponse> {
   return requestJsonBody<RAGAnswerResponse>("/api/rag/answer", "POST", payload, init);
+}
+
+export function sendChat(payload: ChatSendRequest, init?: RequestInit): Promise<ChatSendResponse> {
+  return requestJsonBody<ChatSendResponse>("/api/chat/send", "POST", payload, init);
+}
+
+export function listModelRoles(init?: RequestInit): Promise<ModelRole[]> {
+  return requestJson<ModelRole[]>("/api/model-roles", init);
+}
+
+export function upsertModelRole(
+  roleType: string,
+  payload: ModelRoleUpsertRequest,
+  init?: RequestInit,
+): Promise<ModelRole> {
+  return requestJsonBody<ModelRole>(`/api/model-roles/${roleType}`, "PUT", payload, init);
 }

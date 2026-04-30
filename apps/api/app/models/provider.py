@@ -78,6 +78,10 @@ class AIProvider(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="provider",
         passive_deletes=True,
     )
+    model_roles: Mapped[list["ModelRole"]] = relationship(
+        back_populates="provider",
+        passive_deletes=True,
+    )
 
 
 Index("uq_ai_providers_lower_name", func.lower(AIProvider.name), unique=True)

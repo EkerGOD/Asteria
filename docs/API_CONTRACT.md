@@ -13,6 +13,92 @@ DELETE /api/projects/{id}
 POST /api/conversations
 GET /api/conversations
 GET /api/conversations/{id}
+DELETE /api/conversations/{id}  (archive)
+DELETE /api/conversations/{id}?permanent=true  (hard delete)
+
+Archive sets `archived_at` on the conversation. Hard delete permanently removes the conversation and all associated messages.
+
+## Chat API
+
+POST /api/chat/send
+
+Simple non-RAG chat: saves user message, calls active provider chat model, saves assistant message, returns both.
+
+```json
+// Request
+{
+  "conversation_id": "uuid",
+  "content": "Hello, what can you help me with?"
+}
+
+// Response
+{
+  "user_message": {
+    "id": "uuid",
+    "conversation_id": "uuid",
+    "provider_id": null,
+    "role": "user",
+    "content": "Hello, what can you help me with?",
+    "model": null,
+    "token_count": null,
+    "retrieval_metadata": {},
+    "created_at": "2026-04-30T00:00:00Z"
+  },
+  "assistant_message": {
+    "id": "uuid",
+    "conversation_id": "uuid",
+    "provider_id": "uuid",
+    "role": "assistant",
+    "content": "Hi! I'm here to help...",
+    "model": "chat-model",
+    "token_count": 42,
+    "retrieval_metadata": {},
+    "created_at": "2026-04-30T00:00:00Z"
+  },
+  "provider_id": "uuid",
+  "chat_model": "chat-model"
+}
+```
+
+No embedding, retrieval, or source references are used.
+Requires an active provider. Returns 400 if no provider is active.
+Returns 404 if conversation not found.
+
+## Model Roles API
+
+GET /api/model-roles
+PUT /api/model-roles/{role_type}
+
+Model roles decouple chat/embedding from provider configuration. Each role (`chat` or `embedding`) selects a provider and model independently.
+
+```json
+// PUT /api/model-roles/chat
+{
+  "provider_id": "uuid or null",
+  "model_name": "gpt-4o"
+}
+
+// PUT /api/model-roles/embedding
+{
+  "provider_id": "uuid or null",
+  "model_name": "text-embedding-3-small",
+  "embedding_dimension": 1536
+}
+
+// Response (GET or PUT)
+{
+  "id": "uuid",
+  "role_type": "chat",
+  "provider_id": "uuid or null",
+  "model_name": "gpt-4o",
+  "embedding_dimension": null,
+  "created_at": "2026-04-30T00:00:00Z",
+  "updated_at": "2026-04-30T00:00:00Z"
+}
+```
+
+`role_type` must be `"chat"` or `"embedding"` (returns 400 otherwise).
+Returns 404 if the specified provider_id does not exist.
 
 ## Message API
 

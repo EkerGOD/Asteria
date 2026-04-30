@@ -189,3 +189,31 @@ export type RAGAnswerResponse = {
   embedding_model: string;
   embedding_dimension: number;
 };
+
+export type ChatSendRequest = {
+  conversation_id: string;
+  content: string;
+};
+
+export type ChatSendResponse = {
+  user_message: Message;
+  assistant_message: Message;
+  provider_id: string;
+  chat_model: string;
+};
+
+export type ModelRole = {
+  id: string;
+  role_type: string;
+  provider_id: string | null;
+  model_name: string;
+  embedding_dimension: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ModelRoleUpsertRequest = {
+  provider_id: string | null;
+  model_name: string;
+  embedding_dimension?: number | null;
+};

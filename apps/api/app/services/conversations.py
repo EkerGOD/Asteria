@@ -53,3 +53,9 @@ def archive_conversation(session: Session, conversation_id: UUID) -> Conversatio
         session.commit()
         session.refresh(conversation)
     return conversation
+
+
+def hard_delete_conversation(session: Session, conversation_id: UUID) -> None:
+    conversation = get_conversation(session, conversation_id)
+    session.delete(conversation)
+    session.commit()

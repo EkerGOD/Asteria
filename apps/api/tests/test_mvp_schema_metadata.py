@@ -25,6 +25,7 @@ def test_mvp_schema_registers_all_tables():
         "knowledge_unit_tags",
         "knowledge_units",
         "messages",
+        "model_roles",
         "projects",
         "tags",
     }
@@ -60,6 +61,10 @@ def test_mvp_schema_contains_core_constraints():
         "ck_tags_slug_not_blank",
         "ck_tags_slug_format",
     } <= constraint_names("tags")
+    assert {
+        "ck_model_roles_role_type",
+        "uq_model_roles_role_type",
+    } <= {c.name for c in Base.metadata.tables["model_roles"].constraints if c.name}
 
 
 def test_mvp_schema_contains_key_indexes():
@@ -127,3 +132,4 @@ def test_relationship_delete_policies_match_schema():
     assert next(iter(tables["knowledge_unit_tags"].c.tag_id.foreign_keys)).ondelete == "CASCADE"
     assert next(iter(tables["knowledge_embeddings"].c.knowledge_unit_id.foreign_keys)).ondelete == "CASCADE"
     assert next(iter(tables["knowledge_embeddings"].c.provider_id.foreign_keys)).ondelete == "SET NULL"
+    assert next(iter(tables["model_roles"].c.provider_id.foreign_keys)).ondelete == "SET NULL"

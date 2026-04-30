@@ -276,7 +276,7 @@ MVP 核心骨架已完成：
 
 ## v0.9.0 — 前后端集成、Provider 模型角色与基础 AI Chat
 
-状态：planned
+状态：done
 
 约束：
 
@@ -294,13 +294,11 @@ MVP 核心骨架已完成：
 解决的问题：
 
 1. [Feature] 前端 UI 目前仅展示静态界面，未与 FastAPI 后端衔接
-2. [Feature] Provider 配置需要通过 API 持久化而非本地 mock
-3. [Feature] Settings 和 Diagnostics 数据需从后端实时获取
-4. [Architecture] 当前 Provider 配置把 chat model 和 embedding model 绑定在同一个 Provider 上，无法表达“不同任务角色使用不同 provider/model”
-5. [UX] 一个 Provider 可能提供多个模型，配置中只有一个 chat model 和一个 embedding model 表达能力不足
-6. [Feature] 尚未跑通创建 conversation、发送 message、接收真实 AI 回复的基础 Chat 流程
-7. [Feature] 尚未提供 conversation 归档和删除能力
-8. [UX] 删除或归档 conversation 需要确认或明确防误触机制
+2. [Architecture] 当前 Provider 配置把 chat model 和 embedding model 绑定在同一个 Provider 上，无法表达”不同任务角色使用不同 provider/model”
+3. [UX] 一个 Provider 可能提供多个模型，配置中只有一个 chat model 和一个 embedding model 表达能力不足
+4. [Feature] 尚未跑通创建 conversation、发送 message、接收真实 AI 回复的基础 Chat 流程
+5. [Feature] 尚未提供 conversation 归档和删除能力
+6. [UX] 删除或归档 conversation 需要确认或明确防误触机制
 
 方案：
 
@@ -314,25 +312,30 @@ MVP 核心骨架已完成：
 
 验收标准：
 
-- [ ] Provider CRUD 通过前端 → API client → FastAPI 全链路可操作
-- [ ] Settings 数据从后端读取并持久化
-- [ ] Diagnostics 页面展示后端实时状态（数据库连接、Provider 连通性等）
-- [ ] API client 类型与后端 OpenAPI schema 一致
-- [ ] Settings 中可以分别配置 `chat` 和 `embedding` 两个模型角色
-- [ ] `chat` 模型角色可选择 provider 和 model
-- [ ] `embedding` 模型角色可选择 provider、model 和 embedding dimension
-- [ ] 后端调用 chat generation 时使用 `chat` 模型角色配置
-- [ ] 用户可创建 conversation 并选择当前 conversation
-- [ ] 用户可在 selected conversation 中发送非空 message
-- [ ] 后端保存 user message，调用 Provider abstraction 生成 assistant message，并保存 assistant message
-- [ ] Chat 消息线程渲染后端持久化的 user / assistant messages
-- [ ] 基础 Chat 不展示 source references，不执行 retrieval，不依赖 embedding
-- [ ] 用户可归档 conversation；归档操作有确认或明确防误触机制
-- [ ] 用户可删除 conversation；删除操作有二次确认并明确删除后果
-- [ ] 归档后的 conversation 默认不出现在常规历史列表中，但不被硬删除
-- [ ] 不存在前端直接调用 PostgreSQL 或 AI Provider SDK 的路径
-- [ ] `cd apps/api && pytest` 通过
-- [ ] `cd apps/desktop && npm run typecheck` 通过
+**已完成（v0.9.0-b 基础 Chat 全链路）：**
+
+- [x] Provider CRUD 通过前端 → API client → FastAPI 全链路可操作
+- [x] Settings 数据从后端读取并持久化
+- [x] Diagnostics 页面展示后端实时状态（数据库连接、Provider 连通性等）
+- [x] API client 类型与后端 OpenAPI schema 一致
+- [x] 用户可创建 conversation 并选择当前 conversation
+- [x] 用户可在 selected conversation 中发送非空 message
+- [x] 后端保存 user message，调用 Provider abstraction 生成 assistant message，并保存 assistant message
+- [x] Chat 消息线程渲染后端持久化的 user / assistant messages
+- [x] 基础 Chat 不展示 source references，不执行 retrieval，不依赖 embedding
+- [x] 用户可归档 conversation；归档操作有确认或明确防误触机制
+- [x] 用户可删除 conversation；删除操作有二次确认并明确删除后果
+- [x] 归档后的 conversation 默认不出现在常规历史列表中，但不被硬删除
+- [x] 不存在前端直接调用 PostgreSQL 或 AI Provider SDK 的路径
+- [x] `cd apps/api && pytest` 通过
+- [x] `cd apps/desktop && npm run typecheck` 通过
+
+**已完成（v0.9.0-a/c 模型角色）：**
+
+- [x] Settings 中可以分别配置 `chat` 和 `embedding` 两个模型角色
+- [x] `chat` 模型角色可选择 provider 和 model
+- [x] `embedding` 模型角色可选择 provider、model 和 embedding dimension
+- [x] 后端调用 chat generation 时使用 `chat` 模型角色配置
 
 ---
 

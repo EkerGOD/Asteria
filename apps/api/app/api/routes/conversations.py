@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db_session
@@ -11,6 +11,7 @@ from app.services.conversations import (
     archive_conversation,
     create_conversation,
     get_conversation,
+    hard_delete_conversation,
     list_conversations,
 )
 from app.services.messages import append_message, list_messages
@@ -53,12 +54,16 @@ def get_conversation_endpoint(
         raise _conversation_not_found() from exc
 
 
-@router.delete("/{conversation_id}", response_model=ConversationResponse)
-def archive_conversation_endpoint(
+@router.delete("/{conversation_id}")
+def delete_conversation_endpoint(
     conversation_id: UUID,
+    permanent: bool = Query(default=False),
     session: Session = Depends(get_db_session),
-) -> ConversationResponse:
+):
     try:
+        if permanent:
+            hard_delete_conversation(session, conversation_id)
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
         return ConversationResponse.model_validate(archive_conversation(session, conversation_id))
     except ConversationNotFoundError as exc:
         raise _conversation_not_found() from exc
