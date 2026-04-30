@@ -69,11 +69,6 @@ export function SettingsPage() {
     return () => controller.abort();
   }, [loadProviderList]);
 
-  function selectProvider(provider: Provider) {
-    setSelectedProviderId(provider.id);
-    setActionError(null);
-  }
-
   function startEditing(provider: Provider) {
     setSelectedProviderId(provider.id);
     setPageMode("editing");
@@ -196,10 +191,8 @@ export function SettingsPage() {
             <ProviderListItem
               key={provider.id}
               provider={provider}
-              isSelected={provider.id === selectedProviderId}
               healthResult={healthResults[provider.id]}
               checking={checkingProviderId === provider.id}
-              onSelect={selectProvider}
               onEdit={startEditing}
               onHealthCheck={runHealthCheck}
               onDelete={(p) => {
@@ -237,52 +230,43 @@ export function SettingsPage() {
 
 function ProviderListItem({
   provider,
-  isSelected,
   healthResult,
   checking,
-  onSelect,
   onEdit,
   onHealthCheck,
   onDelete,
 }: {
   provider: Provider;
-  isSelected: boolean;
   healthResult: ProviderHealthResponse | undefined;
   checking: boolean;
-  onSelect: (provider: Provider) => void;
   onEdit: (provider: Provider) => void;
   onHealthCheck: (provider: Provider) => void;
   onDelete: (provider: Provider) => void;
 }) {
   return (
     <div
-      className={[
-        "rounded-lg border bg-white p-3 transition",
-        isSelected ? "border-pine shadow-sm" : "border-stone-200",
-      ].join(" ")}
+      className="rounded-lg border border-stone-200 bg-white p-3 transition hover:border-pine/50"
     >
-      <button type="button" className="w-full text-left" onClick={() => onSelect(provider)}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{provider.name}</p>
-            <p className="mt-1 break-all text-xs text-stone-600">{provider.base_url}</p>
-          </div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{provider.name}</p>
+          <p className="mt-1 break-all text-xs text-stone-600">{provider.base_url}</p>
         </div>
-        <dl className="mt-3 grid gap-2 text-xs text-stone-600">
-          <div className="flex justify-between gap-3">
-            <dt>Models</dt>
-            <dd className="truncate font-semibold text-stone-800">
-              {formatProviderModels(provider)}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt>API key</dt>
-            <dd className="font-semibold text-stone-800">
-              {provider.has_api_key ? "Stored" : "Missing"}
-            </dd>
-          </div>
-        </dl>
-      </button>
+      </div>
+      <dl className="mt-3 grid gap-2 text-xs text-stone-600">
+        <div className="flex justify-between gap-3">
+          <dt>Models</dt>
+          <dd className="truncate font-semibold text-stone-800">
+            {formatProviderModels(provider)}
+          </dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt>API key</dt>
+          <dd className="font-semibold text-stone-800">
+            {provider.has_api_key ? "Stored" : "Missing"}
+          </dd>
+        </div>
+      </dl>
 
       {healthResult ? (
         <div

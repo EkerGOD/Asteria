@@ -373,3 +373,34 @@ Scope：frontend
 - 更新 `src/components/AppShell.tsx`：集成 VaultProvider、Editor、VaultManagerOverlay
 - 更新 `src/App.tsx`：移除 placeholder，Editor 接管中央区域
 - 选型报告：`docs/EDITOR_EVALUATION.md`
+
+---
+
+## v0.11.1 — Editor 与 Provider bug 速修
+
+Scope：full-stack
+
+状态：done
+
+约束：
+
+- 不新增 API 端点
+- 不修改数据库 schema
+- 不新增功能
+- 仅修复 bug 和交互细节
+
+解决的问题：
+
+1. [Bug] 右侧面板缩到最小时 Send 按钮紧贴右边缘，缺少 padding
+2. [Bug] 多 model provider 的 model role 下拉只显示第一个 model（代码路径验证正确，v0.10.2 已修复数据流）
+3. [UX] Provider 卡片可点击选中出现绿色边框，改为仅 hover 时边框颜色变化
+4. [Bug] Editor 顶部出现双重 Tab 栏（自定义 + Milkdown 原生），只保留 Milkdown 原生
+5. [Bug] 打开 md 文件时 Editor 右上角显示 "could not read file"
+
+主要变更：
+
+- `SettingsPage.tsx`：移除 ProviderListItem 的 `onSelect`/`isSelected` 和 `<button>` 包裹，改为 `hover:border-pine/50`
+- `ChatView.tsx`：flex row 添加 `pr-3` 确保 Send 按钮与输入框一致的右侧 padding
+- `Editor.tsx`：`setError(null)` 移到 early-return guard 之前，使用 `useRef<Set>` 替代 `fileContent` 依赖
+- `AppShell.tsx`：移除冗余 Tab Bar 和 `hasTabs`/`IconButton` 导入，Editor 内 Tab 栏为唯一 Tab 栏
+- ModelRoleContext 数据流经代码审查验证正确，`providerModelNames` 正确映射所有 models

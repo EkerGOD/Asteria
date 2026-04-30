@@ -524,7 +524,7 @@ export function ChatView({
           }}
           disabled={sending || !activeConversationId}
         />
-        <div className="mt-1 flex min-w-0 items-center justify-between gap-2">
+        <div className="mt-1 flex min-w-0 items-center justify-between gap-2 pr-3">
           <div className="flex min-w-0 items-center gap-1 text-xs text-stone-400">
             {/* Project selector */}
             <div className="relative">

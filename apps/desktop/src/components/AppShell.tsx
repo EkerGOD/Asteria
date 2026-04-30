@@ -9,7 +9,6 @@ import {
 import { ModelRoleProvider } from "../contexts/ModelRoleContext";
 import { VerticalToolbar } from "./VerticalToolbar";
 import { FileBrowser } from "./FileBrowser";
-import { IconButton } from "./IconButton";
 import { RightPanel } from "./RightPanel";
 import { StatusBar } from "./StatusBar";
 import { SettingsOverlay } from "./SettingsOverlay";
@@ -189,7 +188,6 @@ export function AppShell() {
     [activeTabId]
   );
 
-  const hasTabs = openTabs.length > 0;
   const panelTransitionClass = resizingPanel
     ? ""
     : "transition-[width] duration-150 ease-out";
@@ -240,39 +238,6 @@ export function AppShell() {
 
         {/* Center Editor Area */}
         <div className="flex min-w-0 flex-1 flex-col">
-          {/* Tab Bar */}
-          {hasTabs && (
-            <div className="flex shrink-0 items-center border-b border-stone-300/80 bg-white/80 px-2" style={{ height: 36 }}>
-              {openTabs.map((tab) => (
-                <div
-                  key={tab.id}
-                  className={[
-                    "flex items-center gap-1.5 rounded-t-md px-3 py-1 text-sm",
-                    tab.id === activeTabId
-                      ? "bg-surface text-ink"
-                      : "text-stone-500 hover:text-stone-700"
-                  ].join(" ")}
-                  style={{ height: 35, marginBottom: -1 }}
-                >
-                  <button
-                    type="button"
-                    className="max-w-[160px] truncate text-left"
-                    onClick={() => setActiveTabId(tab.id)}
-                  >
-                    {tab.fileName}
-                  </button>
-                  <IconButton
-                    icon="close"
-                    label={`Close ${tab.fileName}`}
-                    className="ml-1"
-                    onClick={() => closeTab(tab.id)}
-                    size="xs"
-                    iconSize={12}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
           <Editor
             openTabs={openTabs}
             activeTabId={activeTabId}

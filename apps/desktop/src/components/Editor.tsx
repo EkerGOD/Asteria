@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { Icon } from "./Icon";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -30,20 +30,23 @@ export function Editor({ openTabs, activeTabId, onCloseTab, onSetActiveTabId }: 
     openTabs.filter((t) => (fileContent[t.id] ?? "") !== (savedContent[t.id] ?? "")).map((t) => t.id),
   );
 
+  const loadedTabIds = useRef<Set<string>>(new Set());
+
   const loadFile = useCallback(async (tab: OpenTab) => {
-    if (tab.id in fileContent) return;
-    setIsLoading(true);
     setError(null);
+    if (loadedTabIds.current.has(tab.id)) return;
+    setIsLoading(true);
     try {
       const text = await readTextFile(tab.filePath);
       setFileContent((prev) => ({ ...prev, [tab.id]: text }));
       setSavedContent((prev) => ({ ...prev, [tab.id]: text }));
+      loadedTabIds.current.add(tab.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not read file");
     } finally {
       setIsLoading(false);
     }
-  }, [fileContent]);
+  }, []);
 
   useEffect(() => {
     if (activeTab) {

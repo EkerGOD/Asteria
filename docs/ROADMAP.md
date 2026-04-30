@@ -20,6 +20,39 @@
 
 ---
 
+## v0.11.2 — Vault 管理与文件树增强
+
+Scope：frontend
+
+状态：planned
+
+约束：
+
+- 不引入第三方文件树库（仅增强现有实现）
+- 不修改后端 API
+- 不修改数据库 schema
+- 删除仓库仅 unlink（从列表移除），不删除磁盘文件
+- 仓库配置目录使用 `.asteria`
+
+解决的问题：
+
+1. [Feature] 文件树不支持多级目录嵌套（文件夹下子文件夹）
+2. [Bug] 重启程序后文件树显示 "Could not read directory"
+3. [Bug + UX] 创建仓库报 "Could not create vault folder"，流程改为 Obsidian 风格（选已有文件夹 → 命名仓库）
+4. [UX] 删除仓库当前可能删除本地文件，改为 unlink（仅从列表移除，保留磁盘所有文件含 `.asteria` 配置）
+
+验收标准：
+
+- [ ] 文件树支持多级目录展开/折叠，文件夹内可嵌套子文件夹
+- [ ] 重启程序后文件树自动恢复，不再显示 "Could not read directory"
+- [ ] 创建仓库：用户选择已有本地文件夹 → 仓库名默认使用文件夹名（可手动修改）→ 注册到 Asteria
+- [ ] 创建仓库不再报 "Could not create vault folder"
+- [ ] 删除仓库仅从列表中移除，磁盘上所有文件（含 `.asteria` 配置目录）完整保留
+- [ ] 用户可重新打开同一文件夹恢复仓库（因 `.asteria` 配置保留）
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+
+---
+
 ## v0.12.0 — Knowledge 核心
 
 Scope：full-stack
