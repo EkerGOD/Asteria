@@ -118,7 +118,11 @@ def test_chat_stream_persists_assistant_message(chat_client: TestClient):
 
 
 def test_chat_stream_error_persists_partial_assistant_message(chat_client: TestClient):
-    _create_provider(chat_client)
+    provider_id = _create_provider(chat_client)
+    chat_client.put(
+        "/api/model-roles/chat",
+        json={"provider_id": provider_id, "model_name": "flash-model"},
+    )
     conversation_id = _create_conversation(chat_client)
     fake_adapter = FakeStreamingAdapter(
         [ChatCompletionChunk(content_delta="partial answer")],
@@ -164,7 +168,7 @@ def test_chat_stream_without_provider_returns_400_and_preserves_user_message(
 
     assert response.status_code == 400
     assert response.json() == {
-        "detail": "No active provider configured. Activate a provider in Settings.",
+        "detail": "No chat model configured. Configure a chat model in Settings > Model Roles.",
     }
     messages = _get_messages(chat_client, conversation_id)
     assert [message["role"] for message in messages] == ["user"]
@@ -187,7 +191,6 @@ def _create_provider(client: TestClient) -> str:
             "name": "Streaming Provider",
             "base_url": "http://localhost:11434/v1",
             "models": ["chat-model", "flash-model"],
-            "is_active": True,
         },
     )
     assert response.status_code == 201

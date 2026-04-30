@@ -11,7 +11,7 @@ import { isAbortError, toErrorMessage } from "../lib/errors";
 type ProviderStatusState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "success"; providerName: string; isActive: boolean; health: ProviderHealthResponse | null }
+  | { status: "success"; providerName: string; health: ProviderHealthResponse | null }
   | { status: "error"; message: string };
 
 export function DiagnosticsPage({ onNavigateToSettings }: { onNavigateToSettings?: () => void }) {
@@ -23,28 +23,26 @@ export function DiagnosticsPage({ onNavigateToSettings }: { onNavigateToSettings
 
     try {
       const providers = await listProviders({ signal });
-      const activeProvider = providers.find((p) => p.is_active);
+      const firstProvider = providers[0];
 
-      if (!activeProvider) {
+      if (!firstProvider) {
         setProviderStatus({
           status: "success",
           providerName: "Unset",
-          isActive: false,
           health: null,
         });
         return;
       }
 
       try {
-        const health = await checkProviderHealth(activeProvider.id);
-        setProviderStatus({ status: "success", providerName: activeProvider.name, isActive: true, health });
+        const health = await checkProviderHealth(firstProvider.id);
+        setProviderStatus({ status: "success", providerName: firstProvider.name, health });
       } catch {
         setProviderStatus({
           status: "success",
-          providerName: activeProvider.name,
-          isActive: true,
+          providerName: firstProvider.name,
           health: {
-            provider_id: activeProvider.id,
+            provider_id: firstProvider.id,
             status: "error",
             message: "Health check failed.",
             latency_ms: null,
@@ -102,11 +100,11 @@ export function DiagnosticsPage({ onNavigateToSettings }: { onNavigateToSettings
         ? "Unavailable"
         : providerStatus.status === "idle"
           ? "Not checked"
-          : providerStatus.health?.status === "ok"
-            ? `${providerStatus.providerName} reachable`
-            : providerStatus.isActive
-              ? `${providerStatus.providerName} unreachable`
-              : "No active provider";
+          : providerStatus.providerName === "Unset"
+            ? "No provider configured"
+            : providerStatus.health?.status === "ok"
+              ? `${providerStatus.providerName} reachable`
+              : `${providerStatus.providerName} unreachable`;
 
   const providerState: StatusState =
     providerStatus.status === "loading"
@@ -115,11 +113,11 @@ export function DiagnosticsPage({ onNavigateToSettings }: { onNavigateToSettings
         ? "error"
         : providerStatus.status === "idle"
           ? "idle"
-          : providerStatus.isActive && providerStatus.health?.status === "ok"
-            ? "success"
-            : providerStatus.isActive
-              ? "error"
-              : "idle";
+          : providerStatus.providerName === "Unset"
+            ? "idle"
+            : providerStatus.health?.status === "ok"
+              ? "success"
+              : "error";
 
   return (
     <Panel title="Diagnostics">
@@ -194,11 +192,11 @@ export function DiagnosticsPage({ onNavigateToSettings }: { onNavigateToSettings
             </div>
           )}
 
-          {providerStatus.status === "success" && !providerStatus.isActive && (
+          {providerStatus.status === "success" && providerStatus.providerName === "Unset" && (
             <div className="mt-3">
               <EmptyState
-                title="No active provider configured."
-                detail="Configure and activate an OpenAI-compatible provider to enable chat and embeddings."
+                title="No provider configured."
+                detail="Configure an OpenAI-compatible provider to enable chat and embeddings."
                 action={
                   onNavigateToSettings
                     ? { label: "Go to Settings", onClick: onNavigateToSettings }

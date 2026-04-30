@@ -11,7 +11,6 @@ type ProviderFormState = {
   api_key: string;
   models: string[];
   timeout_seconds: string;
-  is_active: boolean;
   clear_api_key: boolean;
 };
 
@@ -26,7 +25,6 @@ function createEmptyForm(): ProviderFormState {
     api_key: "",
     models: [""],
     timeout_seconds: DEFAULT_TIMEOUT_SECONDS,
-    is_active: false,
     clear_api_key: false,
   };
 }
@@ -39,7 +37,6 @@ function createFormFromProvider(provider: Provider): ProviderFormState {
     api_key: "",
     models: names.length > 0 ? names : [provider.chat_model],
     timeout_seconds: String(provider.timeout_seconds),
-    is_active: provider.is_active,
     clear_api_key: false,
   };
 }
@@ -87,7 +84,6 @@ function buildProviderPayload(
     base_url: form.base_url.trim(),
     models: normalizedModelNames(form.models),
     timeout_seconds: Number(form.timeout_seconds),
-    is_active: form.is_active,
   };
 
   const apiKey = form.api_key.trim();
@@ -307,16 +303,6 @@ export function ProviderFormModal({
             />
 
             <div className="flex flex-wrap gap-4">
-              <label className="flex items-center gap-2 text-sm font-medium text-stone-700">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-stone-300 text-pine focus:ring-pine"
-                  checked={form.is_active}
-                  onChange={(event) => updateFormField("is_active", event.target.checked)}
-                />
-                Active provider
-              </label>
-
               {provider?.has_api_key ? (
                 <label className="flex items-center gap-2 text-sm font-medium text-stone-700">
                   <input

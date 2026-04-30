@@ -30,7 +30,6 @@ class ProviderCreate(BaseModel):
     chat_model: str | None = Field(default=None, min_length=1)
     embedding_model: str | None = Field(default=None, min_length=1)
     timeout_seconds: int = Field(default=60, ge=1, le=300)
-    is_active: bool = False
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("name", "base_url", "chat_model", "embedding_model")
@@ -74,7 +73,6 @@ class ProviderUpdate(BaseModel):
     chat_model: str | None = Field(default=None, min_length=1)
     embedding_model: str | None = Field(default=None, min_length=1)
     timeout_seconds: int | None = Field(default=None, ge=1, le=300)
-    is_active: bool | None = None
     metadata: dict[str, Any] | None = None
 
     @field_validator("name", "base_url", "chat_model", "embedding_model")
@@ -129,7 +127,6 @@ class ProviderResponse(BaseModel):
         validation_alias="model_entries",
     )
     timeout_seconds: int
-    is_active: bool
     metadata: dict[str, Any] = Field(validation_alias="metadata_")
     api_key_ciphertext: str | None = Field(default=None, exclude=True)
     created_at: datetime

@@ -67,7 +67,6 @@ def test_providers_can_be_created_and_listed(provider_client: TestClient):
             "chat_model": "  chat-model  ",
             "embedding_model": "  embedding-model  ",
             "timeout_seconds": 45,
-            "is_active": True,
         },
     )
 
@@ -81,7 +80,6 @@ def test_providers_can_be_created_and_listed(provider_client: TestClient):
     assert [model["name"] for model in created["models"]] == ["chat-model"]
     assert created["embedding_dimension"] == 1536
     assert created["timeout_seconds"] == 45
-    assert created["is_active"] is True
     assert created["has_api_key"] is True
     assert "api_key" not in created
     assert "api_key_ciphertext" not in created
@@ -351,7 +349,6 @@ def test_provider_can_be_retrieved_and_updated(provider_client: TestClient, sett
             "chat_model": "chat-model",
             "embedding_model": "embedding-model",
             "timeout_seconds": 30,
-            "is_active": False,
         },
     )
     provider_id = create_response.json()["id"]
@@ -369,7 +366,6 @@ def test_provider_can_be_retrieved_and_updated(provider_client: TestClient, sett
             "base_url": "http://localhost:11435/v1",
             "metadata": {"updated": True},
             "timeout_seconds": 120,
-            "is_active": True,
         },
     )
 
@@ -379,7 +375,6 @@ def test_provider_can_be_retrieved_and_updated(provider_client: TestClient, sett
     assert updated["name"] == "Updated"
     assert updated["base_url"] == "http://localhost:11435/v1"
     assert updated["timeout_seconds"] == 120
-    assert updated["is_active"] is True
     assert updated["has_api_key"] is True
     assert updated["metadata"] == {"updated": True}
     assert _provider_metadata(provider_client, provider_id) == {"updated": True}
@@ -427,75 +422,6 @@ def test_provider_can_be_deleted(provider_client: TestClient):
     assert response.content == b""
 
     response = provider_client.get(f"/api/providers/{provider_id}")
-
-    assert response.status_code == 404
-
-
-def test_only_one_provider_can_be_active(provider_client: TestClient):
-    a = provider_client.post(
-        "/api/providers",
-        json={
-            "name": "Provider A",
-            "base_url": "http://localhost:11434/v1",
-            "chat_model": "chat-model",
-            "embedding_model": "embedding-model",
-            "is_active": True,
-        },
-    )
-    assert a.status_code == 201
-
-    b = provider_client.post(
-        "/api/providers",
-        json={
-            "name": "Provider B",
-            "base_url": "http://localhost:11435/v1",
-            "chat_model": "chat-model",
-            "embedding_model": "embedding-model",
-            "is_active": True,
-        },
-    )
-    assert b.status_code == 201
-
-    providers = provider_client.get("/api/providers").json()
-    active_providers = [p for p in providers if p["is_active"]]
-    assert len(active_providers) == 1
-
-
-def test_activate_provider_endpoint(provider_client: TestClient):
-    a = provider_client.post(
-        "/api/providers",
-        json={
-            "name": "Provider A",
-            "base_url": "http://localhost:11434/v1",
-            "chat_model": "chat-model",
-            "embedding_model": "embedding-model",
-            "is_active": True,
-        },
-    )
-    b = provider_client.post(
-        "/api/providers",
-        json={
-            "name": "Provider B",
-            "base_url": "http://localhost:11435/v1",
-            "chat_model": "chat-model",
-            "embedding_model": "embedding-model",
-            "is_active": False,
-        },
-    )
-    a_id = a.json()["id"]
-    b_id = b.json()["id"]
-
-    response = provider_client.post(f"/api/providers/{b_id}/activate")
-
-    assert response.status_code == 200
-    assert response.json()["is_active"] is True
-
-    a_after = provider_client.get(f"/api/providers/{a_id}")
-    assert a_after.json()["is_active"] is False
-
-
-def test_activate_missing_provider_returns_404(provider_client: TestClient):
-    response = provider_client.post(f"/api/providers/{uuid4()}/activate")
 
     assert response.status_code == 404
 
@@ -625,7 +551,6 @@ def test_default_values_are_applied(provider_client: TestClient):
     assert response.status_code == 201
     created = response.json()
     assert created["timeout_seconds"] == 60
-    assert created["is_active"] is False
     assert created["has_api_key"] is False
     assert created["provider_type"] == "openai_compatible"
     assert created["embedding_dimension"] == 1536

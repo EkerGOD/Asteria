@@ -28,7 +28,6 @@ from app.services.conversations import get_conversation
 from app.services.embeddings import ActiveProviderNotConfiguredError
 from app.services.messages import append_message
 from app.services.model_roles import resolve_chat_model_role
-from app.services.providers import get_active_provider
 
 
 @dataclass(frozen=True)
@@ -219,10 +218,7 @@ def _resolve_chat_provider(session: Session) -> tuple[AIProvider, str]:
     if configured_chat_role is not None:
         return configured_chat_role
 
-    provider = get_active_provider(session)
-    if provider is None:
-        raise ActiveProviderNotConfiguredError
-    return provider, provider.chat_model
+    raise ActiveProviderNotConfiguredError
 
 
 def _persist_streamed_assistant_message(

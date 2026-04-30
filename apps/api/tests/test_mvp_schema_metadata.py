@@ -103,7 +103,6 @@ def test_mvp_schema_contains_key_indexes():
     } <= index_names("knowledge_embeddings")
     assert {
         "uq_ai_providers_lower_name",
-        "uq_ai_providers_active",
     } <= index_names("ai_providers")
     assert {
         "uq_provider_models_provider_lower_name",

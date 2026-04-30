@@ -159,7 +159,7 @@ def test_create_with_active_provider_generates_embeddings(
     embedding_client: tuple[TestClient, SessionFactory],
 ):
     client, session_factory = embedding_client
-    provider_id = _create_active_provider(client)
+    provider_id = _create_provider(client)
     fake_adapter = FakeEmbeddingAdapter()
 
     with patch(
@@ -190,7 +190,7 @@ def test_create_with_active_provider_failure_rolls_back_knowledge(
     embedding_client: tuple[TestClient, SessionFactory],
 ):
     client, session_factory = embedding_client
-    _create_active_provider(client)
+    _create_provider(client)
     fake_adapter = FakeEmbeddingAdapter(exc=ProviderConnectionError())
 
     with patch(
@@ -219,7 +219,7 @@ def test_explicit_refresh_creates_and_reuses_embeddings(
 ):
     client, session_factory = embedding_client
     knowledge_id = _create_knowledge(client, "Manual refresh content")
-    provider_id = _create_active_provider(client)
+    provider_id = _create_provider(client)
     fake_adapter = FakeEmbeddingAdapter()
 
     with patch(
@@ -257,7 +257,7 @@ def test_content_update_refreshes_stale_embeddings(
     embedding_client: tuple[TestClient, SessionFactory],
 ):
     client, session_factory = embedding_client
-    _create_active_provider(client)
+    _create_provider(client)
     fake_adapter = FakeEmbeddingAdapter()
 
     with patch(
@@ -289,7 +289,7 @@ def test_content_update_with_provider_failure_rolls_back_knowledge_and_embedding
     embedding_client: tuple[TestClient, SessionFactory],
 ):
     client, session_factory = embedding_client
-    _create_active_provider(client)
+    _create_provider(client)
     successful_adapter = FakeEmbeddingAdapter()
 
     with patch(
@@ -332,7 +332,7 @@ def test_content_update_without_active_provider_deletes_stale_embeddings(
     embedding_client: tuple[TestClient, SessionFactory],
 ):
     client, session_factory = embedding_client
-    provider_id = _create_active_provider(client)
+    provider_id = _create_provider(client)
     fake_adapter = FakeEmbeddingAdapter()
 
     with patch(
@@ -347,11 +347,8 @@ def test_content_update_without_active_provider_deletes_stale_embeddings(
     knowledge_id = UUID(create_response.json()["id"])
     assert _embedding_count(session_factory, knowledge_id) == 1
 
-    deactivate_response = client.put(
-        f"/api/providers/{provider_id}",
-        json={"is_active": False},
-    )
-    assert deactivate_response.status_code == 200
+    delete_response = client.delete(f"/api/providers/{provider_id}")
+    assert delete_response.status_code == 204
 
     update_response = client.put(
         f"/api/knowledge-units/{knowledge_id}",
@@ -366,7 +363,7 @@ def test_non_content_update_does_not_refresh_embeddings(
     embedding_client: tuple[TestClient, SessionFactory],
 ):
     client, _session_factory = embedding_client
-    _create_active_provider(client)
+    _create_provider(client)
     fake_adapter = FakeEmbeddingAdapter()
 
     with patch(
@@ -409,7 +406,7 @@ def test_refresh_maps_provider_errors(
 ):
     client, session_factory = embedding_client
     knowledge_id = _create_knowledge(client, "Provider failure content")
-    _create_active_provider(client)
+    _create_provider(client)
     fake_adapter = FakeEmbeddingAdapter(exc=provider_error)
 
     with patch(
@@ -425,7 +422,7 @@ def test_refresh_maps_provider_errors(
     assert _embedding_count(session_factory, UUID(knowledge_id)) == 0
 
 
-def _create_active_provider(client: TestClient) -> str:
+def _create_provider(client: TestClient) -> str:
     response = client.post(
         "/api/providers",
         json={
@@ -433,7 +430,6 @@ def _create_active_provider(client: TestClient) -> str:
             "base_url": "http://localhost:11434/v1",
             "chat_model": "chat-model",
             "embedding_model": "embedding-model",
-            "is_active": True,
         },
     )
     assert response.status_code == 201

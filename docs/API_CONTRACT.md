@@ -24,8 +24,9 @@ Archive sets `archived_at` on the conversation. Hard delete permanently removes 
 POST /api/chat/send
 POST /api/chat/send/stream
 
-Simple non-RAG chat: saves user message, resolves the configured chat model role
-(or falls back to the active provider default), calls the Provider abstraction,
+Simple non-RAG chat: saves user message, resolves the configured chat model role,
+
+calls the Provider abstraction,
 saves assistant message, returns both.
 
 ```json
@@ -72,7 +73,7 @@ saves assistant message, returns both.
 
 `token_usage` and `response_delay_ms` are nullable — unavailable when the provider does not report usage or when an error occurs mid-response.
 No embedding, retrieval, or source references are used.
-Requires an active provider. Returns 400 if no provider is active.
+Requires a configured chat model role. Returns 400 if no chat model is configured.
 Returns 404 if conversation not found.
 
 `POST /api/chat/send/stream` accepts the same request body and returns
@@ -181,7 +182,6 @@ GET /api/providers
 GET /api/providers/{id}
 PUT /api/providers/{id}
 DELETE /api/providers/{id}
-POST /api/providers/{id}/activate
 POST /api/providers/{id}/health-check
 
 Provider responses expose `has_api_key` and must not expose raw `api_key` or `api_key_ciphertext`.
@@ -197,8 +197,7 @@ should not be shown as task-role fields in the Provider UI.
   "base_url": "https://api.deepseek.example/v1",
   "api_key": "sk-...",
   "models": ["deepseek-v4-pro", "deepseek-v4-flash"],
-  "timeout_seconds": 60,
-  "is_active": true
+  "timeout_seconds": 60
 }
 
 // Response
@@ -229,7 +228,6 @@ should not be shown as task-role fields in the Provider UI.
     }
   ],
   "timeout_seconds": 60,
-  "is_active": true,
   "metadata": {},
   "has_api_key": true,
   "created_at": "2026-04-30T00:00:00Z",
@@ -248,14 +246,14 @@ Health check responses return:
 }
 ```
 
-Only one provider can be active at a time. Activating one provider deactivates any previously active provider.
+```
 
 ## Search API
 
 POST /api/search/keyword
 POST /api/search/semantic
 
-Semantic search requests generate a query embedding through the active provider, apply optional filters, and return ranked chunks without exposing raw vectors:
+Semantic search requests generate a query embedding through the first configured provider, apply optional filters, and return ranked chunks without exposing raw vectors:
 
 ```json
 {
@@ -304,7 +302,7 @@ Semantic search responses return provider/model metadata and source references:
 POST /api/rag/answer
 
 RAG answer requests save the user message, retrieve relevant chunks through the
-active provider, and generate an assistant message. If `project_id` is omitted,
+configured provider, and generate an assistant message. If `project_id` is omitted,
 retrieval inherits the conversation project. If `project_id` is explicitly
 `null`, retrieval searches across all projects.
 

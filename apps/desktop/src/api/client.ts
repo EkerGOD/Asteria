@@ -177,10 +177,6 @@ export function updateProvider(
   return requestJsonBody<Provider>(`/api/providers/${providerId}`, "PUT", payload, init);
 }
 
-export function activateProvider(providerId: string, init?: RequestInit): Promise<Provider> {
-  return requestJsonBody<Provider>(`/api/providers/${providerId}/activate`, "POST", undefined, init);
-}
-
 export function deleteProvider(providerId: string, init?: RequestInit): Promise<Provider> {
   return requestJsonBody<Provider>(`/api/providers/${providerId}`, "DELETE", undefined, init);
 }

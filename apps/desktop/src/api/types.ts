@@ -25,7 +25,6 @@ export type Provider = {
   embedding_dimension: number;
   models: ProviderModel[];
   timeout_seconds: number;
-  is_active: boolean;
   metadata: Record<string, unknown>;
   has_api_key: boolean;
   created_at: string;
@@ -40,7 +39,6 @@ export type ProviderCreateRequest = {
   chat_model?: string | null;
   embedding_model?: string | null;
   timeout_seconds?: number;
-  is_active?: boolean;
   metadata?: Record<string, unknown>;
 };
 

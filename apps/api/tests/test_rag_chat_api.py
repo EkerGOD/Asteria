@@ -513,7 +513,6 @@ def _create_active_provider(client: TestClient) -> str:
             "base_url": "http://localhost:11434/v1",
             "chat_model": "chat-model",
             "embedding_model": "embedding-model",
-            "is_active": True,
         },
     )
     assert response.status_code == 201

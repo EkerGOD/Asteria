@@ -91,8 +91,8 @@ def hash_embedding_content(
     return sha256(hash_input.encode("utf-8")).hexdigest()
 
 
-def get_active_embedding_provider(session: Session) -> AIProvider | None:
-    statement = select(AIProvider).where(AIProvider.is_active.is_(True)).limit(1)
+def get_embedding_provider(session: Session) -> AIProvider | None:
+    statement = select(AIProvider).order_by(AIProvider.created_at.asc()).limit(1)
     return session.scalar(statement)
 
 
@@ -100,7 +100,7 @@ def refresh_knowledge_embeddings(
     session: Session,
     knowledge: KnowledgeUnit,
 ) -> KnowledgeEmbeddingRefreshSummary:
-    provider = get_active_embedding_provider(session)
+    provider = get_embedding_provider(session)
     if provider is None:
         raise ActiveProviderNotConfiguredError
     try:
@@ -118,7 +118,7 @@ def refresh_knowledge_embeddings_if_configured(
     session: Session,
     knowledge: KnowledgeUnit,
 ) -> KnowledgeEmbeddingRefreshSummary | None:
-    provider = get_active_embedding_provider(session)
+    provider = get_embedding_provider(session)
     if provider is None:
         return None
     return _refresh_knowledge_embeddings_with_provider(session, knowledge, provider)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -51,8 +51,6 @@ def create_provider(
         **data,
     )
     _replace_provider_models(session, provider, model_names)
-    if provider.is_active:
-        _deactivate_all_providers(session)
 
     session.add(provider)
     _commit_provider(session, provider)
@@ -95,9 +93,6 @@ def update_provider(
     if "name" in updates:
         _ensure_name_available(session, updates["name"], exclude_id=provider.id)
 
-    if updates.get("is_active"):
-        _deactivate_all_providers(session)
-
     for field_name, value in updates.items():
         setattr(provider, field_name, value)
 
@@ -124,15 +119,6 @@ def delete_provider(session: Session, provider_id: UUID) -> None:
     provider = get_provider(session, provider_id)
     session.delete(provider)
     session.commit()
-
-
-def activate_provider(session: Session, provider_id: UUID) -> AIProvider:
-    provider = get_provider(session, provider_id)
-    if not provider.is_active:
-        _deactivate_all_providers(session)
-        provider.is_active = True
-        _commit_provider(session, provider)
-    return provider
 
 
 def health_check_provider(
@@ -191,12 +177,6 @@ def health_check_provider(
         )
 
 
-def get_active_provider(session: Session) -> AIProvider | None:
-    return session.scalars(
-        select(AIProvider).where(AIProvider.is_active.is_(True))
-    ).first()
-
-
 def provider_model_names(provider: AIProvider) -> list[str]:
     names = [model.name for model in provider.model_entries]
     if names:
@@ -220,12 +200,6 @@ def _ensure_name_available(
 
     if session.execute(statement).first() is not None:
         raise ProviderNameConflictError
-
-
-def _deactivate_all_providers(session: Session) -> None:
-    session.execute(
-        update(AIProvider).values(is_active=False).where(AIProvider.is_active.is_(True))
-    )
 
 
 def _replace_provider_models(

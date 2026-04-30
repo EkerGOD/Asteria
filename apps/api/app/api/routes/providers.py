@@ -15,7 +15,6 @@ from app.schemas.provider import (
 from app.services.providers import (
     ProviderNameConflictError,
     ProviderNotFoundError,
-    activate_provider,
     create_provider,
     delete_provider,
     get_provider,
@@ -93,22 +92,6 @@ def delete_provider_endpoint(
 ) -> None:
     try:
         delete_provider(session, provider_id)
-    except ProviderNotFoundError as exc:
-        raise _provider_not_found() from exc
-
-
-@router.post(
-    "/{provider_id}/activate",
-    response_model=ProviderResponse,
-)
-def activate_provider_endpoint(
-    provider_id: UUID,
-    session: Session = Depends(get_db_session),
-) -> ProviderResponse:
-    try:
-        return ProviderResponse.model_validate(
-            activate_provider(session, provider_id)
-        )
     except ProviderNotFoundError as exc:
         raise _provider_not_found() from exc
 

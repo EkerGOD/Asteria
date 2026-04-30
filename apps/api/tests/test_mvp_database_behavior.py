@@ -79,7 +79,7 @@ def test_active_project_names_are_unique_case_insensitively(db_session: Session)
         db_session.commit()
 
 
-def test_active_provider_is_unique(db_session: Session):
+def test_multiple_providers_can_be_created(db_session: Session):
     db_session.add_all(
         [
             AIProvider(
@@ -88,7 +88,6 @@ def test_active_provider_is_unique(db_session: Session):
                 base_url="http://localhost:11434/v1",
                 chat_model="chat-model",
                 embedding_model="embedding-model",
-                is_active=True,
             ),
             AIProvider(
                 id=uuid4(),
@@ -96,13 +95,13 @@ def test_active_provider_is_unique(db_session: Session):
                 base_url="http://localhost:11435/v1",
                 chat_model="chat-model",
                 embedding_model="embedding-model",
-                is_active=True,
             ),
         ]
     )
 
-    with pytest.raises(IntegrityError):
-        db_session.commit()
+    db_session.commit()
+    count = db_session.query(AIProvider).count()
+    assert count == 2
 
 
 def test_foreign_key_cascade_and_set_null_behavior(db_session: Session):

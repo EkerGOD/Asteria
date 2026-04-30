@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE_URL } from "../api/config";
 import {
-  activateProvider,
   checkProviderHealth,
   createProvider,
   deleteProvider,
@@ -27,7 +26,7 @@ function chooseSelectedProviderId(providers: Provider[], preferredProviderId?: s
   if (preferredProviderId && providers.some((provider) => provider.id === preferredProviderId)) {
     return preferredProviderId;
   }
-  return providers.find((provider) => provider.is_active)?.id ?? providers[0]?.id ?? null;
+  return providers[0]?.id ?? null;
 }
 
 export function SettingsPage() {
@@ -40,13 +39,11 @@ export function SettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
-  const [activatingProviderId, setActivatingProviderId] = useState<string | null>(null);
   const [checkingProviderId, setCheckingProviderId] = useState<string | null>(null);
   const [healthResults, setHealthResults] = useState<Record<string, ProviderHealthResponse>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const selectedProvider = providers.find((provider) => provider.id === selectedProviderId) ?? null;
-  const activeProvider = providers.find((provider) => provider.is_active) ?? null;
 
   const loadProviderList = useCallback(async (preferredProviderId?: string | null, signal?: AbortSignal) => {
     setLoadStatus("loading");
@@ -115,21 +112,6 @@ export function SettingsPage() {
     }
   }
 
-  async function activateSelectedProvider(provider: Provider) {
-    setActionError(null);
-    setSubmitMessage(null);
-    setActivatingProviderId(provider.id);
-
-    try {
-      const activatedProvider = await activateProvider(provider.id);
-      await loadProviderList(activatedProvider.id);
-    } catch (error) {
-      setActionError(toErrorMessage(error));
-    } finally {
-      setActivatingProviderId(null);
-    }
-  }
-
   async function runHealthCheck(provider: Provider) {
     setActionError(null);
     setCheckingProviderId(provider.id);
@@ -171,7 +153,6 @@ export function SettingsPage() {
             label="Models"
             value={String(providers.reduce((count, provider) => count + provider.models.length, 0))}
           />
-          <Metric label="Active provider" value={activeProvider?.name ?? "Unset"} />
         </div>
       </Panel>
 
@@ -217,11 +198,9 @@ export function SettingsPage() {
               provider={provider}
               isSelected={provider.id === selectedProviderId}
               healthResult={healthResults[provider.id]}
-              activating={activatingProviderId === provider.id}
               checking={checkingProviderId === provider.id}
               onSelect={selectProvider}
               onEdit={startEditing}
-              onActivate={activateSelectedProvider}
               onHealthCheck={runHealthCheck}
               onDelete={(p) => {
                 setSelectedProviderId(p.id);
@@ -260,22 +239,18 @@ function ProviderListItem({
   provider,
   isSelected,
   healthResult,
-  activating,
   checking,
   onSelect,
   onEdit,
-  onActivate,
   onHealthCheck,
   onDelete,
 }: {
   provider: Provider;
   isSelected: boolean;
   healthResult: ProviderHealthResponse | undefined;
-  activating: boolean;
   checking: boolean;
   onSelect: (provider: Provider) => void;
   onEdit: (provider: Provider) => void;
-  onActivate: (provider: Provider) => void;
   onHealthCheck: (provider: Provider) => void;
   onDelete: (provider: Provider) => void;
 }) {
@@ -292,15 +267,6 @@ function ProviderListItem({
             <p className="truncate text-sm font-semibold">{provider.name}</p>
             <p className="mt-1 break-all text-xs text-stone-600">{provider.base_url}</p>
           </div>
-          {provider.is_active ? (
-            <span className="shrink-0 rounded-full bg-pine/10 px-2 py-1 text-xs font-semibold text-pine">
-              Active
-            </span>
-          ) : (
-            <span className="shrink-0 rounded-full bg-stone-100 px-2 py-1 text-xs font-semibold text-stone-600">
-              Idle
-            </span>
-          )}
         </div>
         <dl className="mt-3 grid gap-2 text-xs text-stone-600">
           <div className="flex justify-between gap-3">
@@ -335,16 +301,6 @@ function ProviderListItem({
       ) : null}
 
       <div className="mt-3 flex flex-wrap gap-2">
-        {!provider.is_active ? (
-          <button
-            type="button"
-            className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition hover:border-pine hover:text-pine disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => onActivate(provider)}
-            disabled={activating}
-          >
-            {activating ? "Activating..." : "Activate"}
-          </button>
-        ) : null}
         <button
           type="button"
           className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition hover:border-pine hover:text-pine disabled:cursor-not-allowed disabled:opacity-60"

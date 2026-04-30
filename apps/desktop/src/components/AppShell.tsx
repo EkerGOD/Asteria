@@ -7,6 +7,7 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
+import { ModelRoleProvider } from "../contexts/ModelRoleContext";
 import { VerticalToolbar } from "./VerticalToolbar";
 import { FileBrowser } from "./FileBrowser";
 import { IconButton } from "./IconButton";
@@ -191,7 +192,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     : "transition-[width] duration-150 ease-out";
 
   return (
-    <div className="flex h-screen flex-col bg-surface text-ink">
+    <ModelRoleProvider>
+      <div className="flex h-screen flex-col bg-surface text-ink">
       {/* Main area */}
       <div ref={mainAreaRef} className="flex min-h-0 flex-1">
         {/* Vertical Toolbar */}
@@ -320,7 +322,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           onClose={() => setSettingsOpen(false)}
         />
       )}
-    </div>
+      </div>
+    </ModelRoleProvider>
   );
 }
 

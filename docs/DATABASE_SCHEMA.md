@@ -303,7 +303,6 @@ ai_providers 存储后端拥有的 OpenAI-compatible Provider 配置。
 | `embedding_model` | `text` | 是 | 兼容字段：默认 embedding model；本地 embedding 方案后续替换 |
 | `embedding_dimension` | `integer` | 是 | 默认 embedding dimension，MVP 默认 `1536` |
 | `timeout_seconds` | `integer` | 是 | 请求超时时间，默认 `60` |
-| `is_active` | `boolean` | 是 | 是否为当前 active provider |
 | `metadata` | `jsonb` | 是 | 非 secret 的 Provider 元数据，默认 `{}` |
 | `created_at` | `timestamptz` | 是 | 创建时间，默认 `now()` |
 | `updated_at` | `timestamptz` | 是 | 更新时间，默认 `now()` |
@@ -318,7 +317,6 @@ ai_providers 存储后端拥有的 OpenAI-compatible Provider 配置。
 
 - `id` primary key。
 - `lower(name)` unique index。
-- `is_active = true` 的 partial unique index，确保最多一个 active provider。
 
 约束：
 

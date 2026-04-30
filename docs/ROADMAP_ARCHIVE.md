@@ -297,3 +297,37 @@ Scope：full-stack
 - `_replace_provider_models` 先显式删除旧模型条目并 flush，再插入新条目，消除唯一约束冲突
 - `_commit_provider` 区分 IntegrityError 来源，仅对 name 冲突抛出 ProviderNameConflictError
 - ChatView 输入区 Send 按钮和模型选择器添加 `shrink-0`，模型名称 `truncate` 溢出省略
+
+---
+
+## v0.10.2 — Provider 架构收口与文件空间调研
+
+Scope：full-stack
+
+状态：done
+
+约束：
+
+- 不新增 Provider 类型或 AI 能力
+- 不修改 PRD 定义的架构边界
+- 不实际实现本地 embedding 模型加载
+- 文件空间调研仅产出文档，暂不写代码
+
+解决的问题：
+
+1. [Architecture] Provider 的 `is_active` 机制与 model role 职责重叠，应完全由 model role 决定
+2. [UX] ChatView 模型选择器与 Settings Chat Model Role 未实时同步
+3. [Research] 缺少应用数据目录与本地模型存放方案规划
+
+主要变更：
+
+- 从 Provider 模型、schema、API、UI 中彻底移除 `is_active` 字段
+- 移除 `POST /api/providers/{id}/activate` 端点
+- 移除 `activate_provider`、`get_active_provider`、`_deactivate_all_providers` 服务函数
+- Chat 模型选择 100% 由 chat model role 决定，未配置时后端返回 400，ChatView 引导用户配置
+- 新增 `ModelRoleContext`（React Context），ChatView 和 ModelRolesPage 共享 chat model 状态
+- Chat 模型角色在 ModelRolesPage 中改为 dropdown 自选即存，无需额外 Save 按钮
+- `get_embedding_provider` 改为返回首个 Provider，不再依赖 is_active
+- 新增 `docs/APP_DATA_DIRECTORY.md` 调研报告（Tauri 2 路径 API、平台路径、目录布局、模型存储）
+- 更新 `docs/API_CONTRACT.md`、`docs/DATABASE_SCHEMA.md` 移除 is_active 相关内容
+- 新增 Alembic migration `20260430_0004_remove_is_active_from_ai_providers.py`

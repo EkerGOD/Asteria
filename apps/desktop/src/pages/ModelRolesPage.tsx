@@ -1,101 +1,51 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  listModelRoles,
-  listProviders,
-  upsertModelRole,
-} from "../api/client";
-import type {
-  ModelRoleUpsertRequest,
-  Provider,
-} from "../api/types";
+import { useCallback, useEffect, useState } from "react";
+import { listModelRoles, upsertModelRole } from "../api/client";
+import type { ModelRoleUpsertRequest } from "../api/types";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBox } from "../components/FormFields";
 import { Panel } from "../components/Panel";
+import { useModelRole } from "../contexts/ModelRoleContext";
 import { isAbortError, toErrorMessage, type LoadStatus } from "../lib/errors";
 import { inputClassName } from "../lib/style";
-import { providerModelNames } from "../lib/provider";
-
-type ProviderModelOption = {
-  value: string;
-  provider_id: string;
-  provider_name: string;
-  model_name: string;
-};
 
 const LOCAL_EMBEDDING_DEFAULT = "bge-m3";
 const LOCAL_EMBEDDING_DIMENSION_DEFAULT = "1024";
-const OPTION_SEPARATOR = "\u001f";
+const OPTION_SEPARATOR = "\x1f";
 
 function optionValue(providerId: string, modelName: string): string {
   return `${providerId}${OPTION_SEPARATOR}${modelName}`;
 }
 
-function providerModelOptions(providers: Provider[]): ProviderModelOption[] {
-  return providers.flatMap((provider) => {
-    const modelNames = providerModelNames(provider);
-
-    return modelNames.map((modelName) => ({
-      value: optionValue(provider.id, modelName),
-      provider_id: provider.id,
-      provider_name: provider.name,
-      model_name: modelName,
-    }));
-  });
-}
-
 export function ModelRolesPage() {
-  const [providers, setProviders] = useState<Provider[]>([]);
+  const ctx = useModelRole();
   const [loadStatus, setLoadStatus] = useState<LoadStatus>("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [chatProviderId, setChatProviderId] = useState<string | null>(null);
-  const [chatModel, setChatModel] = useState("");
   const [embeddingModel, setEmbeddingModel] = useState(LOCAL_EMBEDDING_DEFAULT);
   const [embeddingDimension, setEmbeddingDimension] = useState(
     LOCAL_EMBEDDING_DIMENSION_DEFAULT,
   );
 
-  const [saving, setSaving] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  const availableModels = useMemo(() => providerModelOptions(providers), [providers]);
-  const selectedChatOption = chatProviderId
-    ? optionValue(chatProviderId, chatModel)
+  const selectedChatOption = ctx.chatProviderId
+    ? optionValue(ctx.chatProviderId, ctx.chatModel)
     : "";
 
-  const loadData = useCallback(async (signal?: AbortSignal) => {
+  const loadEmbeddingRole = useCallback(async (signal?: AbortSignal) => {
     setLoadStatus("loading");
     setLoadError(null);
     try {
-      const [loadedProviders, loadedRoles] = await Promise.all([
-        listProviders({ signal }),
-        listModelRoles({ signal }),
-      ]);
-      const nextOptions = providerModelOptions(loadedProviders);
-      const chatRole = loadedRoles.find((role) => role.role_type === "chat");
-      const embeddingRole = loadedRoles.find((role) => role.role_type === "embedding");
-      const chatRoleOption =
-        chatRole?.provider_id
-          ? nextOptions.find(
-              (option) =>
-                option.provider_id === chatRole.provider_id &&
-                option.model_name === chatRole.model_name,
-            )
-          : null;
-      const fallbackChatOption = chatRoleOption ?? nextOptions[0] ?? null;
-
-      setProviders(loadedProviders);
-      setChatProviderId(fallbackChatOption?.provider_id ?? null);
-      setChatModel(fallbackChatOption?.model_name ?? "");
-
+      const roles = await listModelRoles({ signal });
+      const embeddingRole = roles.find((role) => role.role_type === "embedding");
       if (embeddingRole) {
         setEmbeddingModel(embeddingRole.model_name);
         if (embeddingRole.embedding_dimension) {
           setEmbeddingDimension(String(embeddingRole.embedding_dimension));
         }
       }
-
       setLoadStatus("success");
     } catch (error) {
       if (isAbortError(error)) return;
@@ -106,50 +56,46 @@ export function ModelRolesPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void loadData(controller.signal);
+    void loadEmbeddingRole(controller.signal);
     return () => controller.abort();
-  }, [loadData]);
+  }, [loadEmbeddingRole]);
 
-  const handleChatSelection = (value: string) => {
-    const option = availableModels.find((item) => item.value === value);
-    setChatProviderId(option?.provider_id ?? null);
-    setChatModel(option?.model_name ?? "");
+  const handleChatChange = (value: string) => {
+    const parts = value.split(OPTION_SEPARATOR);
+    if (parts.length === 2) {
+      void ctx.setChatModel(parts[0], parts[1]);
+    }
   };
 
-  const handleSave = async (roleType: "chat" | "embedding") => {
-    setSaving(roleType);
+  const handleSaveEmbedding = async () => {
+    setSaving(true);
     setSaveError(null);
     setSaveMessage(null);
 
-    const payload = buildRolePayload(
-      roleType,
-      chatProviderId,
-      chatModel,
-      embeddingModel,
-      embeddingDimension,
-    );
-
-    if (!payload) {
-      setSaveError(
-        roleType === "chat"
-          ? "Select a provider model before saving."
-          : "Local embedding model name is required.",
-      );
-      setSaving(null);
+    const modelName = embeddingModel.trim();
+    if (!modelName) {
+      setSaveError("Local embedding model name is required.");
+      setSaving(false);
       return;
     }
 
+    const payload: ModelRoleUpsertRequest = {
+      provider_id: null,
+      model_name: modelName,
+      embedding_dimension: Number(embeddingDimension) || null,
+    };
+
     try {
-      await upsertModelRole(roleType, payload);
-      setSaveMessage(`${roleType === "chat" ? "Chat" : "Embedding"} role saved.`);
+      await upsertModelRole("embedding", payload);
+      setSaveMessage("Embedding role saved.");
     } catch (error) {
       setSaveError(toErrorMessage(error));
     } finally {
-      setSaving(null);
+      setSaving(false);
     }
   };
 
-  if (loadStatus === "loading") {
+  if (ctx.isLoading || loadStatus === "loading") {
     return (
       <div className="flex items-center justify-center py-12 text-sm text-stone-500">
         Loading...
@@ -157,8 +103,8 @@ export function ModelRolesPage() {
     );
   }
 
-  if (loadStatus === "error") {
-    return <ErrorBox message={loadError ?? "Failed to load data."} />;
+  if (ctx.error || loadStatus === "error") {
+    return <ErrorBox message={ctx.error ?? loadError ?? "Failed to load data."} />;
   }
 
   return (
@@ -170,7 +116,7 @@ export function ModelRolesPage() {
       )}
       {saveError && <ErrorBox message={saveError} />}
 
-      {providers.length === 0 && (
+      {ctx.availableModels.length === 0 && (
         <EmptyState
           title="No providers configured."
           detail="Add a provider in the Providers tab before configuring chat."
@@ -190,27 +136,22 @@ export function ModelRolesPage() {
               id="chat-provider-model"
               className={inputClassName()}
               value={selectedChatOption}
-              onChange={(event) => handleChatSelection(event.target.value)}
-              disabled={availableModels.length === 0}
+              onChange={(event) => handleChatChange(event.target.value)}
+              disabled={ctx.availableModels.length === 0}
             >
-              {availableModels.length === 0 ? (
+              {ctx.availableModels.length === 0 ? (
                 <option value="">No provider models available</option>
               ) : null}
-              {availableModels.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.model_name} ({option.provider_name})
+              {ctx.availableModels.map((m) => (
+                <option key={optionValue(m.provider_id, m.model_name)} value={optionValue(m.provider_id, m.model_name)}>
+                  {m.model_name} ({m.provider_name})
                 </option>
               ))}
             </select>
+            {!ctx.chatModel && ctx.availableModels.length > 0 && (
+              <p className="mt-1 text-xs text-stone-500">Select a model to use for chat.</p>
+            )}
           </div>
-          <button
-            type="button"
-            className="rounded-lg bg-pine px-4 py-2 text-sm font-semibold text-white transition hover:bg-pine/90 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => void handleSave("chat")}
-            disabled={saving !== null || availableModels.length === 0}
-          >
-            {saving === "chat" ? "Saving..." : "Save Chat Role"}
-          </button>
         </div>
       </Panel>
 
@@ -254,41 +195,13 @@ export function ModelRolesPage() {
           <button
             type="button"
             className="rounded-lg bg-pine px-4 py-2 text-sm font-semibold text-white transition hover:bg-pine/90 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => void handleSave("embedding")}
-            disabled={saving !== null}
+            onClick={() => void handleSaveEmbedding()}
+            disabled={saving}
           >
-            {saving === "embedding" ? "Saving..." : "Save Embedding Role"}
+            {saving ? "Saving..." : "Save Embedding Role"}
           </button>
         </div>
       </Panel>
     </div>
   );
-}
-
-function buildRolePayload(
-  roleType: "chat" | "embedding",
-  chatProviderId: string | null,
-  chatModel: string,
-  embeddingModel: string,
-  embeddingDimension: string,
-): ModelRoleUpsertRequest | null {
-  if (roleType === "chat") {
-    if (!chatProviderId || !chatModel.trim()) {
-      return null;
-    }
-    return {
-      provider_id: chatProviderId,
-      model_name: chatModel.trim(),
-    };
-  }
-
-  const modelName = embeddingModel.trim();
-  if (!modelName) {
-    return null;
-  }
-  return {
-    provider_id: null,
-    model_name: modelName,
-    embedding_dimension: Number(embeddingDimension) || null,
-  };
 }

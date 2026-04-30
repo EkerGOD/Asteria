@@ -9,15 +9,12 @@ import {
   deleteConversation,
   listConversations,
   listMessages,
-  listModelRoles,
-  listProviders,
   sendChatStream,
   updateConversation,
-  upsertModelRole,
 } from "../api/client";
 import type { Conversation, Message, TokenUsage } from "../api/types";
 import { readMessageDisplayConfig } from "../store/messageDisplay";
-import { providerModelNames } from "../lib/provider";
+import { useModelRole } from "../contexts/ModelRoleContext";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EmptyState } from "./EmptyState";
 import { Icon } from "./Icon";
@@ -56,8 +53,7 @@ export function ChatView({
   const abortRef = useRef<AbortController | null>(null);
   const [messageMeta, setMessageMeta] = useState<Map<string, { token_usage?: TokenUsage; response_delay_ms?: number }>>(new Map());
 
-  const [availableModels, setAvailableModels] = useState<Array<{ provider_id: string; provider_name: string; model_name: string }>>([]);
-  const [activeChatModel, setActiveChatModel] = useState<string>("");
+  const { availableModels, chatModel: activeChatModel, setChatModel } = useModelRole();
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -138,34 +134,6 @@ export function ChatView({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpenId]);
 
-  // Fetch available chat models and current model role
-  useEffect(() => {
-    void (async () => {
-      try {
-        const [providers, roles] = await Promise.all([listProviders(), listModelRoles()]);
-        const models = providers
-          .flatMap((provider) => {
-            const modelNames = providerModelNames(provider);
-
-            return modelNames.map((modelName) => ({
-              provider_id: provider.id,
-              provider_name: provider.name,
-              model_name: modelName,
-            }));
-          });
-        setAvailableModels(models);
-        const chatRole = roles.find((r) => r.role_type === "chat");
-        if (chatRole) {
-          setActiveChatModel(chatRole.model_name);
-        } else if (models.length > 0) {
-          setActiveChatModel(models[0].model_name);
-        }
-      } catch {
-        // Model list is best-effort; degrade gracefully.
-      }
-    })();
-  }, []);
-
   // Close model dropdown on outside click
   useEffect(() => {
     if (!modelDropdownOpen) return;
@@ -180,12 +148,7 @@ export function ChatView({
 
   const handleModelSwitch = async (providerId: string, modelName: string) => {
     setModelDropdownOpen(false);
-    try {
-      await upsertModelRole("chat", { provider_id: providerId, model_name: modelName });
-      setActiveChatModel(modelName);
-    } catch {
-      // Switch failed; keep current model.
-    }
+    await setChatModel(providerId, modelName);
   };
 
   // Auto-resize textarea

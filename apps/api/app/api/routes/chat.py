@@ -30,7 +30,7 @@ def chat_send_endpoint(
     except ActiveProviderNotConfiguredError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No active provider configured. Activate a provider in Settings.",
+            detail="No chat model configured. Configure a chat model in Settings > Model Roles.",
         )
     token_usage = (
         TokenUsageSchema(**vars(result.token_usage))
@@ -64,7 +64,7 @@ def chat_send_stream_endpoint(
     except ActiveProviderNotConfiguredError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No active provider configured. Activate a provider in Settings.",
+            detail="No chat model configured. Configure a chat model in Settings > Model Roles.",
         )
 
     return StreamingResponse(

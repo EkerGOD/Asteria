@@ -282,7 +282,7 @@ def serve_provider(args: argparse.Namespace) -> None:
 def run_smoke_test(args: argparse.Namespace) -> None:
     client = ApiClient(args.api_base_url, args.timeout_seconds)
     created: dict[str, str] = {}
-    previous_active_provider_id: str | None = None
+    previous_first_provider_id: str | None = None
     suffix = _smoke_suffix()
 
     try:
@@ -297,7 +297,7 @@ def run_smoke_test(args: argparse.Namespace) -> None:
         step("Listing providers to verify database-backed API access")
         providers = client.get("/api/providers")
         require(isinstance(providers, list), "Provider list response was not a list.")
-        previous_active_provider_id = _active_provider_id(providers)
+        previous_first_provider_id = _first_provider_id(providers)
 
         step("Creating smoke project")
         project = client.post(
@@ -319,12 +319,10 @@ def run_smoke_test(args: argparse.Namespace) -> None:
                 "chat_model": SMOKE_CHAT_MODEL,
                 "embedding_model": SMOKE_EMBEDDING_MODEL,
                 "timeout_seconds": 15,
-                "is_active": True,
                 "metadata": {"smoke_test": True},
             },
         )
         created["provider_id"] = require_id(provider, "provider")
-        require(provider.get("is_active") is True, "Smoke provider was not active.")
         require(provider.get("has_api_key") is True, "Smoke provider did not store an API key.")
 
         step("Checking provider health through the API")
@@ -427,13 +425,13 @@ def run_smoke_test(args: argparse.Namespace) -> None:
             )
     finally:
         if args.cleanup:
-            cleanup_smoke_resources(client, created, previous_active_provider_id)
+            cleanup_smoke_resources(client, created, previous_first_provider_id)
 
 
 def cleanup_smoke_resources(
     client: ApiClient,
     created: dict[str, str],
-    previous_active_provider_id: str | None,
+    previous_first_provider_id: str | None,
 ) -> None:
     step("Cleaning up smoke resources")
 
@@ -462,14 +460,14 @@ def cleanup_smoke_resources(
         "provider_id",
     )
 
-    if previous_active_provider_id and previous_active_provider_id != created.get("provider_id"):
+    if previous_first_provider_id and previous_first_provider_id != created.get("provider_id"):
         try:
-            client.post(f"/api/providers/{previous_active_provider_id}/activate")
-            print(f"Restored previous active provider: {previous_active_provider_id}")
+            client.post(f"/api/providers/{previous_first_provider_id}/activate")
+            print(f"Restored previous active provider: {previous_first_provider_id}")
         except SmokeError as exc:
             print(
                 "Warning: could not restore previous active provider "
-                f"{previous_active_provider_id}: {exc}",
+                f"{previous_first_provider_id}: {exc}",
                 file=sys.stderr,
             )
 
@@ -504,14 +502,14 @@ def require_id(payload: Any, label: str) -> str:
     return value
 
 
-def _active_provider_id(providers: Any) -> str | None:
-    if not isinstance(providers, list):
+def _first_provider_id(providers: Any) -> str | None:
+    if not isinstance(providers, list) or len(providers) == 0:
         return None
-    for provider in providers:
-        if isinstance(provider, dict) and provider.get("is_active") is True:
-            provider_id = provider.get("id")
-            if isinstance(provider_id, str):
-                return provider_id
+    provider = providers[0]
+    if isinstance(provider, dict):
+        provider_id = provider.get("id")
+        if isinstance(provider_id, str):
+            return provider_id
     return None
 
 

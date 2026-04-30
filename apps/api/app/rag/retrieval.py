@@ -25,7 +25,7 @@ from app.models import (
 from app.schemas.tag import TagResponse
 from app.services.embeddings import (
     ActiveProviderNotConfiguredError,
-    get_active_embedding_provider,
+    get_embedding_provider,
 )
 
 
@@ -71,7 +71,7 @@ def retrieve_relevant_chunks(
     top_k: int = 5,
     min_score: float = 0.0,
 ) -> RetrievalSearchResponse:
-    provider = get_active_embedding_provider(session)
+    provider = get_embedding_provider(session)
     if provider is None:
         raise ActiveProviderNotConfiguredError
 

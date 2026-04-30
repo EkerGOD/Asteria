@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, Integer, Text, Uuid, func, text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, Text, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -57,12 +57,6 @@ class AIProvider(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         server_default=text("60"),
         default=60,
     )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        server_default=text("false"),
-        default=False,
-    )
     metadata_: Mapped[dict[str, Any]] = mapped_column(
         "metadata",
         JSONBType,
@@ -91,13 +85,6 @@ class AIProvider(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 Index("uq_ai_providers_lower_name", func.lower(AIProvider.name), unique=True)
-Index(
-    "uq_ai_providers_active",
-    AIProvider.is_active,
-    unique=True,
-    postgresql_where=AIProvider.is_active.is_(True),
-    sqlite_where=AIProvider.is_active.is_(True),
-)
 
 
 class ProviderModel(UUIDPrimaryKeyMixin, TimestampMixin, Base):
