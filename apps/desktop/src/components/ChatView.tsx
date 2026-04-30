@@ -9,10 +9,14 @@ import {
   deleteConversation,
   listConversations,
   listMessages,
+  listModelRoles,
+  listProviders,
   sendChat,
   updateConversation,
+  upsertModelRole,
 } from "../api/client";
-import type { Conversation, Message } from "../api/types";
+import type { Conversation, Message, TokenUsage } from "../api/types";
+import { readMessageDisplayConfig } from "../store/messageDisplay";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EmptyState } from "./EmptyState";
 import { Icon } from "./Icon";
@@ -48,6 +52,12 @@ export function ChatView({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const [messageMeta, setMessageMeta] = useState<Map<string, { token_usage?: TokenUsage; response_delay_ms?: number }>>(new Map());
+
+  const [availableModels, setAvailableModels] = useState<Array<{ provider_id: string; provider_name: string; model_name: string }>>([]);
+  const [activeChatModel, setActiveChatModel] = useState<string>("");
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ y: number; height: number } | null>(null);
@@ -121,6 +131,53 @@ export function ChatView({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpenId]);
 
+  // Fetch available chat models and current model role
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [providers, roles] = await Promise.all([listProviders(), listModelRoles()]);
+        const models = providers
+          .filter((p) => p.chat_model)
+          .map((p) => ({
+            provider_id: p.id,
+            provider_name: p.name,
+            model_name: p.chat_model,
+          }));
+        setAvailableModels(models);
+        const chatRole = roles.find((r) => r.role_type === "chat");
+        if (chatRole) {
+          setActiveChatModel(chatRole.model_name);
+        } else if (models.length > 0) {
+          setActiveChatModel(models[0].model_name);
+        }
+      } catch {
+        // Model list is best-effort; degrade gracefully.
+      }
+    })();
+  }, []);
+
+  // Close model dropdown on outside click
+  useEffect(() => {
+    if (!modelDropdownOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
+        setModelDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [modelDropdownOpen]);
+
+  const handleModelSwitch = async (providerId: string, modelName: string) => {
+    setModelDropdownOpen(false);
+    try {
+      await upsertModelRole("chat", { provider_id: providerId, model_name: modelName });
+      setActiveChatModel(modelName);
+    } catch {
+      // Switch failed; keep current model.
+    }
+  };
+
   // Auto-resize textarea
   useEffect(() => {
     const el = textareaRef.current;
@@ -193,6 +250,14 @@ export function ChatView({
           .filter((m) => m.id !== optimisticMessage.id)
           .concat([result.user_message, result.assistant_message]),
       );
+      setMessageMeta((prev) => {
+        const next = new Map(prev);
+        next.set(result.assistant_message.id, {
+          token_usage: result.token_usage ?? undefined,
+          response_delay_ms: result.response_delay_ms ?? undefined,
+        });
+        return next;
+      });
       setConversations((prev) =>
         prev.map((c) =>
           c.id === activeConversationId ? { ...c, updated_at: result.assistant_message.created_at } : c,
@@ -387,15 +452,20 @@ export function ChatView({
                 </div>
               )}
 
-              {messages.map((msg) => (
-                <MessageBubble
-                  key={msg.id}
-                  message={msg}
-                  onCopy={(content) => void handleCopy(content)}
-                  onEdit={(content) => handleEditMessage(content)}
-                  onRetry={() => handleRetry()}
-                />
-              ))}
+              {(() => {
+                const displayConfig = readMessageDisplayConfig();
+                return messages.map((msg) => (
+                  <MessageBubble
+                    key={msg.id}
+                    message={msg}
+                    meta={messageMeta.get(msg.id)}
+                    displayConfig={displayConfig}
+                    onCopy={(content) => void handleCopy(content)}
+                    onEdit={(content) => handleEditMessage(content)}
+                    onRetry={() => handleRetry()}
+                  />
+                ));
+              })()}
 
               {sending && (
                 <div className="mb-2 flex items-center gap-2 text-sm text-stone-400">
@@ -464,14 +534,49 @@ export function ChatView({
               )}
             </div>
           </div>
-          <button
-            type="button"
-            className="rounded-md bg-pine px-3 py-1 text-xs font-medium text-white hover:bg-pine/90 disabled:opacity-50"
-            onClick={() => void handleSend()}
-            disabled={!chatInputValue.trim() || sending || !activeConversationId}
-          >
-            {sending ? "Sending..." : "Send"}
-          </button>
+          <div className="flex items-center gap-1.5">
+            {/* Model switcher */}
+            {availableModels.length > 0 && (
+              <div className="relative" ref={modelDropdownRef}>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-stone-500 hover:bg-stone-100 disabled:opacity-50"
+                  onClick={() => setModelDropdownOpen((v) => !v)}
+                  disabled={sending || !activeConversationId}
+                  title={activeChatModel || "Select model"}
+                >
+                  <span className="max-w-[100px] truncate">{activeChatModel || "Model"}</span>
+                  <Icon name="chevronDown" size={10} />
+                </button>
+                {modelDropdownOpen && (
+                  <div className="absolute bottom-full right-0 mb-1 rounded-md border border-stone-200 bg-white shadow-lg z-30 py-1 min-w-[180px] max-h-[200px] overflow-auto">
+                    {availableModels.map((m) => (
+                      <button
+                        key={`${m.provider_id}:${m.model_name}`}
+                        type="button"
+                        className={[
+                          "block w-full text-left px-3 py-1.5 text-xs hover:bg-stone-100",
+                          m.model_name === activeChatModel ? "text-pine font-medium" : "text-stone-700",
+                        ].join(" ")}
+                        onClick={() => handleModelSwitch(m.provider_id, m.model_name)}
+                      >
+                        <span className="block truncate">{m.model_name}</span>
+                        <span className="block text-[10px] text-stone-400">{m.provider_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <button
+              type="button"
+              className="rounded-md bg-pine px-3 py-1 text-xs font-medium text-white hover:bg-pine/90 disabled:opacity-50"
+              onClick={() => void handleSend()}
+              disabled={!chatInputValue.trim() || sending || !activeConversationId}
+            >
+              {sending ? "Sending..." : "Send"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -620,17 +725,42 @@ export function ChatView({
 
 function MessageBubble({
   message,
+  meta,
+  displayConfig,
   onCopy,
   onEdit,
   onRetry,
 }: {
   message: Message;
+  meta?: { token_usage?: TokenUsage; response_delay_ms?: number };
+  displayConfig: ReturnType<typeof readMessageDisplayConfig>;
   onCopy?: (content: string) => void;
   onEdit?: (content: string) => void;
   onRetry?: () => void;
 }) {
   const isUser = message.role === "user";
   const isOptimistic = message.id.startsWith("optimistic-");
+
+  const metaItems: string[] = [];
+  if (!isUser && !isOptimistic) {
+    if (displayConfig.show_model_name && message.model) {
+      metaItems.push(message.model);
+    }
+    if (displayConfig.show_timestamp) {
+      metaItems.push(
+        new Date(message.created_at).toLocaleTimeString(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
+    }
+    if (displayConfig.show_token_count && message.token_count != null) {
+      metaItems.push(`${message.token_count} tokens`);
+    }
+    if (displayConfig.show_response_delay && meta?.response_delay_ms != null) {
+      metaItems.push(`${(meta.response_delay_ms / 1000).toFixed(1)}s`);
+    }
+  }
 
   return (
     <div className={["mb-2 flex", isUser ? "justify-end" : "justify-start"].join(" ")}>
@@ -676,8 +806,8 @@ function MessageBubble({
           )}
         </div>
 
-        {message.model && !isUser && (
-          <p className="mt-1 text-right text-xs opacity-60">{message.model}</p>
+        {metaItems.length > 0 && (
+          <p className="mt-1 text-right text-xs opacity-60">{metaItems.join(" · ")}</p>
         )}
       </div>
     </div>

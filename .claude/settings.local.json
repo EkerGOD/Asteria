@@ -1,8 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3 -c \"import json; f=open\\('D:/Documents/Personal-Knowledge-Base/1_Project/Asteria/.claude/settings.json'\\); d=json.load\\(f\\); print\\('Valid JSON'\\); print\\(json.dumps\\(d, indent=2, ensure_ascii=False\\)\\)\")",
-      "Bash(python -c \"import json; f=open\\('D:/Documents/Personal-Knowledge-Base/1_Project/Asteria/.claude/settings.json'\\); d=json.load\\(f\\); print\\('Valid JSON'\\)\")",
       "Bash(python -m pytest -v)",
       "Bash(python -m pytest tests/test_conversations_api.py -v)",
       "Bash(python -m pytest tests/test_conversations_api.py::test_conversations_can_be_filtered_by_project tests/test_conversations_api.py::test_conversation_can_have_metadata -v --tb=long)",
@@ -13,10 +11,23 @@
       "Bash(python -m pytest tests/test_providers_api.py -v --tb=line)",
       "Bash(python -m pytest -v --tb=line)",
       "Bash(python -m pytest tests/ -v)",
-      "Bash(npm run *)",
+      "Bash(npm install *)",
       "Bash(git commit -m ' *)",
       "Bash(git add *)",
-      "Bash(powershell *)"
+      "Bash(powershell *)",
+      "Bash(git push *)",
+      "Bash(ping -n 1 github.com)",
+      "Bash(ssh -o ConnectTimeout=10 -T git@github.com)",
+      "Bash(git remote *)",
+      "Bash(pytest --timeout=30 -x -q)",
+      "Bash(pytest -x -q)",
+      "Bash(alembic revision *)",
+      "Bash(alembic upgrade *)",
+      "Bash(python -m pytest tests/ -x -q)",
+      "Bash(node -e \"console.log\\(require\\('react-markdown/package.json'\\).version\\)\")",
+      "Bash(grep \"prose\" tailwind.config.*)",
+      "Bash(ls node_modules/@tailwindcss/typography)",
+      "Bash(python -m pytest -q)"
     ]
   }
 }

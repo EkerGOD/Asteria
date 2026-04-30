@@ -196,6 +196,12 @@ export type RAGAnswerResponse = {
   embedding_dimension: number;
 };
 
+export type TokenUsage = {
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  total_tokens: number | null;
+};
+
 export type ChatSendRequest = {
   conversation_id: string;
   content: string;
@@ -206,6 +212,8 @@ export type ChatSendResponse = {
   assistant_message: Message;
   provider_id: string;
   chat_model: string;
+  token_usage: TokenUsage | null;
+  response_delay_ms: number | null;
 };
 
 export type ModelRole = {

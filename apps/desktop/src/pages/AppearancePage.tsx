@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import type { ResolvedTheme, ThemePreference } from "../hooks/useThemePreference";
+import { useSavedMessage } from "../hooks/useSavedMessage";
 import { Panel } from "../components/Panel";
 
 const options: Array<{
@@ -33,16 +33,7 @@ export function AppearancePage({
   resolvedTheme: ResolvedTheme;
   onPreferenceChange: (preference: ThemePreference) => void;
 }) {
-  const [savedMessage, setSavedMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!savedMessage) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => setSavedMessage(null), 2200);
-    return () => window.clearTimeout(timeout);
-  }, [savedMessage]);
+  const { savedMessage, setSavedMessage } = useSavedMessage();
 
   function selectPreference(nextPreference: ThemePreference) {
     onPreferenceChange(nextPreference);

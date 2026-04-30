@@ -3,10 +3,11 @@ import { SettingsPage } from "../pages/SettingsPage";
 import { DiagnosticsPage } from "../pages/DiagnosticsPage";
 import { AppearancePage } from "../pages/AppearancePage";
 import { ModelRolesPage } from "../pages/ModelRolesPage";
+import { MessageDisplayPage } from "../pages/MessageDisplayPage";
 import type { ResolvedTheme, ThemePreference } from "../hooks/useThemePreference";
 import { Icon } from "./Icon";
 
-type SettingsTab = "providers" | "model-roles" | "appearance" | "diagnostics";
+type SettingsTab = "providers" | "model-roles" | "appearance" | "diagnostics" | "message-display";
 
 export function SettingsOverlay({
   themePreference,
@@ -65,6 +66,12 @@ export function SettingsOverlay({
               Appearance
             </SettingsTabButton>
             <SettingsTabButton
+              active={activeTab === "message-display"}
+              onClick={() => setActiveTab("message-display")}
+            >
+              Display
+            </SettingsTabButton>
+            <SettingsTabButton
               active={activeTab === "diagnostics"}
               onClick={() => setActiveTab("diagnostics")}
             >
@@ -83,6 +90,7 @@ export function SettingsOverlay({
                 onPreferenceChange={onThemePreferenceChange}
               />
             )}
+            {activeTab === "message-display" && <MessageDisplayPage />}
             {activeTab === "diagnostics" && (
               <DiagnosticsPage onNavigateToSettings={() => setActiveTab("providers")} />
             )}

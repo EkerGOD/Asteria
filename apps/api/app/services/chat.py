@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from uuid import UUID, uuid4
 
 from sqlalchemy.orm import Session
 
 from app.ai import ChatCompletionMessage, ChatCompletionRequest, OpenAICompatibleProviderAdapter
+from app.ai.types import TokenUsage
 from app.core.config import Settings
 from app.models import Message
 from app.schemas.message import MessageCreate
@@ -22,6 +24,8 @@ class ChatSendResult:
     assistant_message: Message
     provider_id: UUID
     chat_model: str
+    token_usage: TokenUsage | None = None
+    response_delay_ms: int | None = None
 
 
 def send_message(
@@ -42,6 +46,7 @@ def send_message(
         raise ActiveProviderNotConfiguredError
 
     adapter = OpenAICompatibleProviderAdapter.from_provider(provider, settings)
+    start_time = time.monotonic()
     chat_result = adapter.create_chat_completion(
         ChatCompletionRequest(
             messages=[
@@ -49,6 +54,7 @@ def send_message(
             ]
         )
     )
+    response_delay_ms = int((time.monotonic() - start_time) * 1000)
 
     assistant_message = Message(
         id=uuid4(),
@@ -68,4 +74,6 @@ def send_message(
         assistant_message=assistant_message,
         provider_id=provider.id,
         chat_model=chat_result.model,
+        token_usage=chat_result.usage,
+        response_delay_ms=response_delay_ms,
     )

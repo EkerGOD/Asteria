@@ -57,10 +57,17 @@ Simple non-RAG chat: saves user message, calls active provider chat model, saves
     "created_at": "2026-04-30T00:00:00Z"
   },
   "provider_id": "uuid",
-  "chat_model": "chat-model"
+  "chat_model": "chat-model",
+  "token_usage": {
+    "prompt_tokens": 12,
+    "completion_tokens": 30,
+    "total_tokens": 42
+  },
+  "response_delay_ms": 1234
 }
 ```
 
+`token_usage` and `response_delay_ms` are nullable — unavailable when the provider does not report usage or when an error occurs mid-response.
 No embedding, retrieval, or source references are used.
 Requires an active provider. Returns 400 if no provider is active.
 Returns 404 if conversation not found.
