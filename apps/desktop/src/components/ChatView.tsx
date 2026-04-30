@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import "highlight.js/styles/github.css";
 import {
   archiveConversation,
   createConversation,
@@ -38,12 +42,17 @@ export function ChatView({
   const [retryFlag, setRetryFlag] = useState(0);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const isInitialScrollRef = useRef(true);
+  const prevMessageCountRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ y: number; height: number } | null>(null);
+
+  const MAX_TEXTAREA_HEIGHT = 200;
 
   const [historyHeight, setHistoryHeight] = useState(160);
   const [dragging, setDragging] = useState(false);
@@ -100,18 +109,40 @@ export function ChatView({
     }
   }, [activeConversationId, fetchMessages]);
 
-  // Reset scroll flag when conversation changes
+  // Close conversation menu on outside click
   useEffect(() => {
-    isInitialScrollRef.current = true;
-  }, [activeConversationId]);
+    if (!menuOpenId) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpenId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpenId]);
 
-  // Auto-scroll to bottom — instant for initial load, smooth for new messages
+  // Auto-resize textarea
   useEffect(() => {
-    if (messages.length === 0) return;
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const scrollHeight = el.scrollHeight;
+    el.style.height = `${Math.min(scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
+    el.style.overflowY = scrollHeight > MAX_TEXTAREA_HEIGHT ? "auto" : "hidden";
+  }, [chatInputValue]);
+
+  // Auto-scroll to bottom — instant for initial load, smooth for new messages.
+  // Uses message count delta to detect initial load, avoiding StrictMode race conditions.
+  useEffect(() => {
+    if (messages.length === 0) {
+      prevMessageCountRef.current = 0;
+      return;
+    }
+    const isInitial = prevMessageCountRef.current === 0;
     messagesEndRef.current?.scrollIntoView({
-      behavior: isInitialScrollRef.current ? "instant" : "smooth",
+      behavior: isInitial ? "instant" : "smooth",
     });
-    isInitialScrollRef.current = false;
+    prevMessageCountRef.current = messages.length;
   }, [messages]);
 
   /* ---- actions ---- */
@@ -139,23 +170,60 @@ export function ChatView({
     setChatError(null);
     setSending(true);
 
+    const optimisticMessage: Message = {
+      id: `optimistic-${Date.now()}`,
+      conversation_id: activeConversationId,
+      provider_id: null,
+      role: "user",
+      content: trimmed,
+      model: null,
+      token_count: null,
+      retrieval_metadata: {},
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMessage]);
+
     try {
       const result = await sendChat({
         conversation_id: activeConversationId,
         content: trimmed,
       });
-      setMessages((prev) => [...prev, result.user_message, result.assistant_message]);
+      setMessages((prev) =>
+        prev
+          .filter((m) => m.id !== optimisticMessage.id)
+          .concat([result.user_message, result.assistant_message]),
+      );
       setConversations((prev) =>
         prev.map((c) =>
           c.id === activeConversationId ? { ...c, updated_at: result.assistant_message.created_at } : c,
         ),
       );
     } catch (err) {
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticMessage.id));
       const msg = err instanceof Error ? err.message : "Failed to send message";
       setChatError(msg);
       onChatInputChange(trimmed);
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleCopy = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+    } catch {
+      // Clipboard API may fail in some contexts
+    }
+  };
+
+  const handleEditMessage = (content: string) => {
+    onChatInputChange(content);
+  };
+
+  const handleRetry = () => {
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    if (lastUser) {
+      onChatInputChange(lastUser.content);
     }
   };
 
@@ -320,7 +388,13 @@ export function ChatView({
               )}
 
               {messages.map((msg) => (
-                <MessageBubble key={msg.id} message={msg} />
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  onCopy={(content) => void handleCopy(content)}
+                  onEdit={(content) => handleEditMessage(content)}
+                  onRetry={() => handleRetry()}
+                />
               ))}
 
               {sending && (
@@ -339,8 +413,9 @@ export function ChatView({
       {/* Input area */}
       <div className="shrink-0 border-t border-stone-200 p-2">
         <textarea
-          className="w-full resize-none rounded-md border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine disabled:opacity-50"
-          rows={2}
+          ref={textareaRef}
+          className="w-full resize-none rounded-md border border-stone-300 bg-white px-3 py-2 text-sm placeholder:text-stone-400 focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine disabled:opacity-50 transition-[height] duration-100"
+          rows={1}
           placeholder="Ask anything... @knowledge to reference"
           value={chatInputValue}
           onChange={(e) => onChatInputChange(e.target.value)}
@@ -468,33 +543,52 @@ export function ChatView({
                 ) : (
                   <span className="truncate flex-1">{conv.title}</span>
                 )}
-                <button
-                  type="button"
-                  className="ml-1 hidden rounded p-0.5 text-stone-400 hover:text-stone-600 group-hover:inline"
-                  onClick={(e) => { e.stopPropagation(); startRename(conv); }}
-                  aria-label={`Rename ${conv.title}`}
-                  title="Rename"
-                >
-                  <Icon name="edit" size={12} />
-                </button>
-                <button
-                  type="button"
-                  className="ml-1 hidden rounded p-0.5 text-stone-400 hover:text-red-500 group-hover:inline"
-                  onClick={(e) => { e.stopPropagation(); setDeleteTarget(conv); }}
-                  aria-label={`Delete ${conv.title}`}
-                  title="Delete"
-                >
-                  <Icon name="close" size={12} />
-                </button>
-                <button
-                  type="button"
-                  className="ml-1 hidden rounded p-0.5 text-stone-400 hover:text-amber-600 group-hover:inline"
-                  onClick={(e) => { e.stopPropagation(); setArchiveTarget(conv); }}
-                  aria-label={`Archive ${conv.title}`}
-                  title="Archive"
-                >
-                  <Icon name="archive" size={12} />
-                </button>
+                <div className="relative ml-1">
+                  <button
+                    type="button"
+                    className="hidden rounded p-0.5 text-stone-400 hover:text-stone-600 group-hover:inline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpenId((prev) => (prev === conv.id ? null : conv.id));
+                    }}
+                    aria-label={`Actions for ${conv.title}`}
+                    title="Actions"
+                  >
+                    <Icon name="ellipsis" size={12} />
+                  </button>
+                  {menuOpenId === conv.id && (
+                    <div
+                      ref={menuRef}
+                      className="absolute right-0 top-full z-30 mt-0.5 min-w-[100px] rounded-md border border-stone-200 bg-white py-0.5 shadow-lg"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-2.5 py-1 text-left text-xs text-stone-700 hover:bg-stone-50"
+                        onClick={() => { setMenuOpenId(null); startRename(conv); }}
+                      >
+                        <Icon name="edit" size={12} />
+                        Rename
+                      </button>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-2.5 py-1 text-left text-xs text-stone-700 hover:bg-stone-50"
+                        onClick={() => { setMenuOpenId(null); setArchiveTarget(conv); }}
+                      >
+                        <Icon name="archive" size={12} />
+                        Archive
+                      </button>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-2.5 py-1 text-left text-xs text-red-600 hover:bg-red-50"
+                        onClick={() => { setMenuOpenId(null); setDeleteTarget(conv); }}
+                      >
+                        <Icon name="close" size={12} />
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -524,24 +618,93 @@ export function ChatView({
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({
+  message,
+  onCopy,
+  onEdit,
+  onRetry,
+}: {
+  message: Message;
+  onCopy?: (content: string) => void;
+  onEdit?: (content: string) => void;
+  onRetry?: () => void;
+}) {
   const isUser = message.role === "user";
+  const isOptimistic = message.id.startsWith("optimistic-");
 
   return (
     <div className={["mb-2 flex", isUser ? "justify-end" : "justify-start"].join(" ")}>
       <div
         className={[
-          "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+          "max-w-[85%] rounded-lg px-3 py-2 text-sm group/bubble",
           isUser
             ? "bg-pine text-white"
             : "border border-stone-200 bg-white text-stone-800",
+          isOptimistic ? "opacity-70" : "",
         ].join(" ")}
       >
-        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+        {isUser ? (
+          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+        ) : (
+          <div className="prose prose-sm max-w-none prose-stone prose-headings:mb-1 prose-headings:mt-3 prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-pre:my-2 prose-code:bg-stone-100 prose-code:px-1 prose-code:rounded prose-code:text-xs prose-pre:bg-stone-100 prose-pre:p-3">
+            <Markdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeHighlight]}
+            >
+              {message.content}
+            </Markdown>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div
+          className={[
+            "mt-1 flex items-center gap-0.5",
+            isUser ? "justify-end opacity-0 group-hover/bubble:opacity-100 transition-opacity" : "justify-end",
+          ].join(" ")}
+        >
+          {isUser ? (
+            <>
+              <ActionButton icon="copy" label="Copy" onClick={() => onCopy?.(message.content)} />
+              <ActionButton icon="edit" label="Edit" onClick={() => onEdit?.(message.content)} />
+            </>
+          ) : (
+            <>
+              <ActionButton icon="copy" label="Copy" onClick={() => onCopy?.(message.content)} />
+              <ActionButton icon="refresh" label="Retry" onClick={() => onRetry?.()} />
+            </>
+          )}
+        </div>
+
         {message.model && !isUser && (
           <p className="mt-1 text-right text-xs opacity-60">{message.model}</p>
         )}
       </div>
     </div>
+  );
+}
+
+function ActionButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: import("./Icon").IconName;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="rounded p-0.5 opacity-60 hover:opacity-100 hover:bg-white/15 transition-opacity"
+      onClick={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
+      aria-label={label}
+      title={label}
+    >
+      <Icon name={icon} size={12} />
+    </button>
   );
 }

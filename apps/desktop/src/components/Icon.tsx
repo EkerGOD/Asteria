@@ -11,6 +11,8 @@ const iconClassByName = {
   edit: "codicon-edit",
   close: "codicon-close",
   command: "codicon-terminal-cmd",
+  copy: "codicon-copy",
+  ellipsis: "codicon-ellipsis",
   file: "codicon-file",
   fileAdd: "codicon-file-add",
   fileBrowser: "codicon-layout-sidebar-left",
@@ -21,6 +23,7 @@ const iconClassByName = {
   outline: "codicon-list-tree",
   project: "codicon-project",
   references: "codicon-references",
+  refresh: "codicon-refresh",
   settings: "codicon-settings-gear",
   workspace: "codicon-layout-centered",
 } as const;
