@@ -1,5 +1,61 @@
 # API Contract
 
+## Health & Diagnostics API
+
+GET /health
+
+`GET /health` reports local API status and user-actionable directory
+diagnostics. Directory diagnostics must not require users to manually configure
+environment variables to understand the current data/models paths.
+
+```json
+{
+  "status": "ok",
+  "service": "Asteria API",
+  "version": "0.1.0",
+  "environment": "development",
+  "database_configured": true,
+  "directories": {
+    "app_data": {
+      "status": "defaulted",
+      "path": "C:\\Users\\User\\AppData\\Roaming\\com.asteria.desktop",
+      "source": "default",
+      "configured": false,
+      "exists": false,
+      "writable": true,
+      "message": "The application data directory will be created when Asteria needs it.",
+      "reason": null,
+      "recovery_action": "No manual environment variable is required. Asteria will use the default application data path."
+    },
+    "models": {
+      "status": "defaulted",
+      "path": "C:\\Users\\User\\AppData\\Roaming\\com.asteria.desktop\\models",
+      "source": "derived_from_app_data_dir",
+      "configured": false,
+      "exists": false,
+      "writable": true,
+      "message": "The models directory will be created when Asteria needs it.",
+      "reason": null,
+      "recovery_action": "No manual environment variable is required. Asteria will use the default models path."
+    },
+    "embedding_models": {
+      "status": "defaulted",
+      "path": "C:\\Users\\User\\AppData\\Roaming\\com.asteria.desktop\\models\\embedding",
+      "source": "derived_from_models_dir",
+      "configured": false,
+      "exists": false,
+      "writable": true,
+      "message": "The embedding models directory will be created when Asteria needs it.",
+      "reason": null,
+      "recovery_action": "No manual environment variable is required. Asteria will use the default embedding models path."
+    }
+  }
+}
+```
+
+Directory status values: `"configured"` | `"defaulted"` | `"missing"` |
+`"unavailable"`.
+
 ## Project API
 
 POST /api/projects
@@ -215,9 +271,10 @@ GET /api/local-models/status
 POST /api/local-models/{model_name}/download
 
 Local models are embedding models hosted on the local filesystem rather than
-served by a remote Provider. The model files reside under the configured
-`ASTERIA_DATA_DIR/models/embedding/<model_name>/` path, set by the Tauri
-sidecar when launching the FastAPI process.
+served by a remote Provider. Model files reside under
+`<models_dir>/embedding/<model_name>/`, where `<models_dir>` is resolved from
+`ASTERIA_MODELS_DIR`, `ASTERIA_DATA_DIR/models`, or the default application data
+directory fallback.
 
 ```json
 // GET /api/local-models/status → 200
@@ -228,15 +285,54 @@ sidecar when launching the FastAPI process.
       "dimension": 1024,
       "description": "BAAI General Embedding (Multi-language, 1024-dim)",
       "status": "not_downloaded",
-      "local_path": null
+      "local_path": null,
+      "target_path": "C:\\Users\\User\\AppData\\Roaming\\com.asteria.desktop\\models\\embedding\\bge-m3",
+      "next_step": "Download this model before using it for local embeddings."
     }
-  ]
+  ],
+  "directories": {
+    "app_data": {
+      "status": "defaulted",
+      "path": "C:\\Users\\User\\AppData\\Roaming\\com.asteria.desktop",
+      "source": "default",
+      "configured": false,
+      "exists": false,
+      "writable": true,
+      "message": "The application data directory will be created when Asteria needs it.",
+      "reason": null,
+      "recovery_action": "No manual environment variable is required. Asteria will use the default application data path."
+    },
+    "models": {
+      "status": "defaulted",
+      "path": "C:\\Users\\User\\AppData\\Roaming\\com.asteria.desktop\\models",
+      "source": "derived_from_app_data_dir",
+      "configured": false,
+      "exists": false,
+      "writable": true,
+      "message": "The models directory will be created when Asteria needs it.",
+      "reason": null,
+      "recovery_action": "No manual environment variable is required. Asteria will use the default models path."
+    },
+    "embedding_models": {
+      "status": "defaulted",
+      "path": "C:\\Users\\User\\AppData\\Roaming\\com.asteria.desktop\\models\\embedding",
+      "source": "derived_from_models_dir",
+      "configured": false,
+      "exists": false,
+      "writable": true,
+      "message": "The embedding models directory will be created when Asteria needs it.",
+      "reason": null,
+      "recovery_action": "No manual environment variable is required. Asteria will use the default embedding models path."
+    }
+  }
 }
 ```
 
 Status values: `"not_downloaded"` | `"downloading"` | `"downloaded"` | `"failed"`.
 While a download is active the response includes `progress` (0–100) and may
-include `error_message` on failure.
+include `error_message` on failure. Failed states should also include
+`next_step` so the UI can show a retry path and recovery hint near the failed
+model.
 
 ```json
 // POST /api/local-models/bge-m3/download → 202
@@ -246,14 +342,31 @@ include `error_message` on failure.
   "description": "BAAI General Embedding (Multi-language, 1024-dim)",
   "status": "downloading",
   "local_path": null,
+  "target_path": "C:\\Users\\User\\AppData\\Roaming\\com.asteria.desktop\\models\\embedding\\bge-m3",
+  "next_step": "Keep Settings open or refresh model status to track progress.",
   "progress": 0
 }
 ```
 
 The download endpoint returns 202 Accepted on success and starts a background
-download from HuggingFace Hub. Returns 400 if `ASTERIA_DATA_DIR` /
-`ASTERIA_MODELS_DIR` is not configured. Returns 404 for unknown model names.
-The client should poll `GET /api/local-models/status` to track progress.
+download from HuggingFace Hub. It must not expose raw environment-variable
+configuration errors. If the resolved embedding models directory cannot be
+created or written, it returns a structured 400 response:
+
+```json
+{
+  "detail": {
+    "code": "embedding_models_directory_unavailable",
+    "message": "Asteria could not prepare the embedding models directory.",
+    "path": "C:\\bad\\models\\embedding",
+    "reason": "Permission denied",
+    "recovery_action": "Choose a writable embedding models path or update ASTERIA_MODELS_DIR or ASTERIA_DATA_DIR before retrying."
+  }
+}
+```
+
+Returns 404 for unknown model names. The client should poll
+`GET /api/local-models/status` to track progress.
 
 ## Message API
 

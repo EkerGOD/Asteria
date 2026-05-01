@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE_URL } from "../api/config";
 import { checkProviderHealth, listProviders } from "../api/client";
-import type { ProviderHealthResponse } from "../api/types";
+import type {
+  AppDirectoryDiagnostics,
+  DirectoryDiagnostic,
+  ProviderHealthResponse,
+} from "../api/types";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBox } from "../components/FormFields";
 import { Panel } from "../components/Panel";
@@ -164,6 +168,10 @@ export function DiagnosticsPage({ onNavigateToSettings }: { onNavigateToSettings
           </div>
         </DiagnosticSection>
 
+        {apiHealth.status === "success" && (
+          <DirectoryDiagnostics directories={apiHealth.data.directories} />
+        )}
+
         {/* Provider */}
         <DiagnosticSection title="AI Provider">
           <div className="flex items-center justify-between">
@@ -250,6 +258,83 @@ function StatusBadge({ state }: { state: StatusState }) {
       {label}
     </span>
   );
+}
+
+function DirectoryDiagnostics({
+  directories,
+}: {
+  directories: AppDirectoryDiagnostics;
+}) {
+  return (
+    <DiagnosticSection title="Data & Models Directories">
+      <div className="space-y-3">
+        <DirectoryStatusRow label="App data" diagnostic={directories.app_data} />
+        <DirectoryStatusRow label="Models" diagnostic={directories.models} />
+        <DirectoryStatusRow
+          label="Embedding models"
+          diagnostic={directories.embedding_models}
+        />
+      </div>
+    </DiagnosticSection>
+  );
+}
+
+function DirectoryStatusRow({
+  label,
+  diagnostic,
+}: {
+  label: string;
+  diagnostic: DirectoryDiagnostic;
+}) {
+  return (
+    <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-stone-800">{label}</p>
+          <p className="mt-1 break-all text-xs text-stone-600">{diagnostic.path}</p>
+        </div>
+        <DirectoryBadge status={diagnostic.status} />
+      </div>
+      <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-3">
+        <DetailRow label="Source" value={formatDirectorySource(diagnostic.source)} />
+        <DetailRow label="Exists" value={diagnostic.exists ? "Yes" : "No"} />
+        <DetailRow label="Writable" value={diagnostic.writable ? "Yes" : "No"} />
+      </dl>
+      <p className="mt-2 text-xs text-stone-500">{diagnostic.message}</p>
+      {diagnostic.recovery_action && (
+        <p className="mt-1 text-xs text-stone-500">{diagnostic.recovery_action}</p>
+      )}
+    </div>
+  );
+}
+
+function DirectoryBadge({ status }: { status: DirectoryDiagnostic["status"] }) {
+  const classes = {
+    configured: "bg-pine/10 text-pine",
+    defaulted: "bg-denim/10 text-denim",
+    missing: "bg-amber/10 text-amber-700",
+    unavailable: "bg-red-100 text-red-700",
+  }[status];
+
+  const label = {
+    configured: "Configured",
+    defaulted: "Default",
+    missing: "Missing",
+    unavailable: "Unavailable",
+  }[status];
+
+  return (
+    <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${classes}`}>
+      {label}
+    </span>
+  );
+}
+
+function formatDirectorySource(source: string): string {
+  return source
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {

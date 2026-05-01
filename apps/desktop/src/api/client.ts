@@ -93,6 +93,14 @@ function readErrorDetail(body: unknown): string | null {
         .filter((message): message is string => Boolean(message))
         .join(" ");
     }
+
+    if (typeof detail === "object" && detail !== null && "message" in detail) {
+      const message = (detail as { message: unknown }).message;
+      const recoveryAction = (detail as { recovery_action?: unknown }).recovery_action;
+      return [message, recoveryAction]
+        .filter((item): item is string => typeof item === "string" && item.length > 0)
+        .join(" ");
+    }
   }
 
   return null;

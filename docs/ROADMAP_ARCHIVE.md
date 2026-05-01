@@ -587,3 +587,63 @@ Scope：full-stack
 - `docs/API_CONTRACT.md` — Local Models API contract
 - `docs/DATABASE_SCHEMA.md` — model_roles pipeline 使用说明
 - `docs/APP_DATA_DIRECTORY.md` — 标记 v0.13.0 已实现
+
+---
+
+## v0.13.1 — Embedding 模型目录与下载诊断修复
+
+Scope：full-stack
+
+状态：done（2026-05-01）
+
+约束：
+
+- 不新增 embedding 模型目录/catalog（留到 v0.19.0）
+- 不把 embedding 模型配置重新塞回 Provider 页面
+- 不改变 chat model role 的远程 Provider 模型选择方式
+- 不实现 RAG 流程、Knowledge embedding 批处理或模型推理优化
+- 不依赖用户手动设置环境变量才能理解错误原因
+
+解决的问题：
+
+1. [Bug] 下载 embedding 模型时可能返回裸错误：`ASTERIA_DATA_DIR or ASTERIA_MODELS_DIR is not configured`
+2. [UX] 用户无法从 Model Roles / Diagnostics 判断模型目录是否已配置、应如何恢复
+3. [Architecture] 应用数据目录和模型目录缺少启动时可恢复的配置闭环
+
+验收标准：
+
+- [x] 后端在缺少 `ASTERIA_DATA_DIR` / `ASTERIA_MODELS_DIR` 时使用明确的默认应用数据目录，或返回结构化、可恢复的诊断错误
+- [x] 模型下载 API 不再把底层环境变量错误原样暴露给用户
+- [x] Model Roles 或 Diagnostics 能展示 data/models 目录状态、当前路径和恢复动作
+- [x] 下载失败状态包含原因、重试入口和下一步提示
+- [x] 更新 `docs/APP_DATA_DIRECTORY.md` 和 `docs/API_CONTRACT.md` 的目录 fallback / diagnostics 约定
+- [x] `cd apps/api && pytest` 通过（138 passed）
+- [x] `cd apps/desktop && npm run typecheck` 通过
+- [x] `cd apps/desktop && npm run lint` 通过（0 errors，2 warnings）
+
+主要变更：
+
+- FastAPI 在未配置 `ASTERIA_DATA_DIR` / `ASTERIA_MODELS_DIR` 时解析平台默认 app data 目录
+- `GET /health` 和 `GET /api/local-models/status` 返回 app data、models、embedding models 目录诊断
+- 模型下载前预检并创建 embedding models 目录；目录不可用时返回结构化恢复错误
+- 修正 local model 路径解析，避免出现 `models/embedding/embedding/<model_name>`
+- Model Roles 展示 embedding models 目录状态、目标路径、下载失败原因和下一步
+- Diagnostics 展示 data/models 目录状态、路径、来源、可写性和恢复动作
+- 更新 app data 目录和 API contract 文档，并将 v0.13.1 从 ROADMAP 归档
+
+修改文件：
+
+- `apps/api/app/core/config.py` — 默认 app data 路径、models 路径解析和目录诊断
+- `apps/api/app/api/routes/health.py` — health response 增加目录 diagnostics
+- `apps/api/app/api/routes/local_models.py` — local models status/download 接入目录 diagnostics 和结构化错误
+- `apps/api/app/services/local_models.py` — local model target path、失败 next step 和路径解析修复
+- `apps/api/tests/test_config.py` — 默认目录解析测试
+- `apps/api/tests/test_health.py` — health diagnostics 测试
+- `apps/api/tests/test_local_models_api.py` — local model 目录诊断、路径和结构化错误测试
+- `apps/desktop/src/api/types.ts` — 目录诊断和 local model response 类型
+- `apps/desktop/src/api/client.ts` — 结构化错误 detail 读取
+- `apps/desktop/src/pages/ModelRolesPage.tsx` — embedding models 目录状态和下载失败恢复 UI
+- `apps/desktop/src/pages/DiagnosticsPage.tsx` — data/models 目录 diagnostics UI
+- `docs/API_CONTRACT.md` — health/local models diagnostics contract
+- `docs/APP_DATA_DIRECTORY.md` — directory fallback 与 diagnostics 约定
+- `docs/ROADMAP_ARCHIVE.md` — 追加 v0.13.1 完成记录

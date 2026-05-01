@@ -120,7 +120,7 @@ FastAPI 作为 sidecar 运行时，路径通过以下方式传递：
 - 启动时通过环境变量传入（`ASTERIA_DATA_DIR`、`ASTERIA_MODELS_DIR` 等）
 - 或由 Tauri 在启动 sidecar 前写入 `.env` 文件
 
-### FastAPI 端接收（v0.13.0 已实现）
+### FastAPI 端接收（v0.13.1 已实现）
 
 `apps/api/app/core/config.py` 的 `Settings` 类已包含：
 
@@ -129,14 +129,42 @@ app_data_dir: str | None = None   # ASTERIA_DATA_DIR 环境变量
 models_dir: str | None = None     # ASTERIA_MODELS_DIR 环境变量
 
 @property
-def embedding_models_dir(self) -> str | None:
-    # 返回 <models_dir>/embedding 或 <app_data_dir>/models/embedding
+def resolved_app_data_dir(self) -> str:
+    # 返回 ASTERIA_DATA_DIR 或平台默认 app data 目录
+
+@property
+def resolved_models_dir(self) -> str:
+    # 返回 ASTERIA_MODELS_DIR 或 <resolved_app_data_dir>/models
+
+@property
+def embedding_models_dir(self) -> str:
+    # 返回 <resolved_models_dir>/embedding
 ```
+
+当 `ASTERIA_DATA_DIR` 和 `ASTERIA_MODELS_DIR` 都未设置时，FastAPI 使用与
+Tauri 规划一致的平台默认应用数据目录：
+
+- Windows：`%APPDATA%\com.asteria.desktop`
+- macOS：`~/Library/Application Support/com.asteria.desktop`
+- Linux：`$XDG_DATA_HOME/com.asteria.desktop` 或
+  `~/.local/share/com.asteria.desktop`
+
+这意味着开发期不再需要用户手动设置环境变量才能理解或恢复模型下载路径。
 
 模型状态查询 `GET /api/local-models/status` 和下载触发
 `POST /api/local-models/{name}/download` 端点已可用。下载使用
 `httpx` 从 HuggingFace Hub 获取文件，存入
 `<embedding_models_dir>/<model_name>/`。
+
+`GET /health` 和 `GET /api/local-models/status` 会返回 `app_data`、
+`models`、`embedding_models` 三类目录诊断，包含状态、当前路径、来源、
+是否存在、是否可写、用户可读说明和恢复动作。目录状态包括：
+`configured`、`defaulted`、`missing`、`unavailable`。
+
+下载触发前会预检并创建 embedding models 目录。若目录不可用，API 返回
+结构化 400 错误（`code`、`message`、`path`、`reason`、
+`recovery_action`），不会把 `ASTERIA_DATA_DIR` / `ASTERIA_MODELS_DIR`
+底层配置错误原样暴露给用户。
 
 ## 跨平台注意事项
 

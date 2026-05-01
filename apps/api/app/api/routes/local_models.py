@@ -16,27 +16,35 @@ router = APIRouter(prefix="/api/local-models", tags=["local-models"])
 @router.get("/status")
 def local_model_status(request: Request) -> dict:
     settings: Settings = request.app.state.settings
-    models_dir = settings.embedding_models_dir
+    embedding_models_dir = settings.embedding_models_dir
     models = [
-        get_model_status(models_dir, m.name) for m in list_local_models()
+        get_model_status(embedding_models_dir, m.name) for m in list_local_models()
     ]
-    return {"models": models}
+    return {"models": models, "directories": settings.directory_diagnostics()}
 
 
 @router.post("/{model_name}/download", status_code=status.HTTP_202_ACCEPTED)
 def local_model_download(model_name: str, request: Request) -> dict:
     settings: Settings = request.app.state.settings
-    models_dir = settings.embedding_models_dir
-    if models_dir is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="ASTERIA_DATA_DIR or ASTERIA_MODELS_DIR is not configured",
-        )
     model = get_local_model(model_name)
     if model is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Unknown local model: {model_name}",
         )
-    start_model_download(model_name, models_dir)
-    return get_model_status(models_dir, model_name)
+    directories = settings.directory_diagnostics(create=True)
+    embedding_models = directories["embedding_models"]
+    if embedding_models["status"] == "unavailable":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "embedding_models_directory_unavailable",
+                "message": embedding_models["message"],
+                "path": embedding_models["path"],
+                "reason": embedding_models["reason"],
+                "recovery_action": embedding_models["recovery_action"],
+            },
+        )
+    embedding_models_dir = settings.embedding_models_dir
+    start_model_download(model_name, embedding_models_dir)
+    return get_model_status(embedding_models_dir, model_name)

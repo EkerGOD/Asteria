@@ -48,14 +48,16 @@ def list_local_models() -> list[LocalEmbeddingModel]:
     return list(LOCAL_EMBEDDING_MODELS.values())
 
 
-def resolve_model_local_path(models_dir: str | None, model_name: str) -> str | None:
-    if models_dir is None:
+def resolve_model_local_path(
+    embedding_models_dir: str | None, model_name: str
+) -> str | None:
+    if embedding_models_dir is None:
         return None
-    return os.path.join(models_dir, "embedding", model_name)
+    return os.path.join(embedding_models_dir, model_name)
 
 
-def check_model_downloaded(models_dir: str | None, model_name: str) -> bool:
-    model_path = resolve_model_local_path(models_dir, model_name)
+def check_model_downloaded(embedding_models_dir: str | None, model_name: str) -> bool:
+    model_path = resolve_model_local_path(embedding_models_dir, model_name)
     if model_path is None:
         return False
     model = get_local_model(model_name)
@@ -67,36 +69,48 @@ def check_model_downloaded(models_dir: str | None, model_name: str) -> bool:
     return True
 
 
-def get_model_status(models_dir: str | None, model_name: str) -> dict[str, Any]:
+def get_model_status(
+    embedding_models_dir: str | None, model_name: str
+) -> dict[str, Any]:
     model = get_local_model(model_name)
     if model is None:
         return {"name": model_name, "status": "unknown"}
-    local_path = resolve_model_local_path(models_dir, model_name)
-    is_downloaded = check_model_downloaded(models_dir, model_name)
+    target_path = resolve_model_local_path(embedding_models_dir, model_name)
+    is_downloaded = check_model_downloaded(embedding_models_dir, model_name)
     state = _download_state.get(model_name)
     if state is not None:
+        status = state["status"]
         return {
             "name": model.name,
             "dimension": model.dimension,
             "description": model.description,
-            "status": state["status"],
-            "local_path": None,
+            "status": status,
+            "local_path": target_path if status == LocalModelStatus.DOWNLOADED else None,
+            "target_path": target_path,
             "progress": state["progress"],
             "error_message": state["error_message"],
+            "next_step": _next_step_for_status(status),
         }
+    status = (
+        LocalModelStatus.DOWNLOADED
+        if is_downloaded
+        else LocalModelStatus.NOT_DOWNLOADED
+    )
     return {
         "name": model.name,
         "dimension": model.dimension,
         "description": model.description,
-        "status": LocalModelStatus.DOWNLOADED if is_downloaded else LocalModelStatus.NOT_DOWNLOADED,
-        "local_path": local_path if is_downloaded else None,
+        "status": status,
+        "local_path": target_path if is_downloaded else None,
+        "target_path": target_path,
+        "next_step": _next_step_for_status(status),
     }
 
 
 _download_state: dict[str, dict[str, Any]] = {}
 
 
-def start_model_download(model_name: str, models_dir: str) -> None:
+def start_model_download(model_name: str, embedding_models_dir: str) -> None:
     model = get_local_model(model_name)
     if model is None:
         return
@@ -112,15 +126,15 @@ def start_model_download(model_name: str, models_dir: str) -> None:
 
     thread = threading.Thread(
         target=_download_model_files,
-        args=(model, models_dir),
+        args=(model, embedding_models_dir),
         daemon=True,
     )
     thread.start()
 
 
-def _download_model_files(model: LocalEmbeddingModel, models_dir: str) -> None:
+def _download_model_files(model: LocalEmbeddingModel, embedding_models_dir: str) -> None:
     base_url = f"https://huggingface.co/{model.huggingface_repo}/resolve/main"
-    dest_dir = os.path.join(models_dir, "embedding", model.name)
+    dest_dir = os.path.join(embedding_models_dir, model.name)
 
     try:
         total = len(model.files)
@@ -161,3 +175,13 @@ def _download_model_files(model: LocalEmbeddingModel, models_dir: str) -> None:
 
 def get_download_progress(model_name: str) -> dict[str, Any] | None:
     return _download_state.get(model_name)
+
+
+def _next_step_for_status(status: LocalModelStatus | str) -> str:
+    if status == LocalModelStatus.FAILED:
+        return "Check the models directory, network connection, then retry the download."
+    if status == LocalModelStatus.DOWNLOADING:
+        return "Keep Settings open or refresh model status to track progress."
+    if status == LocalModelStatus.DOWNLOADED:
+        return "The model is ready for the local embedding role."
+    return "Download this model before using it for local embeddings."

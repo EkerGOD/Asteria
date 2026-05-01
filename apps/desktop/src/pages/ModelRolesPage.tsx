@@ -6,6 +6,7 @@ import {
   upsertModelRole,
 } from "../api/client";
 import type {
+  AppDirectoryDiagnostics,
   LocalModelItem,
   LocalModelsResponse,
   ModelRoleUpsertRequest,
@@ -44,6 +45,8 @@ export function ModelRolesPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [localModels, setLocalModels] = useState<LocalModelItem[]>([]);
+  const [directoryDiagnostics, setDirectoryDiagnostics] =
+    useState<AppDirectoryDiagnostics | null>(null);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [embeddingDimension, setEmbeddingDimension] = useState("1024");
   const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
@@ -78,6 +81,7 @@ export function ModelRolesPage() {
         setEmbeddingDimension(String(local.models[0].dimension));
       }
       setLocalModels(local.models);
+      setDirectoryDiagnostics(local.directories);
       setLoadStatus("success");
     } catch (error) {
       if (isAbortError(error)) return;
@@ -137,6 +141,7 @@ export function ModelRolesPage() {
       try {
         const response: LocalModelsResponse = await listLocalModels();
         setLocalModels(response.models);
+        setDirectoryDiagnostics(response.directories);
         const model = response.models.find((m) => m.name === modelName);
         if (!model || model.status === "downloaded" || model.status === "failed") {
           if (pollRef.current !== null) {
@@ -247,6 +252,8 @@ export function ModelRolesPage() {
 
       <Panel title="Local Embedding Model Role">
         <div className="space-y-3">
+          <DirectorySummary directories={directoryDiagnostics} />
+
           {localModels.length === 0 ? (
             <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-4 text-center text-sm text-stone-500">
               No local embedding models available.
@@ -259,19 +266,24 @@ export function ModelRolesPage() {
                   downloadingModel === model.name && model.status === "downloading";
 
                 return (
-                  <button
+                  <div
                     key={model.name}
-                    type="button"
-                    onClick={() => handleSelectModel(model.name)}
-                    disabled={isDownloading}
                     className={`w-full rounded-lg border p-3 text-left transition ${
                       isSelected
                         ? "border-pine bg-pine/5 ring-1 ring-pine/30"
                         : "border-stone-200 bg-white hover:border-stone-300"
-                    } ${isDownloading ? "cursor-wait" : ""}`}
+                    } ${
+                      isDownloading ? "cursor-wait" : "cursor-pointer"
+                    } focus:outline-none focus-visible:ring-2 focus-visible:ring-pine/40`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectModel(model.name)}
+                        disabled={isDownloading}
+                        aria-pressed={isSelected}
+                        className="min-w-0 flex-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-pine/40 disabled:cursor-wait"
+                      >
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-stone-800">
                             {model.name}
@@ -288,7 +300,12 @@ export function ModelRolesPage() {
                             {model.local_path}
                           </p>
                         )}
-                      </div>
+                        {!model.local_path && model.target_path && (
+                          <p className="mt-0.5 truncate text-xs text-stone-400">
+                            Target: {model.target_path}
+                          </p>
+                        )}
+                      </button>
                       <div className="flex shrink-0 items-center gap-2">
                         {statusBadge(model.status)}
                         {model.status === "not_downloaded" && !isDownloading && (
@@ -330,7 +347,15 @@ export function ModelRolesPage() {
                         </p>
                       </div>
                     )}
-                  </button>
+                    {model.status === "failed" && (
+                      <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+                        <p className="font-semibold">
+                          {model.error_message ?? "Download failed."}
+                        </p>
+                        {model.next_step && <p className="mt-1">{model.next_step}</p>}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -372,5 +397,55 @@ export function ModelRolesPage() {
         </div>
       </Panel>
     </div>
+  );
+}
+
+function DirectorySummary({
+  directories,
+}: {
+  directories: AppDirectoryDiagnostics | null;
+}) {
+  if (!directories) return null;
+
+  const embedding = directories.embedding_models;
+
+  return (
+    <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-3 text-sm">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-semibold text-stone-800">Embedding models directory</p>
+        <DirectoryBadge status={embedding.status} />
+      </div>
+      <p className="mt-2 break-all text-xs text-stone-600">{embedding.path}</p>
+      <p className="mt-2 text-xs text-stone-500">{embedding.message}</p>
+      {embedding.recovery_action && (
+        <p className="mt-1 text-xs text-stone-500">{embedding.recovery_action}</p>
+      )}
+    </div>
+  );
+}
+
+function DirectoryBadge({
+  status,
+}: {
+  status: AppDirectoryDiagnostics["embedding_models"]["status"];
+}) {
+  const classes = {
+    configured: "bg-pine/10 text-pine",
+    defaulted: "bg-denim/10 text-denim",
+    missing: "bg-amber/10 text-amber-700",
+    unavailable: "bg-red-100 text-red-700",
+  }[status];
+
+  const label = {
+    configured: "Configured",
+    defaulted: "Default",
+    missing: "Missing",
+    unavailable: "Unavailable",
+  }[status];
+
+  return (
+    <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${classes}`}>
+      {label}
+    </span>
   );
 }

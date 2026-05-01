@@ -1,9 +1,34 @@
+export type DirectoryDiagnosticStatus =
+  | "configured"
+  | "defaulted"
+  | "missing"
+  | "unavailable";
+
+export type DirectoryDiagnostic = {
+  status: DirectoryDiagnosticStatus;
+  path: string;
+  source: string;
+  configured: boolean;
+  exists: boolean;
+  writable: boolean;
+  message: string;
+  reason: string | null;
+  recovery_action: string | null;
+};
+
+export type AppDirectoryDiagnostics = {
+  app_data: DirectoryDiagnostic;
+  models: DirectoryDiagnostic;
+  embedding_models: DirectoryDiagnostic;
+};
+
 export type HealthResponse = {
   status: "ok";
   service: string;
   version: string;
   environment: "development" | "test" | "production";
   database_configured: boolean;
+  directories: AppDirectoryDiagnostics;
 };
 
 export type ProviderModel = {
@@ -270,10 +295,13 @@ export type LocalModelItem = {
   description: string;
   status: LocalModelStatus;
   local_path: string | null;
+  target_path: string | null;
   progress?: number | null;
   error_message?: string | null;
+  next_step?: string | null;
 };
 
 export type LocalModelsResponse = {
   models: LocalModelItem[];
+  directories: AppDirectoryDiagnostics;
 };

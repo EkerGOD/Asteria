@@ -1,4 +1,6 @@
-from app.core.config import get_settings
+import os
+
+from app.core.config import APP_IDENTIFIER, get_settings
 
 
 def test_settings_reads_database_and_local_api_environment(monkeypatch):
@@ -19,4 +21,25 @@ def test_settings_reads_database_and_local_api_environment(monkeypatch):
     assert settings.cors_origin_list == ["http://localhost:1420", "http://127.0.0.1:1420"]
     assert settings.secret_key is not None
     assert settings.secret_key.get_secret_value() == "OIOH6EK_-XuDoimnmJdKbBllrq4EmKDlqBqktQeqpjw="
+    get_settings.cache_clear()
+
+
+def test_settings_resolves_default_app_data_and_models_dirs(monkeypatch, tmp_path):
+    get_settings.cache_clear()
+    monkeypatch.delenv("ASTERIA_DATA_DIR", raising=False)
+    monkeypatch.delenv("ASTERIA_MODELS_DIR", raising=False)
+    monkeypatch.setenv("APPDATA", str(tmp_path / "roaming"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg-data"))
+
+    settings = get_settings()
+
+    assert settings.app_data_dir is None
+    assert settings.models_dir is None
+    assert settings.resolved_app_data_dir.endswith(APP_IDENTIFIER)
+    assert settings.resolved_models_dir == os.path.join(
+        settings.resolved_app_data_dir, "models"
+    )
+    assert settings.embedding_models_dir == os.path.join(
+        settings.resolved_app_data_dir, "models", "embedding"
+    )
     get_settings.cache_clear()
