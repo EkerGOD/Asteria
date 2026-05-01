@@ -27,6 +27,7 @@ import type {
   RepositoryUpdateRequest,
   RAGAnswerRequest,
   RAGAnswerResponse,
+  SemanticSearchResult,
   Tag,
   TagCreateRequest,
   LocalModelItem,
@@ -463,6 +464,9 @@ export async function sendChatStream(
   let chatModel = "";
   let tokenUsage: TokenUsage | null = null;
   let responseDelayMs: number | null = null;
+  let sources: SemanticSearchResult[] | null = null;
+  let embeddingModel: string | null = null;
+  let embeddingDimension: number | null = null;
 
   try {
     while (true) {
@@ -504,9 +508,13 @@ export async function sendChatStream(
                 tokenUsage = (parsed.token_usage as TokenUsage) ?? null;
                 responseDelayMs = (parsed.response_delay_ms as number) ?? null;
                 break;
+              case "done":
+                sources = (parsed.sources as SemanticSearchResult[]) ?? null;
+                embeddingModel = (parsed.embedding_model as string) ?? null;
+                embeddingDimension = (parsed.embedding_dimension as number) ?? null;
+                break;
               case "error":
                 if (assistantMessage) {
-                  // Partial content was saved; return it despite the error.
                   return {
                     user_message: userMessage!,
                     assistant_message: assistantMessage,
@@ -514,6 +522,9 @@ export async function sendChatStream(
                     chat_model: chatModel,
                     token_usage: tokenUsage,
                     response_delay_ms: responseDelayMs,
+                    sources,
+                    embedding_model: embeddingModel,
+                    embedding_dimension: embeddingDimension,
                   };
                 }
                 throw new ApiClientError(String(parsed.message ?? "Stream error"));
@@ -546,6 +557,9 @@ export async function sendChatStream(
     chat_model: chatModel,
     token_usage: tokenUsage,
     response_delay_ms: responseDelayMs,
+    sources,
+    embedding_model: embeddingModel,
+    embedding_dimension: embeddingDimension,
   };
 }
 

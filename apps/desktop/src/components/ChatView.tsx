@@ -5,14 +5,18 @@ import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github.css";
 import {
   archiveConversation,
+  archiveProject,
   createConversation,
+  createProject,
   deleteConversation,
   listConversations,
   listMessages,
+  listProjects,
   sendChatStream,
   updateConversation,
+  updateProject,
 } from "../api/client";
-import type { Conversation, Message, TokenUsage } from "../api/types";
+import type { Conversation, Message, Project, TokenUsage } from "../api/types";
 import { readMessageDisplayConfig } from "../store/messageDisplay";
 import { useModelRole } from "../contexts/ModelRoleContext";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -40,6 +44,18 @@ export function ChatView({
   const [chatError, setChatError] = useState<string | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const [enableRag, setEnableRag] = useState(true);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [showNewProjectInput, setShowNewProjectInput] = useState(false);
+  const [projectActionTarget, setProjectActionTarget] = useState<string | null>(null);
+  const [renamingProjectId, setRenamingProjectId] = useState<string | null>(null);
+  const [renameProjectValue, setRenameProjectValue] = useState("");
+  const [archiveProjectTarget, setArchiveProjectTarget] = useState<Project | null>(null);
+  const [projectConfigOpen, setProjectConfigOpen] = useState(false);
+  const [configName, setConfigName] = useState("");
+  const [configDescription, setConfigDescription] = useState("");
+  const [configColor, setConfigColor] = useState("");
   const [archiveTarget, setArchiveTarget] = useState<Conversation | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
   const [retryFlag, setRetryFlag] = useState(0);
@@ -146,6 +162,109 @@ export function ChatView({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [modelDropdownOpen]);
 
+  // Close project menu on outside click
+  useEffect(() => {
+    if (!projectMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (projectMenuRef.current && !projectMenuRef.current.contains(target)) {
+        setProjectMenuOpen(false);
+        setShowNewProjectInput(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [projectMenuOpen]);
+
+  // Fetch projects
+  const fetchProjects = useCallback(async () => {
+    try {
+      const result = await listProjects();
+      setProjects(result);
+    } catch {
+      // Projects are non-critical; silently ignore errors.
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchProjects();
+  }, [fetchProjects]);
+
+  const activeProject = projects.find((p) => p.id === activeProjectId) ?? null;
+
+  const projectMenuRef = useRef<HTMLDivElement>(null);
+
+  const handleCreateProject = async () => {
+    const name = newProjectName.trim();
+    if (!name) return;
+    try {
+      const created = await createProject({ name });
+      setProjects((prev) => [...prev, created]);
+      setActiveProjectId(created.id);
+      setNewProjectName("");
+      setShowNewProjectInput(false);
+      setProjectMenuOpen(false);
+    } catch {
+      // Error silently; user can retry.
+    }
+  };
+
+  const handleRenameProject = async (projectId: string) => {
+    const name = renameProjectValue.trim();
+    if (!name) {
+      setRenamingProjectId(null);
+      return;
+    }
+    try {
+      const updated = await updateProject(projectId, { name });
+      setProjects((prev) => prev.map((p) => (p.id === projectId ? updated : p)));
+    } catch {
+      // Error silently.
+    }
+    setRenamingProjectId(null);
+    setRenameProjectValue("");
+  };
+
+  const handleArchiveProject = async () => {
+    if (!archiveProjectTarget) return;
+    try {
+      await archiveProject(archiveProjectTarget.id);
+      setProjects((prev) => prev.filter((p) => p.id !== archiveProjectTarget.id));
+      if (activeProjectId === archiveProjectTarget.id) {
+        setActiveProjectId(null);
+      }
+    } catch {
+      // Error silently.
+    }
+    setArchiveProjectTarget(null);
+    setProjectActionTarget(null);
+  };
+
+  const openProjectConfig = () => {
+    if (!activeProject) return;
+    setConfigName(activeProject.name);
+    setConfigDescription(activeProject.description ?? "");
+    setConfigColor(activeProject.color ?? "");
+    setProjectConfigOpen(true);
+  };
+
+  const handleSaveProjectConfig = async () => {
+    if (!activeProject) return;
+    const name = configName.trim();
+    if (!name) return;
+    try {
+      const updated = await updateProject(activeProject.id, {
+        name,
+        description: configDescription.trim() || null,
+        color: configColor.trim() || null,
+      });
+      setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      setProjectConfigOpen(false);
+    } catch {
+      // Error silently.
+    }
+  };
+
   const handleModelSwitch = async (providerId: string, modelName: string) => {
     setModelDropdownOpen(false);
     await setChatModel(providerId, modelName);
@@ -237,7 +356,12 @@ export function ChatView({
 
     try {
       const result = await sendChatStream(
-        { conversation_id: activeConversationId, content: trimmed },
+        {
+          conversation_id: activeConversationId,
+          content: trimmed,
+          enable_rag: enableRag,
+          project_id: activeProjectId,
+        },
         (token) => {
           setMessages((prev) =>
             prev.map((m) =>
@@ -433,6 +557,108 @@ export function ChatView({
           </div>
         )}
 
+        {/* Project info bar */}
+        {activeProject && (
+          <div className="border-b border-stone-200 px-3 py-1.5">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs hover:bg-stone-100"
+              onClick={openProjectConfig}
+              title="Click to configure project"
+            >
+              <span
+                className="block h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: activeProject.color || "#78716c" }}
+              />
+              <span className="font-medium text-stone-700">{activeProject.name}</span>
+              <Icon name="chevronRight" size={10} />
+            </button>
+          </div>
+        )}
+
+        {/* Project config panel */}
+        {projectConfigOpen && activeProject && (
+          <div className="border-b border-stone-200 bg-stone-50 px-3 py-2">
+            <div className="space-y-2">
+              <div>
+                <label className="block text-[10px] font-medium uppercase text-stone-500">Name</label>
+                <input
+                  type="text"
+                  className="mt-0.5 w-full rounded border border-stone-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-pine"
+                  value={configName}
+                  onChange={(e) => setConfigName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void handleSaveProjectConfig();
+                    if (e.key === "Escape") setProjectConfigOpen(false);
+                  }}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-medium uppercase text-stone-500">Description</label>
+                <input
+                  type="text"
+                  className="mt-0.5 w-full rounded border border-stone-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-pine"
+                  value={configDescription}
+                  onChange={(e) => setConfigDescription(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setProjectConfigOpen(false);
+                  }}
+                  placeholder="Optional description"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-medium uppercase text-stone-500">Color</label>
+                <div className="mt-0.5 flex items-center gap-2">
+                  <input
+                    type="text"
+                    className="flex-1 rounded border border-stone-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-pine"
+                    value={configColor}
+                    onChange={(e) => setConfigColor(e.target.value)}
+                    placeholder="#78716c"
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") setProjectConfigOpen(false);
+                    }}
+                  />
+                  <span
+                    className="block h-5 w-5 shrink-0 rounded-full border border-stone-300"
+                    style={{ backgroundColor: configColor || "#78716c" }}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                  onClick={() => {
+                    setProjectConfigOpen(false);
+                    setArchiveProjectTarget(activeProject);
+                  }}
+                >
+                  Archive Project
+                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    className="rounded px-2 py-1 text-xs text-stone-600 hover:bg-stone-200"
+                    onClick={() => setProjectConfigOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded bg-pine px-3 py-1 text-xs font-medium text-white hover:bg-pine/90 disabled:opacity-50"
+                    onClick={() => void handleSaveProjectConfig()}
+                    disabled={!configName.trim()}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {!loadingConversations && !error && !activeConversation && (
           <EmptyState
             title="No conversation selected"
@@ -527,34 +753,162 @@ export function ChatView({
         <div className="mt-1 flex min-w-0 items-center justify-between gap-2 pr-3">
           <div className="flex min-w-0 items-center gap-1 text-xs text-stone-400">
             {/* Project selector */}
-            <div className="relative">
+            <div className="relative" ref={projectMenuRef}>
               <button
                 type="button"
                 className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-stone-100"
                 onClick={() => setProjectMenuOpen((v) => !v)}
               >
-                <Icon name={activeProjectId ? "project" : "folder"} size={12} />
-                <span>{activeProjectId ? "Project" : "No Project"}</span>
+                <Icon name={activeProject ? "project" : "folder"} size={12} />
+                <span>{activeProject ? activeProject.name : "No Project"}</span>
+                <Icon name="chevronDown" size={10} />
               </button>
               {projectMenuOpen && (
-                <div className="absolute bottom-full left-0 mb-1 rounded-md border border-stone-300 bg-white shadow-lg z-30 py-1 min-w-[140px]">
+                <div className="absolute bottom-full left-0 mb-1 rounded-md border border-stone-300 bg-white shadow-lg z-30 py-1 min-w-[180px] max-h-[220px] overflow-auto">
                   <button
                     type="button"
                     className="flex w-full items-center gap-2 px-3 py-1 text-left text-xs text-stone-700 hover:bg-stone-50"
                     onClick={() => { setActiveProjectId(null); setProjectMenuOpen(false); }}
                   >
+                    <Icon name="folder" size={12} />
                     No Project
                   </button>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 px-3 py-1 text-left text-xs text-stone-700 hover:bg-stone-50"
-                    onClick={() => { setProjectMenuOpen(false); }}
-                  >
-                    + New Project
-                  </button>
+                  {projects.map((p) => (
+                    <div key={p.id} className="flex items-center gap-1 px-1">
+                      {renamingProjectId === p.id ? (
+                        <input
+                          type="text"
+                          className="flex-1 rounded border border-stone-300 px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-pine"
+                          value={renameProjectValue}
+                          onChange={(e) => setRenameProjectValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void handleRenameProject(p.id);
+                            if (e.key === "Escape") {
+                              setRenamingProjectId(null);
+                              setRenameProjectValue("");
+                            }
+                          }}
+                          onBlur={() => {
+                            setRenamingProjectId(null);
+                            setRenameProjectValue("");
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          className={[
+                            "flex flex-1 items-center gap-2 px-2 py-1 text-left text-xs hover:bg-stone-50 rounded",
+                            p.id === activeProjectId ? "text-pine font-medium" : "text-stone-700",
+                          ].join(" ")}
+                          onClick={() => { setActiveProjectId(p.id); setProjectMenuOpen(false); }}
+                        >
+                          <span
+                            className="block h-2 w-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: p.color || "#78716c" }}
+                          />
+                          <span className="truncate">{p.name}</span>
+                        </button>
+                      )}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          className="flex h-5 w-5 items-center justify-center rounded text-stone-400 hover:bg-stone-200 hover:text-stone-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProjectActionTarget(
+                              projectActionTarget === p.id ? null : p.id,
+                            );
+                          }}
+                        >
+                          <Icon name="ellipsis" size={12} />
+                        </button>
+                        {projectActionTarget === p.id && (
+                          <div className="absolute right-0 top-full z-40 mt-0.5 rounded border border-stone-200 bg-white py-0.5 shadow-lg min-w-[100px]">
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-1.5 px-2.5 py-1 text-left text-xs text-stone-700 hover:bg-stone-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRenamingProjectId(p.id);
+                                setRenameProjectValue(p.name);
+                                setProjectActionTarget(null);
+                              }}
+                            >
+                              <Icon name="edit" size={11} />
+                              Rename
+                            </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-1.5 px-2.5 py-1 text-left text-xs text-red-600 hover:bg-red-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setArchiveProjectTarget(p);
+                                setProjectActionTarget(null);
+                              }}
+                            >
+                              <Icon name="archive" size={11} />
+                              Archive
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {showNewProjectInput ? (
+                    <div className="flex items-center gap-1 px-2 py-1">
+                      <input
+                        type="text"
+                        className="flex-1 rounded border border-stone-300 px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-pine"
+                        placeholder="Project name..."
+                        value={newProjectName}
+                        onChange={(e) => setNewProjectName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") void handleCreateProject();
+                          if (e.key === "Escape") {
+                            setShowNewProjectInput(false);
+                            setNewProjectName("");
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        className="rounded px-1.5 py-0.5 text-xs text-pine hover:bg-stone-100"
+                        onClick={() => void handleCreateProject()}
+                        disabled={!newProjectName.trim()}
+                      >
+                        Create
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 px-3 py-1 text-left text-xs text-stone-500 hover:bg-stone-50"
+                      onClick={() => setShowNewProjectInput(true)}
+                    >
+                      <Icon name="add" size={12} />
+                      New Project
+                    </button>
+                  )}
                 </div>
               )}
             </div>
+            {/* RAG toggle */}
+            <button
+              type="button"
+              className={[
+                "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs",
+                enableRag
+                  ? "bg-green-50 text-green-700 hover:bg-green-100"
+                  : "text-stone-400 hover:bg-stone-100",
+              ].join(" ")}
+              onClick={() => setEnableRag((v) => !v)}
+              title={enableRag ? "RAG enabled — click to disable" : "RAG disabled — click to enable"}
+            >
+              <Icon name="knowledge" size={11} />
+              RAG
+            </button>
           </div>
           <div className="flex min-w-0 items-center gap-1.5">
             {/* Model switcher */}
@@ -747,6 +1101,16 @@ export function ChatView({
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      {/* Archive project confirm dialog */}
+      <ConfirmDialog
+        open={archiveProjectTarget !== null}
+        title="Archive Project"
+        message={`Archive "${archiveProjectTarget?.name ?? "this project"}"? It will be hidden from the list. This cannot be undone.`}
+        confirmLabel="Archive"
+        onConfirm={() => void handleArchiveProject()}
+        onCancel={() => setArchiveProjectTarget(null)}
+      />
     </div>
   );
 }
@@ -809,6 +1173,8 @@ function MessageBubble({
 }) {
   const isUser = message.role === "user";
   const isOptimistic = message.id.startsWith("optimistic-");
+  const [showSources, setShowSources] = useState(false);
+  const sources = parseMessageSources(message);
 
   const metaItems: string[] = [];
   if (!isUser && !isOptimistic) {
@@ -869,6 +1235,40 @@ function MessageBubble({
               Response interrupted
             </p>
           )}
+          {!isUser && sources.length > 0 && (
+            <div className="mt-1.5 border-t border-stone-100 pt-1.5">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700"
+                onClick={() => setShowSources((v) => !v)}
+              >
+                <Icon name={showSources ? "chevronDown" : "chevronRight"} size={10} />
+                Sources ({sources.length})
+              </button>
+              {showSources && (
+                <div className="mt-1 space-y-1">
+                  {sources.map((source, idx) => (
+                    <div
+                      key={`${source.knowledge_unit_id}-${idx}`}
+                      className="rounded border border-stone-200 bg-stone-50 px-2 py-1 text-xs"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-stone-700">
+                          [{source.label}] {source.title}
+                        </span>
+                        <span className="text-stone-400">
+                          {(source.score * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-stone-500 line-clamp-2">
+                        {source.chunk_text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div
@@ -894,6 +1294,49 @@ function MessageBubble({
       </div>
     </div>
   );
+}
+
+type SourceDisplay = {
+  label: string;
+  knowledge_unit_id: string;
+  chunk_text: string;
+  score: number;
+  title: string;
+};
+
+function parseMessageSources(message: Message): SourceDisplay[] {
+  const rawSources = message.retrieval_metadata?.sources;
+  if (!Array.isArray(rawSources)) return [];
+
+  return rawSources.flatMap((source: unknown, index: number) => {
+    if (!source || typeof source !== "object") return [];
+    const s = source as Record<string, unknown>;
+    const src = (s.source as Record<string, unknown>) ?? {};
+    const knowledgeUnitId = s.knowledge_unit_id;
+    const chunkText = s.chunk_text;
+    const score = s.score;
+    const title = src.title;
+    const label = s.label;
+
+    if (
+      typeof knowledgeUnitId !== "string" ||
+      typeof chunkText !== "string" ||
+      typeof score !== "number" ||
+      typeof title !== "string"
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        label: typeof label === "string" ? label : `S${index + 1}`,
+        knowledge_unit_id: knowledgeUnitId,
+        chunk_text: chunkText,
+        score,
+        title,
+      },
+    ];
+  });
 }
 
 function ActionButton({

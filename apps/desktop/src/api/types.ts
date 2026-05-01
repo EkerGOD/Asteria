@@ -256,6 +256,11 @@ export type TokenUsage = {
 export type ChatSendRequest = {
   conversation_id: string;
   content: string;
+  enable_rag?: boolean;
+  project_id?: string | null;
+  tag_slugs?: string[];
+  top_k?: number;
+  min_score?: number;
 };
 
 export type ChatSendResponse = {
@@ -265,6 +270,9 @@ export type ChatSendResponse = {
   chat_model: string;
   token_usage: TokenUsage | null;
   response_delay_ms: number | null;
+  sources?: SemanticSearchResult[] | null;
+  embedding_model?: string | null;
+  embedding_dimension?: number | null;
 };
 
 export type ModelRole = {

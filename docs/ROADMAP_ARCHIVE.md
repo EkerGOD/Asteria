@@ -702,3 +702,59 @@ Scope：full-stack
 - `docs/UI_INTERACTION_GUIDELINES.md` — Knowledge View cards/list contract 对齐
 - `docs/ROADMAP.md` — 移除 v0.14.0 planned 条目
 - `docs/ROADMAP_ARCHIVE.md` — 追加 v0.14.0 done 记录
+
+---
+
+## v0.15.0 — RAG 对话与 Project 管理
+
+状态：done（2026-05-01）
+
+RAG 集成到主 Chat 流程并通过 Project 管理增强交互。
+
+### 完成内容
+
+**后端**：
+- `/api/chat/send` 和 `/api/chat/send/stream` 新增可选 RAG 参数（`enable_rag`、`project_id`、`tag_slugs`、`top_k`、`min_score`）
+- 启用 RAG 时自动执行语义检索 → 构造 grounded prompt → 调用 AI Provider
+- 回答的 `retrieval_metadata` 保存检索上下文和 source references
+- 流式端点 `done` SSE 事件返回 `sources`、`embedding_model`、`embedding_dimension`
+- `rag/chat.py` 的 prompt 构建函数公开化（`build_grounded_user_prompt`、`build_retrieval_metadata`）供 chat service 复用
+
+**前端**：
+- ChatView 新增 RAG 开关（默认启用），Project selector 支持切换/新建/不使用项目
+- Project selector 关闭时支持外部点击 dismiss
+- Project 列表项有 `...` 操作菜单（Rename、Archive），Archive 有 ConfirmDialog 确认
+- 点击消息区顶部 Project 名称进入配置面板（名称、描述、颜色、归档）
+- 新建项目支持 inline 输入创建
+- 启用 RAG 时 assistant message 展示 source references（来源标题、相关性得分、文本摘要）
+
+**研究**：
+- 产出 `docs/research/ai-tool-calling.md`：对比 OpenAI Function Calling、MCP、Custom Tool Registry 三种方案，推荐分阶段采用 Function Calling
+
+### 验收标准达成
+
+- [x] RAG user/assistant message 正确保存并关联 conversation
+- [x] 用户提问时后端执行语义检索 → 构造 prompt → 调用 AI Provider
+- [x] 回答展示引用的 Knowledge source references
+- [x] Chat 视图 Project 选择器可切换/新建/不使用 Project
+- [x] Project selector 打开后点击外部区域自动关闭
+- [x] Project 列表项有 `...` 操作菜单（重命名、归档）
+- [x] Project 危险操作有确认或明确防误触机制
+- [x] 点击 Chat 顶部当前 Project 名称进入 Project 配置界面
+- [x] 产出 AI Tool calling 技术探索报告
+- [x] `cd apps/api && pytest` 通过（139 passed）
+- [x] `cd apps/desktop && npm run typecheck` 通过
+- [x] `cd apps/desktop && npm run lint` 通过（0 errors）
+
+### 修改文件
+
+- `apps/api/app/schemas/chat.py` — ChatSendRequest 新增 RAG 参数、ChatSendResponse 新增 sources/embedding 字段
+- `apps/api/app/services/chat.py` — send_message() 支持 RAG 检索、stream_message_events() 支持 grounded prompt 和 sources
+- `apps/api/app/rag/chat.py` — build_grounded_user_prompt / build_retrieval_metadata 公开化
+- `apps/api/app/api/routes/chat.py` — 透传 sources/embedding_model/embedding_dimension
+- `apps/desktop/src/api/types.ts` — ChatSendRequest/ChatSendResponse 新增 RAG 字段
+- `apps/desktop/src/api/client.ts` — sendChatStream 捕获 SSE done 事件中的 sources
+- `apps/desktop/src/components/ChatView.tsx` — RAG 开关、Project selector 完整交互、source references 展示、Project 配置面板
+- `docs/research/ai-tool-calling.md` — 新增 AI Tool Calling 探索报告
+- `docs/ROADMAP.md` — 移除 v0.15.0 planned 条目
+- `docs/ROADMAP_ARCHIVE.md` — 追加 v0.15.0 done 记录

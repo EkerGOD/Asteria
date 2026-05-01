@@ -44,6 +44,9 @@ def chat_send_endpoint(
         chat_model=result.chat_model,
         token_usage=token_usage,
         response_delay_ms=result.response_delay_ms,
+        sources=result.sources,
+        embedding_model=result.embedding_model,
+        embedding_dimension=result.embedding_dimension,
     )
 
 

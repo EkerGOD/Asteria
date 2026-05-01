@@ -1,6 +1,6 @@
 # Roadmap
 
-基于 `docs/VERSION_NOTES.md` 和 `docs/PRD.md` 生成。每个版本有明确主题、约束和验收标准，按依赖排序。
+基于 `docs/VERSION_NOTES.md` 和 `docs/PRD.md` 生成。每个版本有明确主题、约束和验收标准，按语义化版本和依赖关系排序。
 
 已完成版本归档在 `docs/ROADMAP_ARCHIVE.md`，仅供查阅。
 
@@ -15,83 +15,6 @@
 | 约束 | 本版本不做什么，防止 scope creep |
 | Scope | frontend / backend / full-stack |
 | 状态 | planned / in_progress / done |
-
----
-
----
-
-## v0.18.0 — File Operations Tauri Native
-
-Scope：full-stack（Tauri Rust + React 前端）
-
-状态：planned
-
-约束：
-
-- 不改变 Knowledge 关联、embedding 状态等文件元数据的 API 路径
-- 不实现跨仓库文件拖拽或复制
-- 不改变文件在磁盘上的存储格式
-- 文件元数据（Knowledge 关联、embedding 状态）仍走 FastAPI
-
-解决的问题：
-
-1. [Architecture] 文件树通过 FastAPI 读取本地文件，导致后端不可用时文件树完全无法使用
-2. [Feature] 文件树缺少拖拽移动文件功能
-3. [Feature] 缺少从文件树拖拽文件到 Editor 打开的能力
-4. [UX] 切换仓库时未关闭旧仓库的已打开文件 Tab
-
-验收标准：
-
-- [ ] 文件树读取/创建/删除/重命名使用 Tauri Rust command，不依赖 FastAPI
-- [ ] 文件树内支持拖拽移动文件到子文件夹或上级目录
-- [ ] 支持从文件树拖拽文件到 Editor 区域以在新 Tab 打开
-- [ ] 切换仓库时弹出确认对话框，列出未保存文件，支持保存并关闭或放弃更改
-- [ ] 确认后关闭所有旧仓库 Tab，Editor 区域重置为空状态
-- [ ] 文件元数据（Knowledge 关联状态等）仍通过 FastAPI 获取
-- [ ] `cd apps/desktop && npm run typecheck` 通过
-- [ ] `cd apps/desktop && npm run lint` 通过
-
----
-
-
-## v0.15.0 — RAG 对话与 Project 管理
-
-Scope：full-stack
-
-状态：planned
-
-约束：
-
-- 不重新实现 v0.9.0 已完成的基础非 RAG Chat 流程
-- 不实现多轮对话上下文之外的 Agent 自主行为
-- 不实现对话分支或版本管理
-- 不实现对话导出或分享
-- Project 配置首版仅包含名称、描述、颜色、归档/删除
-
-解决的问题：
-
-1. [Feature] 基础 Chat 尚未升级为基于 Knowledge 的 RAG 问答
-2. [Feature] 尚未实现基于 pgvector 的语义检索
-3. [Feature] 尚未实现 RAG 问答流程
-4. [Feature] 尚未实现 Chat 视图的 Project 选择器
-5. [Feature] Chat 页面项目管理器尚不能创建 Project
-6. [UX] Project 列表项缺少统一的 `...` 操作菜单
-7. [UX] Project selector 无法通过点击外部取消
-8. [Research] 探索 AI Tool / Function Calling 接入方案
-
-验收标准：
-
-- [ ] RAG user message 和 assistant message 正确保存并关联 conversation
-- [ ] 用户提问时后端执行语义检索 → 构造 prompt → 调用 AI Provider
-- [ ] 回答展示引用的 Knowledge source references
-- [ ] Chat 视图 Project 选择器可切换/新建/不使用 Project
-- [ ] Project selector 打开后点击外部区域自动关闭
-- [ ] Project 列表项有 `...` 操作菜单（重命名、配置、归档/删除）
-- [ ] Project 危险操作有确认或明确防误触机制
-- [ ] 点击 Chat 顶部当前 Project 名称进入 Project 配置界面
-- [ ] 产出 AI Tool calling 技术探索报告
-- [ ] `cd apps/api && pytest` 通过
-- [ ] `cd apps/desktop && npm run typecheck` 通过
 
 ---
 
@@ -184,5 +107,120 @@ Scope：frontend
 - [ ] 缺失翻译有 fallback，不显示空白 key
 - [ ] 已存在核心 UI 的用户可见文案使用 i18n 资源
 - [ ] UI 语言切换不影响 AI 回复语言或 prompt 行为
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.18.0 — File Operations 与文件树体验补强
+
+Scope：full-stack（Tauri Rust + React 前端）
+
+状态：planned
+
+约束：
+
+- 不改变 Knowledge 关联、embedding 状态等文件元数据的 API 路径
+- 不实现 PDF/Office/图片/CSV 等非 Markdown 文件预览或解析（留到 v0.20.0）
+- 不实现跨仓库文件拖拽或复制
+- 不改变文件在磁盘上的存储格式
+- 不把 Repository / Vault 与 Project 耦合
+- 非 Markdown 文件首版只做能力门控和清晰提示，不进入 Markdown Editor
+- 文件元数据（Knowledge 关联、embedding 状态）仍走 FastAPI
+
+解决的问题：
+
+1. [Architecture] 文件树通过 FastAPI 读取本地文件，导致后端不可用时文件树完全无法使用
+2. [Feature] 文件树缺少拖拽移动文件功能
+3. [Feature] 缺少从文件树拖拽文件到 Editor 打开的能力
+4. [UX] 切换仓库时未关闭旧仓库的已打开文件 Tab
+5. [UX] 文件系统发生外部变化后，文件树不能主动刷新
+6. [Bug + UX] 非 Markdown 文件被 Markdown Editor 打开，可能出现乱码
+7. [UX] 文件树视觉层级不清晰，缺少 VS Code / Cursor 风格的 folder chevron、文件类型 icon 和展开缩进线
+
+验收标准：
+
+- [ ] 文件树读取/创建/删除/重命名使用 Tauri Rust command，不依赖 FastAPI
+- [ ] 文件树能监听当前 Repository 的外部文件变化，并刷新可见节点
+- [ ] 外部变化刷新后保留展开状态、选中文件和可恢复的 loading / error 状态
+- [ ] 文件树内支持拖拽移动文件到子文件夹或上级目录
+- [ ] 支持从文件树拖拽 Markdown 文件到 Editor 区域以在新 Tab 打开
+- [ ] 点击非 Markdown 文件不会进入 Markdown Editor，并显示 unsupported / preview unavailable 状态
+- [ ] 文件树使用 folder chevron 表达折叠/展开状态，文件夹展开时显示向下状态
+- [ ] 不同文件类型通过 icon 区分，未知类型有 fallback icon
+- [ ] 文件夹展开内容有缩进线或等价层级指示
+- [ ] 文件树具备 selected、hover、loading、empty、error、disabled 状态
+- [ ] 切换仓库时弹出确认对话框，列出未保存文件，支持保存并关闭或放弃更改
+- [ ] 确认后关闭所有旧仓库 Tab，Editor 区域重置为空状态
+- [ ] 文件元数据（Knowledge 关联状态等）仍通过 FastAPI 获取
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.19.0 — Embedding Model Catalog 与模型选择增强
+
+Scope：full-stack
+
+状态：planned
+
+约束：
+
+- 不实现任意模型导入、模型市场或插件市场
+- 不把 embedding 模型配置回退到 Provider 页面
+- 不改变 chat model role 的远程 Provider 模型选择方式
+- 不在前端直接调用模型下载源、Provider SDK 或 embedding 执行逻辑
+- 不承诺所有模型都适合当前硬件；首版仅提供可解释的候选和状态
+
+解决的问题：
+
+1. [Feature] 本地 embedding 模型候选过少，用户只能选择一个默认模型
+2. [Research] 需要按轻量化、效果、速度等维度调研优秀 embedding 模型
+3. [UX] 用户选择模型时缺少维度、体积、下载状态和推荐理由
+
+验收标准：
+
+- [ ] 产出 embedding 模型候选调研，说明来源、维度、体积/资源占用、速度/效果取向和推荐场景
+- [ ] 本地模型 registry 至少包含 3 个候选模型，默认模型继续明确标注
+- [ ] Model Roles 页面展示模型维度、状态、下载入口、推荐标签（如 lightweight / balanced / quality / fast）
+- [ ] 保存 embedding model role 时同步保存 `model_name` 和 `embedding_dimension`
+- [ ] 维度不匹配或模型缺失时，Knowledge embedding / RAG 检索给出可恢复错误
+- [ ] 模型下载、失败、重试、已下载状态与 v0.13.1 的目录诊断兼容
+- [ ] 更新 `docs/API_CONTRACT.md`、`docs/DATABASE_SCHEMA.md` 和模型候选调研文档
+- [ ] `cd apps/api && pytest` 通过
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.20.0 — Non-Markdown File Preview Adapter Foundation
+
+Scope：frontend（Tauri Rust + React 前端）
+
+状态：planned
+
+约束：
+
+- 不实现 PDF、Office、图片、OCR、音频等完整文件解析流水线
+- 不实现 CSV 写回编辑；CSV 编辑另行拆分
+- 不把非 Markdown 文件内容写入 Knowledge、embedding 或 RAG ingestion
+- 不引入 Web-first 文档管理、云同步或团队协作语义
+- 不允许前端直接调用 AI Provider、数据库、SQL、embedding 或 RAG orchestration
+
+解决的问题：
+
+1. [Feature] 非 Markdown 文件目前只能被拒绝或误入 Markdown Editor，缺少安全的预览能力
+2. [Feature] 用户希望能查看图片、CSV 表格、PDF / Office 文档等仓库文件
+3. [Architecture] 需要在 v0.18.0 的 file type capability routing 之上建立 preview adapter 基础
+
+验收标准：
+
+- [ ] 建立 file capability registry：Markdown editor、read-only preview、open externally、unsupported 四类能力明确区分
+- [ ] 图片文件可在中央区域只读预览，并有 loading、error、unsupported 状态
+- [ ] CSV 文件可按表格只读预览，并处理空文件、解析失败、超大文件提示
+- [ ] PDF / Office 文档至少提供清晰的打开策略：可内置预览则预览，否则提供 open externally 和 unsupported fallback
+- [ ] 非 Markdown 文件不会触发 Markdown 保存、Knowledge 提取或 Markdown 状态栏逻辑
+- [ ] Tab 标题、文件 icon 和状态栏能反映当前文件类型
+- [ ] 文档中记录 CSV 编辑、全文解析、OCR 和 RAG ingestion 为后续版本，不混入本版本
 - [ ] `cd apps/desktop && npm run typecheck` 通过
 - [ ] `cd apps/desktop && npm run lint` 通过

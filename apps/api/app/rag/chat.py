@@ -76,8 +76,11 @@ def answer_rag_chat(
         conversation.id,
         provider_id=provider.id,
         chat_result=chat_result,
-        retrieval_metadata=_build_retrieval_metadata(
-            payload,
+        retrieval_metadata=build_retrieval_metadata(
+            payload.content,
+            tag_slugs=payload.tag_slugs,
+            top_k=payload.top_k,
+            min_score=payload.min_score,
             project_id=project_id,
             provider_id=retrieval.provider_id,
             embedding_model=retrieval.embedding_model,
@@ -119,14 +122,14 @@ def _create_grounded_answer(
                 ChatCompletionMessage(role="system", content=SYSTEM_PROMPT),
                 ChatCompletionMessage(
                     role="user",
-                    content=_build_grounded_user_prompt(question, sources),
+                    content=build_grounded_user_prompt(question, sources),
                 ),
             ]
         )
     )
 
 
-def _build_grounded_user_prompt(
+def build_grounded_user_prompt(
     question: str,
     sources: list[RetrievalResult],
 ) -> str:
@@ -183,9 +186,12 @@ def _persist_assistant_message(
     return assistant_message
 
 
-def _build_retrieval_metadata(
-    payload: RAGAnswerRequest,
+def build_retrieval_metadata(
+    content: str,
     *,
+    tag_slugs: list[str],
+    top_k: int,
+    min_score: float,
     project_id: UUID | None,
     provider_id: UUID,
     embedding_model: str,
@@ -193,11 +199,11 @@ def _build_retrieval_metadata(
     sources: list[RetrievalResult],
 ) -> dict[str, Any]:
     return {
-        "query": payload.content,
+        "query": content,
         "project_id": str(project_id) if project_id is not None else None,
-        "tag_slugs": payload.tag_slugs,
-        "top_k": payload.top_k,
-        "min_score": payload.min_score,
+        "tag_slugs": tag_slugs,
+        "top_k": top_k,
+        "min_score": min_score,
         "retrieval_provider_id": str(provider_id),
         "embedding_model": embedding_model,
         "embedding_dimension": embedding_dimension,
