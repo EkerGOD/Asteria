@@ -285,7 +285,7 @@ Primary Actions:
 - 搜索和标签过滤。
 - 新建 Knowledge 单元。
 - 编辑和归档 Knowledge 单元。
-- 切换卡片视图 ↔ 图谱视图。
+- 切换卡片视图 ↔ 列表视图。
 
 Secondary Actions:
 
@@ -307,8 +307,8 @@ Required States:
 Layout Rules:
 
 - Knowledge 视图占据右侧面板全高（不上下分）。
-- 顶部：卡片/图谱模式切换按钮 + 搜索框。
-- 主体：卡片列表或图谱画布。
+- 顶部：卡片/列表模式切换按钮 + 搜索框。
+- 主体：卡片列表或紧凑列表。
 - 每条 Knowledge 可溯源至来源对话。
 
 Must Not:

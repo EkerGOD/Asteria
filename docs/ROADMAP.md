@@ -53,37 +53,6 @@ Scope：full-stack（Tauri Rust + React 前端）
 
 ---
 
-## v0.14.0 — Knowledge 核心
-
-Scope：full-stack
-
-状态：planned
-
-约束：
-
-- 不实现自动知识图谱生成
-- 不实现 PDF/Office/图片等文件解析
-- 不实现 Agent 自动修改 Knowledge
-- 不实现本地 embedding 模型下载（依赖 v0.13.0）
-
-解决的问题：
-
-1. [Feature] 尚未实现 Knowledge 单元的创建、编辑、归档和列表查看
-2. [Feature] 尚未实现 Knowledge 卡片/列表视图切换
-3. [Feature] 尚未实现标签管理和 Knowledge 标记
-4. [Feature] 尚未实现 Knowledge 单元的 embedding 生成
-
-验收标准：
-
-- [ ] 用户可手动创建、编辑、归档 Knowledge 单元
-- [ ] Knowledge 视图支持卡片和列表两种展示模式
-- [ ] 支持为 Knowledge 添加和管理标签
-- [ ] 可通过关键词搜索 Knowledge 单元
-- [ ] 可为 Knowledge 单元生成 embedding（调用后端 AI Provider）
-- [ ] `cd apps/api && pytest` 通过（Knowledge CRUD + embedding 相关测试）
-- [ ] `cd apps/desktop && npm run typecheck` 通过
-
----
 
 ## v0.15.0 — RAG 对话与 Project 管理
 

@@ -53,6 +53,7 @@ def create_knowledge_endpoint(
 def list_knowledge_endpoint(
     project_id: UUID | None = Query(default=None),
     tag_slugs: list[str] = Query(default=[]),
+    q: str | None = Query(default=None, min_length=1),
     include_archived: bool = Query(default=False),
     session: Session = Depends(get_db_session),
 ) -> list[KnowledgeUnitResponse]:
@@ -62,6 +63,7 @@ def list_knowledge_endpoint(
             session,
             project_id=project_id,
             tag_slugs=tag_slugs or None,
+            query=q,
             include_archived=include_archived,
         )
     ]

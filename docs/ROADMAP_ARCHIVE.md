@@ -647,3 +647,58 @@ Scope：full-stack
 - `docs/API_CONTRACT.md` — health/local models diagnostics contract
 - `docs/APP_DATA_DIRECTORY.md` — directory fallback 与 diagnostics 约定
 - `docs/ROADMAP_ARCHIVE.md` — 追加 v0.13.1 完成记录
+
+---
+
+## v0.14.0 — Knowledge 核心
+
+Scope：full-stack
+
+状态：done（2026-05-01）
+
+约束：
+
+- 不实现自动知识图谱生成
+- 不实现 PDF/Office/图片等文件解析
+- 不实现 Agent 自动修改 Knowledge
+- 不实现本地 embedding 模型下载（依赖 v0.13.0）
+
+解决的问题：
+
+1. [Feature] 尚未实现 Knowledge 单元的创建、编辑、归档和列表查看
+2. [Feature] 尚未实现 Knowledge 卡片/列表视图切换
+3. [Feature] 尚未实现标签管理和 Knowledge 标记
+4. [Feature] 尚未实现 Knowledge 单元的 embedding 生成
+
+验收标准：
+
+- [x] 用户可手动创建、编辑、归档 Knowledge 单元
+- [x] Knowledge 视图支持卡片和列表两种展示模式
+- [x] 支持为 Knowledge 添加和管理标签
+- [x] 可通过关键词搜索 Knowledge 单元
+- [x] 可为 Knowledge 单元生成 embedding（调用后端 AI Provider）
+- [x] `cd apps/api && pytest` 通过（139 passed）
+- [x] `cd apps/desktop && npm run typecheck` 通过
+- [x] `cd apps/desktop && npm run lint` 通过（0 errors，2 warnings）
+- [x] `cd apps/desktop && npm run build` 通过（存在 chunk size warning）
+
+主要变更：
+
+- `GET /api/knowledge-units` 增加 `q` 关键词过滤，支持 title、content 和 source URI 搜索
+- RightPanel Knowledge View 接入真实 API，支持 cards/list 视图、搜索、标签过滤、选择、新建、编辑、归档和 embedding refresh
+- Knowledge 标签管理支持创建标签、颜色 swatch、绑定和解绑
+- API contract 补充 Knowledge filters、Knowledge tag endpoints 和 Tag API，并修正 Search API keyword contract
+- UI interaction contract 对齐 Knowledge View 的 cards/list 模式，图谱继续由独立 Graph View 承载
+- 将 v0.14.0 从 ROADMAP 归档
+
+修改文件：
+
+- `apps/api/app/api/routes/knowledge.py` — Knowledge list 接收 `q` 查询参数
+- `apps/api/app/services/knowledge.py` — Knowledge keyword search 查询逻辑
+- `apps/api/tests/test_knowledge_api.py` — keyword search API 测试
+- `apps/desktop/src/api/client.ts` — `listKnowledgeUnits()` 支持 `q`
+- `apps/desktop/src/components/KnowledgeView.tsx` — RightPanel Knowledge 核心管理 UI
+- `docs/API_CONTRACT.md` — Knowledge filters、Tag API 和 Search API contract 更新
+- `docs/UI_INTERACTION_GUIDELINES.md` — Knowledge View cards/list contract 对齐
+- `docs/ROADMAP.md` — 移除 v0.14.0 planned 条目
+- `docs/ROADMAP_ARCHIVE.md` — 追加 v0.14.0 done 记录

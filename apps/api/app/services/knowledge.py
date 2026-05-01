@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -63,6 +63,7 @@ def list_knowledge(
     *,
     project_id: UUID | None = None,
     tag_slugs: list[str] | None = None,
+    query: str | None = None,
     include_archived: bool = False,
 ) -> list[KnowledgeUnit]:
     statement: Select[tuple[KnowledgeUnit]] = select(KnowledgeUnit).distinct()
@@ -79,6 +80,18 @@ def list_knowledge(
             .join(KnowledgeUnitTag.tag)
             .where(Tag.slug.in_(tag_slugs))
         )
+
+    if query is not None:
+        normalized_query = query.strip()
+        if normalized_query:
+            search_pattern = f"%{normalized_query}%"
+            statement = statement.where(
+                or_(
+                    KnowledgeUnit.title.ilike(search_pattern),
+                    KnowledgeUnit.content.ilike(search_pattern),
+                    KnowledgeUnit.source_uri.ilike(search_pattern),
+                )
+            )
 
     statement = statement.order_by(KnowledgeUnit.updated_at.desc())
     return list(session.scalars(statement).all())

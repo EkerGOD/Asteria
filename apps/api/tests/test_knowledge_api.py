@@ -220,6 +220,35 @@ def test_tag_filtering_on_knowledge_list(knowledge_client: TestClient):
     assert len(response.json()) == 1
 
 
+def test_keyword_search_on_knowledge_list(knowledge_client: TestClient):
+    knowledge_client.post(
+        "/api/knowledge-units",
+        json={"title": "Vector Notes", "content": "pgvector and semantic search"},
+    )
+    knowledge_client.post(
+        "/api/knowledge-units",
+        json={"title": "Cooking", "content": "pasta and sauce"},
+    )
+    knowledge_client.post(
+        "/api/knowledge-units",
+        json={
+            "title": "External Source",
+            "content": "archival material",
+            "source_uri": "notes://retrieval-lab",
+        },
+    )
+
+    response = knowledge_client.get("/api/knowledge-units", params={"q": "VECTOR"})
+
+    assert response.status_code == 200
+    assert [unit["title"] for unit in response.json()] == ["Vector Notes"]
+
+    response = knowledge_client.get("/api/knowledge-units", params={"q": "retrieval"})
+
+    assert response.status_code == 200
+    assert [unit["title"] for unit in response.json()] == ["External Source"]
+
+
 def test_tags_can_be_attached_and_detached_via_knowledge_endpoints(
     knowledge_client: TestClient,
 ):

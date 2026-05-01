@@ -272,6 +272,7 @@ export function listKnowledgeUnits(
   params: {
     project_id?: string | null;
     tag_slugs?: string[];
+    q?: string | null;
     include_archived?: boolean;
   } = {},
   init?: RequestInit
@@ -280,6 +281,7 @@ export function listKnowledgeUnits(
     `/api/knowledge-units${buildQueryString({
       project_id: params.project_id,
       tag_slugs: params.tag_slugs,
+      q: params.q,
       include_archived: params.include_archived
     })}`,
     init
