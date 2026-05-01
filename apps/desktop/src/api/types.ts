@@ -1,4 +1,4 @@
-export type DirectoryDiagnosticStatus =
+type DirectoryDiagnosticStatus =
   | "configured"
   | "defaulted"
   | "missing"
@@ -31,7 +31,7 @@ export type HealthResponse = {
   directories: AppDirectoryDiagnostics;
 };
 
-export type ProviderModel = {
+type ProviderModel = {
   id: string;
   provider_id: string;
   name: string;
@@ -205,7 +205,7 @@ export type MessageCreateRequest = {
   content: string;
 };
 
-export type SemanticSearchSource = {
+type SemanticSearchSource = {
   id: string;
   project_id: string | null;
   title: string;
@@ -226,6 +226,21 @@ export type SemanticSearchResult = {
   chunk_text: string;
   score: number;
   source: SemanticSearchSource;
+};
+
+export type SemanticSearchRequest = {
+  query: string;
+  project_id?: string | null;
+  tag_slugs?: string[];
+  top_k?: number;
+  min_score?: number;
+};
+
+export type SemanticSearchResponse = {
+  provider_id: string;
+  embedding_model: string;
+  embedding_dimension: number;
+  results: SemanticSearchResult[];
 };
 
 export type RAGAnswerRequest = {
@@ -291,7 +306,7 @@ export type ModelRoleUpsertRequest = {
   embedding_dimension?: number | null;
 };
 
-export type LocalModelStatus =
+type LocalModelStatus =
   | "not_downloaded"
   | "downloading"
   | "downloaded"

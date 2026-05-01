@@ -758,3 +758,47 @@ RAG 集成到主 Chat 流程并通过 Project 管理增强交互。
 - `docs/research/ai-tool-calling.md` — 新增 AI Tool Calling 探索报告
 - `docs/ROADMAP.md` — 移除 v0.15.0 planned 条目
 - `docs/ROADMAP_ARCHIVE.md` — 追加 v0.15.0 done 记录
+
+
+---
+
+## v0.15.1 — 代码审计与清理
+
+Scope：frontend
+
+状态：done
+
+约束：
+
+- 不新增功能
+- 不修改 API 接口定义
+- 不修改数据库 schema
+
+### 审计结果
+
+**后端 API 审查**：35 个端点，路径命名一致，错误处理规范，无严重设计缺陷。
+
+**前端 API client 修复**：
+- 修复 `deleteProvider` 返回类型 `Promise<Provider>` → `Promise<void>`（后端返回 204）
+- 新增 `requestJson` 204 No Content 处理
+- 新增 `getProvider`、`getProject`、`getRepository`、`getKnowledgeUnit` GET-by-id 函数
+- 新增 `searchSemantic` 函数 + `SemanticSearchRequest`/`SemanticSearchResponse` 类型
+
+**死代码清理**：
+- 移除 6 个未使用的 exported type 关键字（类型本身保留，仅移除不必要的 export）
+
+### 验收标准达成
+
+- [x] 移除未使用的组件、类型和工具函数
+- [x] API client 类型定义与后端 OpenAPI schema 一致
+- [x] 后端接口路径、参数和响应格式经审查无遗留问题
+- [x] `cd apps/api && pytest` 通过（139 passed）
+- [x] `cd apps/desktop && npm run typecheck` 通过
+- [x] `cd apps/desktop && npm run lint` 通过（0 errors）
+
+### 修改文件
+
+- `apps/desktop/src/api/types.ts` — 新增 `SemanticSearchRequest`、`SemanticSearchResponse`；移除 4 个不必要的 export
+- `apps/desktop/src/api/client.ts` — 修复 `deleteProvider` 返回类型；新增 5 个 API 函数；204 处理
+- `apps/desktop/src/components/ConfirmDialog.tsx` — 移除 `ConfirmDialogProps` 多余的 export
+- `apps/desktop/src/components/IconButton.tsx` — 移除 `IconButtonProps` 多余的 export

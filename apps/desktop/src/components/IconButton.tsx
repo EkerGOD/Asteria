@@ -9,7 +9,7 @@ const sizeClassByName: Record<IconButtonSize, string> = {
   md: "h-8 w-8",
 };
 
-export type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
+type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
   icon: IconName;
   label: string;
   active?: boolean;

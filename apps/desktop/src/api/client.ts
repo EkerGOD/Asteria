@@ -27,6 +27,8 @@ import type {
   RepositoryUpdateRequest,
   RAGAnswerRequest,
   RAGAnswerResponse,
+  SemanticSearchRequest,
+  SemanticSearchResponse,
   SemanticSearchResult,
   Tag,
   TagCreateRequest,
@@ -164,6 +166,10 @@ async function requestJson<TResponse>(path: string, init?: RequestInit): Promise
     throw new ApiClientError(detail ? `${message} ${detail}` : message, response.status);
   }
 
+  if (response.status === 204) {
+    return undefined as TResponse;
+  }
+
   try {
     return (await response.json()) as TResponse;
   } catch {
@@ -191,8 +197,12 @@ export function updateProvider(
   return requestJsonBody<Provider>(`/api/providers/${providerId}`, "PUT", payload, init);
 }
 
-export function deleteProvider(providerId: string, init?: RequestInit): Promise<Provider> {
-  return requestJsonBody<Provider>(`/api/providers/${providerId}`, "DELETE", undefined, init);
+export function deleteProvider(providerId: string, init?: RequestInit): Promise<void> {
+  return requestJsonBody<void>(`/api/providers/${providerId}`, "DELETE", undefined, init);
+}
+
+export function getProvider(providerId: string, init?: RequestInit): Promise<Provider> {
+  return requestJson<Provider>(`/api/providers/${providerId}`, init);
 }
 
 export function checkProviderHealth(providerId: string, init?: RequestInit): Promise<ProviderHealthResponse> {
@@ -222,6 +232,10 @@ export function updateProject(
 
 export function archiveProject(projectId: string, init?: RequestInit): Promise<Project> {
   return requestJsonBody<Project>(`/api/projects/${projectId}`, "DELETE", undefined, init);
+}
+
+export function getProject(projectId: string, init?: RequestInit): Promise<Project> {
+  return requestJson<Project>(`/api/projects/${projectId}`, init);
 }
 
 export function listRepositories(
@@ -255,6 +269,10 @@ export function updateRepository(
 
 export function unlinkRepository(repositoryId: string, init?: RequestInit): Promise<Repository> {
   return requestJsonBody<Repository>(`/api/repositories/${repositoryId}`, "DELETE", undefined, init);
+}
+
+export function getRepository(repositoryId: string, init?: RequestInit): Promise<Repository> {
+  return requestJson<Repository>(`/api/repositories/${repositoryId}`, init);
 }
 
 export function selectRepository(repositoryId: string, init?: RequestInit): Promise<Repository> {
@@ -306,6 +324,10 @@ export function updateKnowledgeUnit(
 
 export function archiveKnowledgeUnit(knowledgeId: string, init?: RequestInit): Promise<KnowledgeUnit> {
   return requestJsonBody<KnowledgeUnit>(`/api/knowledge-units/${knowledgeId}`, "DELETE", undefined, init);
+}
+
+export function getKnowledgeUnit(knowledgeId: string, init?: RequestInit): Promise<KnowledgeUnit> {
+  return requestJson<KnowledgeUnit>(`/api/knowledge-units/${knowledgeId}`, init);
 }
 
 export function refreshKnowledgeEmbeddings(
@@ -407,6 +429,13 @@ export function answerRag(payload: RAGAnswerRequest, init?: RequestInit): Promis
 
 export function sendChat(payload: ChatSendRequest, init?: RequestInit): Promise<ChatSendResponse> {
   return requestJsonBody<ChatSendResponse>("/api/chat/send", "POST", payload, init);
+}
+
+export function searchSemantic(
+  payload: SemanticSearchRequest,
+  init?: RequestInit
+): Promise<SemanticSearchResponse> {
+  return requestJsonBody<SemanticSearchResponse>("/api/search/semantic", "POST", payload, init);
 }
 
 export async function sendChatStream(

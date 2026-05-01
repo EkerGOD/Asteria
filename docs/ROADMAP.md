@@ -16,9 +16,8 @@
 | Scope | frontend / backend / full-stack |
 | 状态 | planned / in_progress / done |
 
----
 
-## v0.15.1 — 代码审计与清理
+## v0.15.2 — Chat & UI Bug 修复
 
 Scope：frontend
 
@@ -27,25 +26,29 @@ Scope：frontend
 约束：
 
 - 不新增功能
-- 不修改 API 接口定义
+- 不修改 API 接口
 - 不修改数据库 schema
 
 解决的问题：
 
-1. [Audit] 前端经历较大变化后存在冗余代码和组件
-2. [Audit] 前端 API client 接口需与后端实际接口进行兼容性核对
-3. [Audit] 后端接口设计是否合理，是否需要调整
+1. [Bug] 右键菜单弹出的是折叠面板默认内容，而非上下文菜单（Note #4）
+2. [Bug] 底部选择 Project 后 Chat 区域出现双滚动条（Note #6a）
+3. [Bug] Project 选择器弹出菜单被限制在父容器内，未脱离悬浮（Note #7）
+4. [Bug] 等待首个 token 时消息气泡提前显示并展示当前时间，应有 loading 动画（Note #9）
+5. [Bug] Chat 面板折叠再展开后输入框自动变为最大尺寸（Note #13）
 
 验收标准：
 
-- [ ] 移除未使用的组件、类型和工具函数
-- [ ] API client 类型定义与后端 OpenAPI schema 一致
-- [ ] 后端接口路径、参数和响应格式经审查无遗留问题
-- [ ] `cd apps/api && pytest` 通过
+- [ ] 右键菜单正确显示上下文操作选项
+- [ ] Project 选择后 Chat 区域仅有一个滚动条
+- [ ] Project 弹出菜单通过 Portal 悬浮于父容器之上
+- [ ] 首个 token 到达前显示 loading 动画，token 到达后再显示消息气泡
+- [ ] Chat 面板折叠/展开后输入框尺寸不变
 - [ ] `cd apps/desktop && npm run typecheck` 通过
 - [ ] `cd apps/desktop && npm run lint` 通过
 
 ---
+
 
 ## v0.16.0 — Command Palette 与快捷键管理
 
@@ -222,5 +225,157 @@ Scope：frontend（Tauri Rust + React 前端）
 - [ ] 非 Markdown 文件不会触发 Markdown 保存、Knowledge 提取或 Markdown 状态栏逻辑
 - [ ] Tab 标题、文件 icon 和状态栏能反映当前文件类型
 - [ ] 文档中记录 CSV 编辑、全文解析、OCR 和 RAG ingestion 为后续版本，不混入本版本
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+
+---
+
+## v0.21.0 — Knowledge UX 重构
+
+Scope：frontend
+
+状态：planned
+
+约束：
+
+- 不改动 Knowledge API 接口
+- 不修改数据库 schema
+- 不改变 Knowledge 数据模型
+
+解决的问题：
+
+1. [UX] Knowledge 页面所有 CRUD 操作堆在一起，逻辑混乱（Note #5）
+2. [UX] Tag 管理缺少独立弹窗，全部堆在 Knowledge 页面
+
+验收标准：
+
+- [ ] Knowledge 主页面仅展示卡片/列表/图谱视图
+- [ ] 点击 New 按钮弹出 Modal Dialog 进行新建（title、content、tags 多选/新建）
+- [ ] 编辑 Knowledge 通过同一 Modal 模式完成
+- [ ] Tag 管理有独立小 Modal
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.22.0 — Project 管理增强
+
+Scope：full-stack
+
+状态：planned
+
+约束：
+
+- 不改变 Project 与 Repository 的独立关系
+- 不实现多层级 Project 文件夹
+
+解决的问题：
+
+1. [UX] Chat 顶部缺少固定的 Project 上下文指示器（Note #6b）
+2. [UX] History 视图平铺所有对话，未按 Project 分组（Note #8）
+3. [Feature] Project 只能归档不能删除，缺少完整生命周期管理（Note #11）
+
+验收标准：
+
+- [ ] Chat 顶部有固定定位的 Project 选择器，不随聊天滚动
+- [ ] 顶部 Project 选择器与底部工具栏 Project 选择器同步
+- [ ] History 视图按 Project 一级文件夹分组显示对话
+- [ ] Project 支持删除操作
+- [ ] 删除 Project 前弹出确认对话框，告知将删除项目下所有内容
+- [ ] 删除 Project 后级联删除关联对话和消息
+- [ ] `cd apps/api && pytest` 通过
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.23.0 — 编辑器上下文感知
+
+Scope：frontend
+
+状态：planned
+
+约束：
+
+- 不实现多文件同时注入上下文
+- 不改变 AI Provider 调用方式
+- 上下文注入由后端 RAG 流程处理，本版本只做前端 UI
+
+解决的问题：
+
+1. [Feature] 缺少基于当前 md 文件的大纲视图（Note #3）
+2. [Feature] Chat 输入区缺少当前打开文件的上下文指示器（Note #10）
+
+验收标准：
+
+- [ ] 右侧面板 Outline 视图根据当前打开 md 文件加载标题结构
+- [ ] 点击 Outline 节点可跳转到 Editor 对应位置
+- [ ] 打开 md 文件时 Chat 输入框下方显示当前文件名
+- [ ] 文件名右侧有眼睛图标按钮，点击切换是否将文件加入对话上下文
+- [ ] 眼睛图标状态明确区分已加入/未加入上下文
+- [ ] 切换文件时上下文状态同步更新
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.24.0 — LanceDB 向量存储迁移
+
+Scope：full-stack
+
+状态：planned
+
+约束：
+
+- 不迁移业务元数据表（conversations、projects、knowledge 等仍用 PostgreSQL/SQLAlchemy）
+- 不改变 API 接口签名
+- 不引入新的 AI Provider 依赖
+- 迁移期间保持 pgvector 兼容，支持回退
+
+解决的问题：
+
+1. [Architecture] 向量数据与仓库耦合度低，无法按仓库独立存储和迁移（Note #2）
+2. [Research] `.asteria` 数据存储结构未明确定义（Note #1）
+
+验收标准：
+
+- [ ] 产出 `.asteria` 文件夹数据存储结构文档
+- [ ] 向量数据从 pgvector 迁移到 `.asteria/<repo-id>/vectors.lance`
+- [ ] FastAPI 通过 LanceDB Python SDK 读写向量数据
+- [ ] 每仓库向量数据完全隔离
+- [ ] 嵌入生成和检索路径通过后端统一管理
+- [ ] 提供 pgvector → LanceDB 迁移脚本
+- [ ] 迁移期间 RAG 检索不受影响
+- [ ] `cd apps/api && pytest` 通过
+- [ ] `cd apps/desktop && npm run typecheck` 通过
+- [ ] `cd apps/desktop && npm run lint` 通过
+
+---
+
+## v0.25.0 — 日志基础设施
+
+Scope：full-stack
+
+状态：planned
+
+约束：
+
+- 不实现远程日志上传或云端日志服务
+- 不实现实时日志查看器 UI（留到后续版本）
+- 日志文件本地存储，按天轮转
+
+解决的问题：
+
+1. [Infrastructure] 缺少统一的前后端日志，排查问题困难（Note #12）
+
+验收标准：
+
+- [ ] 后端使用 Python logging 输出分级日志到文件
+- [ ] 前端 console 日志重定向到 Tauri log 文件
+- [ ] 日志按天轮转，保留最近 N 天
+- [ ] 日志级别可通过配置调整（DEBUG/INFO/WARN/ERROR）
+- [ ] 日志文件路径文档化
+- [ ] `cd apps/api && pytest` 通过
 - [ ] `cd apps/desktop && npm run typecheck` 通过
 - [ ] `cd apps/desktop && npm run lint` 通过
