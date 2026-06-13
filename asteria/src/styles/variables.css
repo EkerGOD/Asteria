@@ -1,0 +1,112 @@
+:root {
+  /* Text & background */
+  --text-primary: #1a1a1a;
+  --text-secondary: #666;
+  --text-muted: #888;
+  --bg-primary: #ffffff;
+  --bg-secondary: #fafafa;
+  --bg-tertiary: #f0f0f0;
+  --bg-hover: #e8e8e8;
+
+  /* Borders */
+  --border-primary: #e0e0e0;
+  --border-secondary: #d0d0d0;
+
+  /* Editor */
+  --editor-font: "Consolas", "Courier New", monospace;
+  --editor-font-size: 15px;
+  --editor-line-height: 1.65;
+  --editor-caret: #1a1a1a;
+
+  /* Gutter */
+  --gutter-bg: #ffffff;
+  --gutter-color: #bbb;
+  --gutter-border: #e8e8e8;
+  --gutter-active-color: #888;
+
+  /* Link */
+  --link-color: #0066cc;
+
+  /* Code */
+  --code-bg: #e8e8e8;
+  --code-block-border: #ddd;
+  --code-block-header-bg: #e8e8e8;
+  --code-block-code-bg: #f8f8f8;
+
+  /* Table */
+  --table-border: #ddd;
+  --table-header-bg: #f0f0f0;
+  --table-row-even-bg: #fafafa;
+
+  /* Blockquote */
+  --blockquote-border: #ccc;
+  --blockquote-color: #666;
+
+  /* Horizontal rule */
+  --hr-color: #e0e0e0;
+
+  /* List */
+  --bullet-color: #666;
+
+  /* Syntax highlight token colors */
+  --token-comment: #6a737d;
+  --token-string: #22863a;
+  --token-keyword: #d73a49;
+  --token-atom: #005cc5;
+  --token-number: #005cc5;
+  --token-tag: #d73a49;
+  --token-attr: #6f42c1;
+  --token-property: #005cc5;
+  --token-value: #22863a;
+  --token-selector: #d73a49;
+  --token-key: #005cc5;
+}
+
+[data-theme="dark"] {
+  --text-primary: #e0e0e0;
+  --text-secondary: #aaa;
+  --text-muted: #777;
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #252526;
+  --bg-tertiary: #2d2d2d;
+  --bg-hover: #3a3a3a;
+
+  --border-primary: #3e3e3e;
+  --border-secondary: #444;
+
+  --editor-caret: #e0e0e0;
+
+  --gutter-bg: #1e1e1e;
+  --gutter-color: #555;
+  --gutter-border: #333;
+  --gutter-active-color: #777;
+
+  --link-color: #4da6ff;
+
+  --code-bg: #3a3a3a;
+  --code-block-border: #444;
+  --code-block-header-bg: #333;
+  --code-block-code-bg: #252526;
+
+  --table-border: #444;
+  --table-header-bg: #333;
+  --table-row-even-bg: #2a2a2a;
+
+  --blockquote-border: #555;
+  --blockquote-color: #aaa;
+
+  --hr-color: #444;
+  --bullet-color: #888;
+
+  --token-comment: #6a9955;
+  --token-string: #ce9178;
+  --token-keyword: #569cd6;
+  --token-atom: #569cd6;
+  --token-number: #b5cea8;
+  --token-tag: #569cd6;
+  --token-attr: #9cdcfe;
+  --token-property: #9cdcfe;
+  --token-value: #ce9178;
+  --token-selector: #d7ba7d;
+  --token-key: #9cdcfe;
+}

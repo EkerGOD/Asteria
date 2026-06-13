@@ -1,0 +1,206 @@
+/* ===== Editor container ===== */
+.editor-container {
+  height: 100%;
+}
+
+/* ===== CM6 编辑器基础 ===== */
+.cm-editor {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  outline: none;
+}
+
+.cm-editor.cm-focused {
+  outline: none;
+}
+
+.cm-editor .cm-scroller {
+  overflow: visible;
+  font-family: var(--editor-font);
+  line-height: var(--editor-line-height);
+  font-size: var(--editor-font-size);
+}
+
+.cm-editor .cm-content {
+  font-family: inherit;
+  padding: 0 8px;
+  caret-color: var(--editor-caret);
+}
+
+.cm-editor .cm-gutters {
+  background: var(--gutter-bg);
+  color: var(--gutter-color);
+  border-right: 1px solid var(--gutter-border);
+  font-size: 13px;
+  padding-right: 8px;
+}
+
+.cm-editor .cm-activeLineGutter {
+  background: var(--gutter-bg);
+  color: var(--gutter-active-color);
+}
+
+/* ===== WYSIWYG 行内语法样式 ===== */
+.cm-bold {
+  font-weight: 700;
+}
+.cm-italic {
+  font-style: italic;
+}
+.cm-bold-italic {
+  font-weight: 700;
+  font-style: italic;
+}
+.cm-strikethrough {
+  text-decoration: line-through;
+}
+.cm-inline-code {
+  font-family: var(--editor-font);
+  background: var(--code-bg);
+  border-radius: 3px;
+  padding: 0 3px;
+  font-size: 0.9em;
+}
+.cm-link {
+  color: var(--link-color);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ===== WYSIWYG 块级 Widget 样式 ===== */
+.cm-image-widget {
+  max-width: 100%;
+  display: block;
+  padding: 8px 0;
+}
+
+/* ===== WYSIWYG 代码块样式 ===== */
+.cm-code-block {
+  padding: 8px 0;
+  border: 1px solid var(--code-block-border);
+  border-radius: 6px;
+  overflow: hidden;
+  font-family: var(--editor-font);
+  font-size: 0.9em;
+}
+.cm-code-block-header {
+  background: var(--code-block-header-bg);
+  padding: 4px 12px;
+  font-size: 0.8em;
+  color: var(--text-secondary);
+}
+.cm-code-block pre {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  background: var(--code-block-code-bg);
+  line-height: 1.5;
+}
+.cm-code-block code {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* ===== 代码语法高亮 Token 颜色 ===== */
+.cm-token-comment  { color: var(--token-comment); font-style: italic; }
+.cm-token-string   { color: var(--token-string); }
+.cm-token-keyword  { color: var(--token-keyword); font-weight: 600; }
+.cm-token-atom     { color: var(--token-atom); }
+.cm-token-number   { color: var(--token-number); }
+.cm-token-tag      { color: var(--token-tag); }
+.cm-token-attr     { color: var(--token-attr); }
+.cm-token-property { color: var(--token-property); }
+.cm-token-value    { color: var(--token-value); }
+.cm-token-selector { color: var(--token-selector); }
+.cm-token-key      { color: var(--token-key); }
+
+/* ===== WYSIWYG 表格样式 ===== */
+.cm-table {
+  border-collapse: collapse;
+  padding: 8px 0;
+  width: 100%;
+}
+.cm-table th,
+.cm-table td {
+  border: 1px solid var(--table-border);
+  padding: 6px 12px;
+  text-align: left;
+}
+.cm-table th {
+  background: var(--table-header-bg);
+  font-weight: 700;
+}
+.cm-table tr:nth-child(even) td {
+  background: var(--table-row-even-bg);
+}
+
+/* ===== WYSIWYG 标题样式 ===== */
+.cm-heading-1 {
+  font-size: 2em;
+  font-weight: 700;
+  line-height: 1.3;
+  padding: 0.5em 0 0.25em;
+}
+.cm-heading-2 {
+  font-size: 1.5em;
+  font-weight: 700;
+  line-height: 1.3;
+  padding: 0.5em 0 0.25em;
+}
+.cm-heading-3 {
+  font-size: 1.25em;
+  font-weight: 700;
+  line-height: 1.3;
+  padding: 0.4em 0 0.2em;
+}
+.cm-heading-4 {
+  font-size: 1.1em;
+  font-weight: 700;
+  line-height: 1.3;
+  padding: 0.3em 0 0.15em;
+}
+.cm-heading-5 {
+  font-size: 1em;
+  font-weight: 700;
+  line-height: 1.3;
+  padding: 0.2em 0 0.1em;
+}
+.cm-heading-6 {
+  font-size: 0.9em;
+  font-weight: 700;
+  line-height: 1.3;
+  padding: 0.15em 0 0.05em;
+  color: var(--text-secondary);
+}
+
+/* ===== WYSIWYG 引用样式 ===== */
+.cm-blockquote {
+  border-left: 3px solid var(--blockquote-border);
+  padding-left: 12px;
+  color: var(--blockquote-color);
+  font-style: italic;
+}
+
+/* ===== WYSIWYG 分割线样式 ===== */
+.cm-hr {
+  margin: 0;
+  border: none;
+  border-top: 2px solid var(--hr-color);
+  height: 0;
+}
+
+/* ===== WYSIWYG 列表样式 ===== */
+.cm-list-line {
+  padding-left: 16px;
+}
+.cm-task-line {
+  padding-left: 16px;
+}
+.cm-list-bullet {
+  color: var(--bullet-color);
+}
+.cm-task-checkbox {
+  margin-right: 6px;
+  vertical-align: middle;
+  cursor: pointer;
+}
