@@ -1,6 +1,7 @@
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { Store } from "@tauri-apps/plugin-store";
 import { useTabs } from "./useTabs";
 
 export interface FileEntry {
@@ -39,6 +40,15 @@ function joinPath(parent: string, name: string): string {
   return parent + sep + name;
 }
 
+let _store: Store | null = null
+
+async function getStore(): Promise<Store> {
+  if (!_store) {
+    _store = await Store.load("config.json")
+  }
+  return _store
+}
+
 export function useFileManager() {
   async function openFolder() {
     const selected = await open({
@@ -48,6 +58,9 @@ export function useFileManager() {
     });
     if (selected && typeof selected === "string") {
       currentFolder.value = selected;
+      const store = await getStore();
+      await store.set("lastFolder", selected);
+      await store.save();
       await refreshTree();
     }
   }
@@ -174,6 +187,15 @@ export function useFileManager() {
     await deleteItem(entry.path);
   }
 
+  async function restoreLastFolder() {
+    const store = await getStore();
+    const saved = await store.get<string>("lastFolder");
+    if (saved) {
+      currentFolder.value = saved;
+      await refreshTree();
+    }
+  }
+
   return {
     currentFolder,
     fileTree,
@@ -181,6 +203,7 @@ export function useFileManager() {
     contextMenu,
     renamingPath,
     openFolder,
+    restoreLastFolder,
     refreshTree,
     selectFile,
     loadChildren,

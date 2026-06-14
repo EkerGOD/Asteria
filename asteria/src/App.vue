@@ -2,6 +2,9 @@
 import { onMounted } from "vue";
 
 import { testLexer } from './parser/lexer'
+import { useFileManager } from "./composables/useFileManager";
+import { useAppShell } from "./composables/useAppShell";
+import { useTabs } from "./composables/useTabs";
 
 import Toolbar from "./components/toolbar/Toolbar.vue";
 import MarkdownEditor from "./components/editor/MarkdownEditor.vue";
@@ -9,8 +12,15 @@ import FileTree from "./components/file-tree/FileTree.vue";
 import TabBar from "./components/tabs/TabBar.vue";
 import Sidebar from "./components/layout/Sidebar.vue";
 
-onMounted(() => {
+const { restoreLastFolder } = useFileManager();
+const { restoreAppShell } = useAppShell();
+const { restoreTabs } = useTabs();
+
+onMounted(async () => {
   testLexer()
+  await restoreAppShell()
+  await restoreLastFolder()
+  await restoreTabs()
 })
 
 </script>

@@ -27,3 +27,7 @@ dist/
 
 # OS
 desktop.ini
+
+# Agent
+.plan/
+AGENTS.md
