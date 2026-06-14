@@ -1,6 +1,7 @@
 import { ref, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { Store } from "@tauri-apps/plugin-store";
+import { ask } from "@tauri-apps/plugin-dialog";
 
 export interface Tab {
   path: string;
@@ -9,9 +10,14 @@ export interface Tab {
   isDirty: boolean;
 }
 
+export type SaveStatus = "idle" | "saving" | "saved" | "error"
+
 const tabs = ref<Tab[]>([]);
 const activeTabPath = ref("");
 const activeContentVersion = ref(0);
+const saveStatusMap = ref<Record<string, SaveStatus>>({});
+const cursorLine = ref(1);
+const cursorCol = ref(1);
 
 let _store: Store | null = null
 
@@ -44,14 +50,15 @@ export function useTabs() {
     saveTabsState()
   }
 
-  function closeTab(path: string) {
+  async function closeTab(path: string) {
     const idx = tabs.value.findIndex((t) => t.path === path);
     if (idx === -1) return;
 
     const tab = tabs.value[idx];
     if (tab.isDirty) {
-      const confirmed = window.confirm(
-        `"${tab.name}" has unsaved changes. Close anyway?`
+      const confirmed = await ask(
+        `"${tab.name}" has unsaved changes. Close anyway?`,
+        { title: "Unsaved Changes", kind: "warning" }
       );
       if (!confirmed) return;
     }
@@ -93,6 +100,19 @@ export function useTabs() {
     if (tab) tab.isDirty = false;
   }
 
+  function setSaveStatus(path: string, status: SaveStatus) {
+    saveStatusMap.value = { ...saveStatusMap.value, [path]: status }
+  }
+
+  function getSaveStatus(path: string): SaveStatus {
+    return saveStatusMap.value[path] || "idle"
+  }
+
+  function setCursorPos(line: number, col: number) {
+    cursorLine.value = line
+    cursorCol.value = col
+  }
+
   async function restoreTabs() {
     const store = await getStore()
     const savedPaths = await store.get<string[]>("openTabPaths")
@@ -130,6 +150,12 @@ export function useTabs() {
     switchTab,
     updateContent,
     markClean,
+    setSaveStatus,
+    getSaveStatus,
+    saveStatusMap,
+    cursorLine,
+    cursorCol,
+    setCursorPos,
     restoreTabs,
   };
 }

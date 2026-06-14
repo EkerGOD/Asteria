@@ -15,7 +15,7 @@
 }
 
 .cm-editor .cm-scroller {
-  overflow: visible;
+  overflow: hidden;
   font-family: var(--editor-font);
   line-height: var(--editor-line-height);
   font-size: var(--editor-font-size);
@@ -71,7 +71,6 @@
 .cm-image-widget {
   max-width: 100%;
   display: block;
-  padding: 8px 0;
 }
 
 /* ===== WYSIWYG 代码块样式 ===== */

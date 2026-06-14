@@ -3,6 +3,28 @@ import { Text, EditorState, StateField, RangeSetBuilder, StateEffect } from '@co
 import { getCursorLines } from './cursor-tracker'
 import { ImageWidget, HorizontalRuleWidget, BulletWidget, CheckboxWidget, CodeBlockWidget, TableWidget, parseAlignments, isTableSeparator, splitCells } from './widgets'
 
+let currentFilePath: string | null = null
+
+export function setCurrentFilePath(path: string | null) {
+    currentFilePath = path
+}
+
+function resolveImageUrl(src: string): string {
+    if (!currentFilePath) return src
+    if (/^https?:\/\//i.test(src)) return src
+    if (/^data:/i.test(src)) return src
+
+    const dir = currentFilePath.replace(/[/\\][^/\\]*$/, '')
+    const normalized = src.replace(/\\/g, '/')
+    if (normalized.startsWith('./')) {
+        return `${dir}/${normalized.slice(2)}`.replace(/\\/g, '/')
+    }
+    if (/^[A-Za-z]:/.test(normalized)) {
+        return normalized.replace(/\\/g, '/')
+    }
+    return `${dir}/${normalized}`.replace(/\\/g, '/')
+}
+
 // ============================================================================
 // 类型定义
 // ============================================================================
@@ -207,9 +229,11 @@ function tryImage(text: string, pos: number, doc: Text, cursorLines: Set<number>
   const from = pos
   const to = pos + match[0].length
 
+  const src = resolveImageUrl(match[2])
+
   if (!hasCursorInRange(doc, from, to - 1, cursorLines)) {
     builder.add(from, to, Decoration.replace({
-      widget: new ImageWidget(match[2], match[1], match[3]),
+      widget: new ImageWidget(src, match[1], match[3]),
     }))
   }
 

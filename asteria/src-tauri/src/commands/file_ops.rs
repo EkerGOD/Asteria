@@ -88,3 +88,18 @@ pub fn rename_path(old_path: String, new_path: String) -> Result<(), String> {
     }
     fs::rename(&old_path, &new_path).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn write_binary_file(path: String, data: Vec<u8>) -> Result<(), String> {
+    if let Some(parent) = Path::new(&path).parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(&path, &data).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn read_binary_file(path: String) -> Result<String, String> {
+    let data = fs::read(&path).map_err(|e| e.to_string())?;
+    use base64::Engine;
+    Ok(base64::engine::general_purpose::STANDARD.encode(&data))
+}

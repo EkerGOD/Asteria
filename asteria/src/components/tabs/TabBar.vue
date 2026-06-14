@@ -9,7 +9,10 @@
       @click.middle.prevent="closeTab(tab.path)"
     >
       <span class="tab-name">{{ tab.name }}</span>
-      <span v-if="tab.isDirty" class="tab-dirty codicon codicon-circle-filled" title="Unsaved changes" />
+      <span v-if="tab.isDirty && !saveStatusMap[tab.path]" class="tab-dirty codicon codicon-circle-filled" title="Modified" />
+      <span v-if="saveStatusMap[tab.path] === 'saving'" class="tab-spinner" title="Saving..." />
+      <span v-if="saveStatusMap[tab.path] === 'saved'" class="tab-saved-icon codicon codicon-check" title="Saved" />
+      <span v-if="saveStatusMap[tab.path] === 'error'" class="tab-dot tab-dot-error" title="Save failed" />
       <button class="tab-close" @click.stop="closeTab(tab.path)" title="Close">
         <span class="codicon codicon-close" />
       </button>
@@ -20,7 +23,7 @@
 <script setup lang="ts">
 import { useTabs } from "../../composables/useTabs";
 
-const { tabs, activeTabPath, switchTab, closeTab } = useTabs();
+const { tabs, activeTabPath, switchTab, closeTab, saveStatusMap } = useTabs();
 </script>
 
 <style scoped>
@@ -74,6 +77,38 @@ const { tabs, activeTabPath, switchTab, closeTab } = useTabs();
   font-size: 8px;
   line-height: 1;
   flex-shrink: 0;
+}
+
+.tab-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--text-muted, #888);
+  border-top-color: #ffa726;
+  border-radius: 50%;
+  animation: tab-spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+.tab-saved-icon {
+  color: #4caf50;
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tab-dot-error {
+  background: #f44336;
+}
+
+@keyframes tab-spin {
+  to { transform: rotate(360deg); }
 }
 
 .tab-close {

@@ -11,7 +11,8 @@
           :entry="entry"
           :depth="0"
         />
-        <div v-if="fileTree.length === 0" class="empty-dir">
+        <NewItemRow v-if="creatingIn === currentFolder" :depth="0" />
+        <div v-if="fileTree.length === 0 && creatingIn !== currentFolder" class="empty-dir">
           Empty folder
         </div>
       </template>
@@ -27,8 +28,9 @@
 import { useFileManager } from "../../composables/useFileManager";
 import FileTreeNode from "./FileTreeNode.vue";
 import FileTreeContextMenu from "./FileTreeContextMenu.vue";
+import NewItemRow from "./NewItemRow.vue";
 
-const { currentFolder, fileTree, showContextMenu } = useFileManager();
+const { currentFolder, fileTree, showContextMenu, creatingIn } = useFileManager();
 
 function handleBodyContextMenu(e: MouseEvent) {
   showContextMenu(null, e.clientX, e.clientY);

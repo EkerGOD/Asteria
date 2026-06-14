@@ -31,7 +31,8 @@
         :entry="child"
         :depth="depth + 1"
       />
-      <div v-if="!entry.children || entry.children.length === 0" class="empty-dir">
+      <NewItemRow v-if="creatingIn === entry.path" :depth="depth + 1" />
+      <div v-if="(!entry.children || entry.children.length === 0) && creatingIn !== entry.path" class="empty-dir">
         Empty folder
       </div>
     </div>
@@ -41,13 +42,14 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
 import { useFileManager, type FileEntry } from "../../composables/useFileManager";
+import NewItemRow from "./NewItemRow.vue";
 
 const props = defineProps<{
   entry: FileEntry;
   depth: number;
 }>();
 
-const { selectedFile, selectFile, loadChildren, showContextMenu, renamingPath, cancelRename, confirmRename } = useFileManager();
+const { selectedFile, selectFile, loadChildren, showContextMenu, renamingPath, cancelRename, confirmRename, creatingIn } = useFileManager();
 const expanded = ref(false);
 const loaded = ref(false);
 const renameInput = ref<HTMLInputElement | null>(null);

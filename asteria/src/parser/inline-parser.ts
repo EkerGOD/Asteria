@@ -82,7 +82,7 @@ export class InlineLexer {
             }
             // 3. 图片 — `![alt](url "title")`
             //    必须以 `![` 开头。单独的 `!` 就是普通字符。
-            else if (ch === '!' && this.peek() === '[') {
+            else if (ch === '!' && this.pos + 1 < this.input.length && this.input[this.pos + 1] === '[') {
                 const t = this.parseImage()
                 if (t) { tokens.push(t); continue }
             }

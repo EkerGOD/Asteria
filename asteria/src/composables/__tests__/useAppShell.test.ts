@@ -1,4 +1,21 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: vi.fn(),
+}));
+
+vi.mock("@tauri-apps/plugin-store", () => ({
+  Store: {
+    load: vi.fn(() =>
+      Promise.resolve({
+        get: vi.fn(() => Promise.resolve(null)),
+        set: vi.fn(() => Promise.resolve()),
+        save: vi.fn(() => Promise.resolve()),
+      })
+    ),
+  },
+}));
+
 import { useAppShell } from "../useAppShell";
 
 describe("useAppShell", () => {

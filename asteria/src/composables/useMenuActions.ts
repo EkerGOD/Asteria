@@ -121,16 +121,16 @@ export function useMenuActions() {
   }
 
   async function showAbout() {
-    await message("Asteria - WYSIWYG Markdown Editor\nVersion 0.1.0", {
-      title: "About Asteria",
-      kind: "info",
-    });
+    await message(
+      "Asteria - WYSIWYG Markdown Editor\n\nVersion 0.1.0\n\nBuilt with Tauri v2 + Vue 3 + CodeMirror 6\n\nhttps://github.com/your-org/asteria",
+      { title: "About Asteria", kind: "info" }
+    );
   }
 
   async function showWelcome() {
     await message(
-      "Welcome to Asteria!\n\nA WYSIWYG Markdown editor built with Tauri + Vue + CodeMirror 6.\n\nOpen a folder to get started.",
-      { title: "Welcome", kind: "info" }
+      "Welcome to Asteria!\n\nA WYSIWYG Markdown editor built with Tauri + Vue + CodeMirror 6.\n\nGetting started:\n  • File → Open Folder to open a project\n  • File → Open File to edit a single file\n  • Ctrl+K Ctrl+O to quick-open a folder\n  • Ctrl+Shift+F to search across files\n\nYour edits are auto-saved after 1 second of inactivity.",
+      { title: "Welcome to Asteria", kind: "info" }
     );
   }
 

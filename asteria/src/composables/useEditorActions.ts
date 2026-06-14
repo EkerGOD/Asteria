@@ -11,6 +11,7 @@ export function useEditorActions(): {
   copy: () => void;
   paste: () => void;
   selectAll: () => void;
+  goToLine: (line: number, col?: number) => void;
 } {
   function registerEditor(view: EditorView) {
     editor = view;
@@ -63,6 +64,18 @@ export function useEditorActions(): {
     });
   }
 
+  function goToLine(line: number, col?: number) {
+    if (!editor) return;
+    const doc = editor.state.doc;
+    const targetLine = Math.max(1, Math.min(line, doc.lines));
+    const lineObj = doc.line(targetLine);
+    const pos = Math.min(lineObj.from + (col ?? 0), lineObj.to);
+    editor.dispatch({
+      selection: { anchor: pos, head: pos },
+      scrollIntoView: true,
+    });
+  }
+
   return {
     registerEditor,
     undo: undoAction,
@@ -71,5 +84,6 @@ export function useEditorActions(): {
     copy,
     paste,
     selectAll: selectAllAction,
+    goToLine,
   };
 }

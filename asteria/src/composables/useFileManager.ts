@@ -1,6 +1,6 @@
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, ask } from "@tauri-apps/plugin-dialog";
 import { Store } from "@tauri-apps/plugin-store";
 import { useTabs } from "./useTabs";
 
@@ -28,6 +28,8 @@ const contextMenu = ref<ContextMenuState>({
   entry: null,
 });
 const renamingPath = ref<string | null>(null);
+const creatingIn = ref<string | null>(null);
+const creatingIsDir = ref(false);
 
 function parentPath(path: string): string {
   const sep = path.includes("\\") ? "\\" : "/";
@@ -152,16 +154,33 @@ export function useFileManager() {
     return currentFolder.value;
   }
 
-  async function handleNewFile(parentDir: string) {
-    const name = window.prompt("Enter file name:");
-    if (!name) return;
-    await createFile(joinPath(parentDir, name));
+  function handleNewFile(parentDir: string) {
+    creatingIn.value = parentDir;
+    creatingIsDir.value = false;
   }
 
-  async function handleNewFolder(parentDir: string) {
-    const name = window.prompt("Enter folder name:");
-    if (!name) return;
-    await createDir(joinPath(parentDir, name));
+  function handleNewFolder(parentDir: string) {
+    creatingIn.value = parentDir;
+    creatingIsDir.value = true;
+  }
+
+  function cancelCreate() {
+    creatingIn.value = null;
+  }
+
+  async function confirmCreate(name: string) {
+    const parent = creatingIn.value;
+    if (!parent || !name) {
+      creatingIn.value = null;
+      return;
+    }
+    creatingIn.value = null;
+    const fullPath = joinPath(parent, name);
+    if (creatingIsDir.value) {
+      await createDir(fullPath);
+    } else {
+      await createFile(fullPath);
+    }
   }
 
   function handleRename(entry: FileEntry) {
@@ -183,7 +202,8 @@ export function useFileManager() {
     const msg = entry.is_dir
       ? `Delete folder "${entry.name}" and all its contents?`
       : `Delete file "${entry.name}"?`;
-    if (!window.confirm(msg)) return;
+    const confirmed = await ask(msg, { title: "Confirm Delete", kind: "warning" });
+    if (!confirmed) return;
     await deleteItem(entry.path);
   }
 
@@ -202,6 +222,10 @@ export function useFileManager() {
     selectedFile,
     contextMenu,
     renamingPath,
+    creatingIn,
+    creatingIsDir,
+    cancelCreate,
+    confirmCreate,
     openFolder,
     restoreLastFolder,
     refreshTree,

@@ -127,4 +127,52 @@ describe("useEditorActions", () => {
       view.destroy();
     });
   });
+
+  describe("goToLine", () => {
+    it("sets cursor at the start of the specified line (1-based)", () => {
+      const { registerEditor, goToLine } = useEditorActions();
+      const view = createEditor("line one\nline two\nline three");
+      registerEditor(view);
+
+      goToLine(2);
+      const pos = view.state.selection.main.head;
+      const line = view.state.doc.lineAt(pos);
+      expect(line.number).toBe(2);
+      expect(pos).toBe(line.from);
+
+      view.destroy();
+    });
+
+    it("sets cursor at column if column is provided", () => {
+      const { registerEditor, goToLine } = useEditorActions();
+      const view = createEditor("line one\nline two\nline three");
+      registerEditor(view);
+
+      goToLine(2, 4);
+      const pos = view.state.selection.main.head;
+      const line = view.state.doc.lineAt(pos);
+      expect(line.number).toBe(2);
+      expect(pos - line.from).toBe(4);
+
+      view.destroy();
+    });
+
+    it("clamps to last line if target line exceeds document", () => {
+      const { registerEditor, goToLine } = useEditorActions();
+      const view = createEditor("line one\nline two");
+      registerEditor(view);
+
+      goToLine(999);
+      const pos = view.state.selection.main.head;
+      const line = view.state.doc.lineAt(pos);
+      expect(line.number).toBe(2);
+
+      view.destroy();
+    });
+
+    it("does nothing if no editor is registered", () => {
+      const { goToLine } = useEditorActions();
+      expect(() => goToLine(1)).not.toThrow();
+    });
+  });
 });

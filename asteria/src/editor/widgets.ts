@@ -1,14 +1,13 @@
 import { WidgetType } from '@codemirror/view'
 import type { EditorView } from '@codemirror/view'
+import { invoke } from '@tauri-apps/api/core'
 import { highlightCode } from './code-highlighter'
 
 /**
  * 图片 Widget — 用真实 `<img>` 元素替换 `![alt](url)` 语法。
  *
- * ## 设计要点
- * - `eq()`: CM6 通过比较决定是否复用 DOM。两个同 src+alt 的 Widget 视为等价，
- *   编辑器重新渲染时会保留已有 `<img>`，避免闪烁或重新请求图片。
- * - `ignoreEvent()`: 返回 false，让 `<img>` 能响应点击、拖拽等鼠标事件。
+ * 本地路径（不以 http/https/data 开头）通过 IPC 异步读取文件、
+ * 转为 blob URL 显示，避免 webview 的 file:// / asset:// 限制。
  */
 export class ImageWidget extends WidgetType {
     constructor(
@@ -19,27 +18,78 @@ export class ImageWidget extends WidgetType {
         super()
     }
 
-    /** CM6 通过此方法判断两个 Widget 实例是否等价（决定是否复用 DOM） */
     eq(other: ImageWidget): boolean {
         return other.src === this.src
             && other.alt === this.alt
             && other.title === this.title
     }
 
-    /** 创建实际 `<img>` DOM 元素 */
     toDOM(): HTMLElement {
+        const wrapper = document.createElement('span')
+        wrapper.style.display = 'block'
+        wrapper.style.padding = '8px 0'
+        wrapper.style.textAlign = 'center'
+
         const img = document.createElement('img')
-        img.src = this.src
         img.alt = this.alt
         if (this.title) img.title = this.title
         img.className = 'cm-image-widget'
-        return img
+
+        const constrainWidth = () => {
+            if (!img.naturalWidth) return
+            const scroller = img.closest('.cm-scroller')
+            if (!scroller) return
+            const visibleWidth = scroller.clientWidth - 16
+            if (img.naturalWidth > visibleWidth) {
+                img.style.maxWidth = visibleWidth + 'px'
+                img.style.height = 'auto'
+            }
+        }
+
+        if (this.isLocalPath()) {
+            this.loadLocalImage(img, constrainWidth)
+        } else {
+            img.onload = constrainWidth
+            img.src = this.src
+        }
+        wrapper.appendChild(img)
+        return wrapper
     }
 
-    /** 返回 false 让图片能响应鼠标事件 */
     ignoreEvent(): boolean {
         return false
     }
+
+    private isLocalPath(): boolean {
+        return !/^https?:\/\//i.test(this.src) && !/^data:/i.test(this.src)
+    }
+
+    private async loadLocalImage(img: HTMLImageElement, onReady: () => void) {
+        try {
+            const base64 = await invoke<string>('read_binary_file', { path: this.src })
+            const binary = atob(base64)
+            const bytes = new Uint8Array(binary.length)
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i)
+            }
+            const mime = getImageMimeType(this.src)
+            const blob = new Blob([bytes], { type: mime })
+            img.onload = onReady
+            img.src = URL.createObjectURL(blob)
+        } catch {
+            img.alt = `[Failed to load: ${this.alt}]`
+        }
+    }
+}
+
+function getImageMimeType(path: string): string {
+    const ext = path.split('.').pop()?.toLowerCase() || ''
+    const map: Record<string, string> = {
+        'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+        'gif': 'image/gif', 'webp': 'image/webp', 'bmp': 'image/bmp',
+        'svg': 'image/svg+xml', 'ico': 'image/x-icon', 'tiff': 'image/tiff',
+    }
+    return map[ext] || 'application/octet-stream'
 }
 
 /**
@@ -118,6 +168,9 @@ export class CheckboxWidget extends WidgetType {
         input.type = 'checkbox'
         input.checked = this.checked
         input.className = 'cm-task-checkbox'
+        input.addEventListener('mousedown', (e) => {
+            e.stopPropagation()
+        })
         input.addEventListener('click', (e) => {
             e.stopPropagation()
             this.view.dispatch({

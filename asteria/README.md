@@ -1,7 +1,49 @@
-# Tauri + Vue + TypeScript
+# Asteria
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+A lightweight markdown knowledge-base editor built with Tauri v2, Vue 3, and TypeScript, powered by a custom CodeMirror-based editor with real-time preview.
 
-## Recommended IDE Setup
+## Features
 
-- [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+- File tree with create, rename, and delete operations
+- Tabbed multi-file editing
+- Markdown editor with syntax highlighting and live preview
+- Full-text search and replace across directories
+- Custom `asteria://` protocol for local image rendering
+- Persistent window state and open tabs across sessions
+
+## Tech Stack
+
+- **Frontend**: Vue 3 + TypeScript + CodeMirror 6
+- **Backend**: Tauri v2 (Rust)
+- **Build**: Vite + Bun
+
+## Getting Started
+
+```bash
+# Install dependencies
+bun install
+
+# Run in development mode
+bun run tauri dev
+
+# Build for production
+bun run tauri build
+```
+
+## Project Structure
+
+```
+asteria/
+  src/                  # Vue frontend
+    components/         # UI components
+    composables/        # Vue composition functions
+    editor/             # CodeMirror extensions
+    parser/             # Markdown lexer/parser
+  src-tauri/            # Rust backend
+    src/commands/       # Tauri IPC commands
+    capabilities/       # Permission configs
+```
+
+## License
+
+MIT
