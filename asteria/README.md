@@ -1,49 +1,55 @@
 # Asteria
 
-A lightweight markdown knowledge-base editor built with Tauri v2, Vue 3, and TypeScript, powered by a custom CodeMirror-based editor with real-time preview.
+[English](./README.en.md)
 
-## Features
+轻量级 Markdown 编辑器，基于 Tauri v2 + Vue 3 + TypeScript 构建，核心精简，通过插件系统扩展功能（规划中）。
 
-- File tree with create, rename, and delete operations
-- Tabbed multi-file editing
-- Markdown editor with syntax highlighting and live preview
-- Full-text search and replace across directories
-- Custom `asteria://` protocol for local image rendering
-- Persistent window state and open tabs across sessions
+## 特性
 
-## Tech Stack
+- 文件树：创建、重命名、删除文件/文件夹
+- 多标签页编辑
+- Markdown 编辑器，支持语法高亮与实时预览
+- 全目录搜索与替换
+- 自定义 `asteria://` 协议渲染本地图片
+- 窗口状态与打开的标签页持久化
 
-- **Frontend**: Vue 3 + TypeScript + CodeMirror 6
-- **Backend**: Tauri v2 (Rust)
-- **Build**: Vite + Bun
+## 技术栈
 
-## Getting Started
+- **前端**：Vue 3 + TypeScript + CodeMirror 6
+- **后端**：Tauri v2 (Rust)
+- **构建**：Vite + Bun
+
+## 快速开始
 
 ```bash
-# Install dependencies
+# 安装依赖
 bun install
 
-# Run in development mode
+# 开发模式运行
 bun run tauri dev
 
-# Build for production
+# 生产构建
 bun run tauri build
 ```
 
-## Project Structure
+## 项目结构
 
 ```
 asteria/
-  src/                  # Vue frontend
-    components/         # UI components
-    composables/        # Vue composition functions
-    editor/             # CodeMirror extensions
-    parser/             # Markdown lexer/parser
-  src-tauri/            # Rust backend
-    src/commands/       # Tauri IPC commands
-    capabilities/       # Permission configs
+  src/                  # Vue 前端
+    components/         # UI 组件
+    composables/        # Vue 组合式函数
+    editor/             # CodeMirror 扩展
+    parser/             # Markdown 词法/语法解析器
+  src-tauri/            # Rust 后端
+    src/commands/       # Tauri IPC 命令
+    capabilities/       # 权限配置
 ```
 
-## License
+## 路线图
+
+- 插件系统（类似 Obsidian 扩展机制）
+
+## 许可证
 
 MIT
