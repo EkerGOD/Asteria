@@ -7,6 +7,8 @@
   --bg-secondary: #fafafa;
   --bg-tertiary: #f0f0f0;
   --bg-hover: #e8e8e8;
+  --bg-selected: #d0e0ff;
+  --text-selected: #1a1a1a;
 
   /* Borders */
   --border-primary: #e0e0e0;
@@ -70,6 +72,8 @@
   --bg-secondary: #252526;
   --bg-tertiary: #2d2d2d;
   --bg-hover: #3a3a3a;
+  --bg-selected: #094771;
+  --text-selected: #e0e0e0;
 
   --border-primary: #3e3e3e;
   --border-secondary: #444;

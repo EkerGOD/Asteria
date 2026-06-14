@@ -2,3 +2,28 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+
+# Rust / Tauri
+target/
+*.pdb
+*.dylib
+*.so
+*.dll
+
+# Vite / frontend build
+dist/
+.vite/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+desktop.ini

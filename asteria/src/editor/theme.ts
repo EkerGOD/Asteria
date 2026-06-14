@@ -46,6 +46,9 @@ export const editorTheme = EditorView.theme(
       border: "1px solid var(--border-primary)",
       color: "var(--text-primary)",
     },
+    ".cm-scroller": {
+      paddingBottom: "50vh",
+    },
   },
   { dark: false }
 );

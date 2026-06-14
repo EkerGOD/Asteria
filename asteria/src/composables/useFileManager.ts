@@ -26,6 +26,7 @@ const contextMenu = ref<ContextMenuState>({
   y: 0,
   entry: null,
 });
+const renamingPath = ref<string | null>(null);
 
 function parentPath(path: string): string {
   const sep = path.includes("\\") ? "\\" : "/";
@@ -150,8 +151,16 @@ export function useFileManager() {
     await createDir(joinPath(parentDir, name));
   }
 
-  async function handleRename(entry: FileEntry) {
-    const newName = window.prompt("New name:", entry.name);
+  function handleRename(entry: FileEntry) {
+    renamingPath.value = entry.path;
+  }
+
+  function cancelRename() {
+    renamingPath.value = null;
+  }
+
+  async function confirmRename(entry: FileEntry, newName: string) {
+    renamingPath.value = null;
     if (!newName || newName === entry.name) return;
     const newPath = joinPath(parentPath(entry.path), newName);
     await renameItem(entry.path, newPath);
@@ -170,6 +179,7 @@ export function useFileManager() {
     fileTree,
     selectedFile,
     contextMenu,
+    renamingPath,
     openFolder,
     refreshTree,
     selectFile,
@@ -180,6 +190,8 @@ export function useFileManager() {
     handleNewFile,
     handleNewFolder,
     handleRename,
+    cancelRename,
+    confirmRename,
     handleDelete,
     createFile,
     createDir,

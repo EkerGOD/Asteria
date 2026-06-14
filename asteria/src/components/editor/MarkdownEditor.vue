@@ -9,7 +9,7 @@ import { EditorState, Prec } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { indentOnInput, syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language';
 import { cursorLineField, getCursorLines } from '../../editor/cursor-tracker';
-import { wysiwygPlugin } from '../../editor/decorations';
+import { wysiwygPlugin, forceRebuildEffect } from '../../editor/decorations';
 import { editorTheme } from '../../editor/theme';
 import { useTabs } from '../../composables/useTabs';
 import { useFileManager } from '../../composables/useFileManager';
@@ -117,6 +117,8 @@ onMounted(() => {
         state,
         parent: editorRef.value,
     })
+
+    view.dispatch({ effects: forceRebuildEffect.of(null) })
 
     watch(activeContentVersion, () => {
         const tab = activeTab.value;

@@ -8,9 +8,6 @@ import MarkdownEditor from "./components/editor/MarkdownEditor.vue";
 import FileTree from "./components/file-tree/FileTree.vue";
 import TabBar from "./components/tabs/TabBar.vue";
 import Sidebar from "./components/layout/Sidebar.vue";
-import { useAppShell } from "./composables/useAppShell";
-
-const { sidebarCollapsed } = useAppShell();
 
 onMounted(() => {
   testLexer()
@@ -22,7 +19,7 @@ onMounted(() => {
   <div class="app-wrapper">
     <Toolbar />
     <main class="container">
-      <Sidebar :collapsed="sidebarCollapsed">
+      <Sidebar>
         <FileTree />
       </Sidebar>
       <div class="main-content">
@@ -59,6 +56,9 @@ onMounted(() => {
 .editor-wrapper {
   flex: 1;
   min-height: 0;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
   padding: 32px 48px 128px;
   box-sizing: border-box;
   overflow: auto;

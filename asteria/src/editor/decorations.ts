@@ -1,5 +1,5 @@
 import { EditorView, ViewPlugin, Decoration, DecorationSet } from '@codemirror/view'
-import { Text, EditorState, StateField, RangeSetBuilder } from '@codemirror/state'
+import { Text, EditorState, StateField, RangeSetBuilder, StateEffect } from '@codemirror/state'
 import { getCursorLines } from './cursor-tracker'
 import { ImageWidget, HorizontalRuleWidget, BulletWidget, CheckboxWidget, CodeBlockWidget, TableWidget, parseAlignments, isTableSeparator, splitCells } from './widgets'
 
@@ -12,6 +12,12 @@ interface ViewportRange {
   from: number
   to: number
 }
+
+// ============================================================================
+// StateEffect：用于在 EditorView 创建后强制触发装饰重建
+// ============================================================================
+
+export const forceRebuildEffect = StateEffect.define()
 
 // ============================================================================
 // 性能优化：光标移动节流
@@ -257,7 +263,9 @@ function tryHeading(_text: string, pos: number, doc: Text, cursorLines: Set<numb
 }
 
 function advanceHeading(_text: string, pos: number, doc: Text): number {
-  return doc.lineAt(pos).to
+  const line = doc.lineAt(pos)
+  const match = line.text.match(/^#{1,6}\s/)
+  return match ? line.from + match[0].length : pos + 1
 }
 
 // ----- 2.8. 围栏代码块 ```lang ... ``` -----
@@ -373,7 +381,9 @@ function tryBlockquote(_text: string, pos: number, doc: Text, cursorLines: Set<n
 }
 
 function advanceBlockquote(_text: string, pos: number, doc: Text): number {
-  return doc.lineAt(pos).to
+  const line = doc.lineAt(pos)
+  const match = line.text.match(/^>\s?/)
+  return match ? line.from + match[0].length : pos + 1
 }
 
 // ----- 2.9. 任务列表 - [ ] / - [x] -----
@@ -403,7 +413,9 @@ function tryTaskList(_text: string, pos: number, doc: Text, view: EditorView | n
 }
 
 function advanceTaskList(_text: string, pos: number, doc: Text): number {
-  return doc.lineAt(pos).to
+  const line = doc.lineAt(pos)
+  const match = line.text.match(/^[-*+]\s\[([ x])\]\s/)
+  return match ? line.from + match[0].length : pos + 1
 }
 
 // ----- 2.10. 有序列表 1. text -----
@@ -426,7 +438,9 @@ function tryOrderedList(_text: string, pos: number, doc: Text, cursorLines: Set<
 }
 
 function advanceOrderedList(_text: string, pos: number, doc: Text): number {
-  return doc.lineAt(pos).to
+  const line = doc.lineAt(pos)
+  const match = line.text.match(/^\d+\.\s/)
+  return match ? line.from + match[0].length : pos + 1
 }
 
 // ----- 2.11. 无序列表 - / * / + text -----
@@ -449,7 +463,9 @@ function tryUnorderedList(_text: string, pos: number, doc: Text, cursorLines: Se
 }
 
 function advanceUnorderedList(_text: string, pos: number, doc: Text): number {
-  return doc.lineAt(pos).to
+  const line = doc.lineAt(pos)
+  const match = line.text.match(/^[-*+]\s/)
+  return match ? line.from + match[0].length : pos + 1
 }
 
 // ----- 3. 粗斜体 ***text*** -----
@@ -605,6 +621,12 @@ const decorationField = StateField.define<DecorationSet>({
 
     if (tr.docChanged) {
       return safeBuildFromState(tr.state, mapped)
+    }
+
+    for (const effect of tr.effects) {
+      if (effect.is(forceRebuildEffect)) {
+        return safeBuildFromState(tr.state, mapped)
+      }
     }
 
     if (tr.selection) {

@@ -81,6 +81,7 @@ onUnmounted(() => {
   top: 100%;
   left: 0;
   min-width: 200px;
+  width: max-content;
   background: var(--bg-primary, #ffffff);
   border: 1px solid var(--border-primary, #e0e0e0);
   border-radius: 4px;
@@ -101,6 +102,7 @@ onUnmounted(() => {
   color: var(--text-primary, #1a1a1a);
   text-align: left;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .menu-item:hover:not(.disabled) {

@@ -30,7 +30,6 @@ describe("App", () => {
     });
     const sidebar = wrapper.findComponent(Sidebar);
     expect(sidebar.exists()).toBe(true);
-    expect(sidebar.props("collapsed")).toBe(false);
   });
 
   it("has correct layout hierarchy: toolbar on top, container below", () => {
