@@ -10,40 +10,39 @@ Current status: **v1.0.0** stable release.
 
 ```
 learn-anything/
-  asteria/                # Tauri v2 + Vue 3 + TypeScript desktop app
-    src/                   # Vue frontend (Vite, <script setup> SFCs)
-      components/          # UI components (FileTree, SearchPanel, TabBar, etc.)
-        activity-bar/      # Activity bar sidebar switcher
-        editor/            # Markdown editor (CodeMirror-based)
-        file-tree/         # File tree with context menu & new item
-        layout/            # Sidebar layout wrapper
-        search/            # Search & replace panel
-        status-bar/        # Bottom status bar
-        tabs/              # Tab bar for multi-file editing
-        toolbar/           # Top toolbar with menu dropdown
-      composables/         # Vue composition functions (useTabs, useFileManager, etc.)
-      editor/              # CodeMirror extensions (decorations, widgets, theme)
-      parser/              # Markdown lexer & parser
-      styles/              # Global CSS
-      __tests__/           # App-level tests
-    src-tauri/              # Rust backend
-      src/lib.rs            # App entry: registers plugins + invoke_handler
-      src/main.rs           # Thin wrapper calling asteria_lib::run()
-      src/commands/         # Tauri IPC command modules
-        file_ops.rs         # File CRUD, list, rename
-        search.rs           # Search-in-dir & replace-in-file
-      capabilities/         # Tauri permission configs
-      Cargo.toml            # Rust deps
-    package.json            # Frontend deps & scripts
-    vite.config.ts           # Dev server pinned to port 1420
-    LICENSE                  # MIT
-    README.md                # Chinese (primary)
-    README.en.md             # English
+  src/                     # Vue frontend (Vite, <script setup> SFCs)
+    components/            # UI components (FileTree, SearchPanel, TabBar, etc.)
+      activity-bar/        # Activity bar sidebar switcher
+      editor/              # Markdown editor (CodeMirror-based)
+      file-tree/           # File tree with context menu & new item
+      layout/              # Sidebar layout wrapper
+      search/              # Search & replace panel
+      status-bar/          # Bottom status bar
+      tabs/                # Tab bar for multi-file editing
+      toolbar/             # Top toolbar with menu dropdown
+    composables/           # Vue composition functions (useTabs, useFileManager, etc.)
+    editor/                # CodeMirror extensions (decorations, widgets, theme)
+    parser/                # Markdown lexer & parser
+    styles/                # Global CSS
+    __tests__/             # App-level tests
+  src-tauri/               # Rust backend
+    src/lib.rs             # App entry: registers plugins + invoke_handler
+    src/main.rs            # Thin wrapper calling asteria_lib::run()
+    src/commands/          # Tauri IPC command modules
+      file_ops.rs          # File CRUD, list, rename
+      search.rs            # Search-in-dir & replace-in-file
+    capabilities/          # Tauri permission configs
+    Cargo.toml             # Rust deps
+  package.json             # Frontend deps & scripts
+  vite.config.ts           # Dev server pinned to port 1420
+  LICENSE                  # MIT
+  README.md                # Chinese (primary)
+  README.en.md             # English
 ```
 
 ## Commands
 
-All commands run from `asteria/`:
+All commands run from the project root:
 
 | Task | Command |
 |---|---|
@@ -53,7 +52,7 @@ All commands run from `asteria/`:
 | Typecheck only | `bunx vue-tsc --noEmit` |
 | Run tests | `bun run test` |
 | Run tests (watch) | `bun run test:watch` |
-| Rust build | `cargo build` from `asteria/src-tauri/` |
+| Rust build | `cargo build` from `src-tauri/` |
 | Production build | `bun run tauri build` (requires proxy: `$env:HTTPS_PROXY="http://127.0.0.1:7897"`) |
 
 Package manager: **bun** (see `bun.lock` files).
